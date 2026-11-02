@@ -89,9 +89,11 @@ quit_app() {
   local pat
   # shellcheck disable=SC2016  # the $ in the sed bracket is a literal character
   pat="^$(printf '%s' "$1/Contents/MacOS/" | sed 's/[][\.*^$(){}+?|/]/\\&/g')"
-  if pgrep -f "$pat" >/dev/null 2>&1; then
+  # -a: the in-app updater runs this script as a child of the app, and macOS pgrep/pkill
+  # skip their own ancestors unless told otherwise.
+  if pgrep -af "$pat" >/dev/null 2>&1; then
     say "Quitting $(basename "$1")"
-    pkill -f "$pat" || true
+    pkill -af "$pat" || true
     sleep 1
   fi
 }
