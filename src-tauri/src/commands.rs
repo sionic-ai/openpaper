@@ -279,12 +279,25 @@ pub async fn update_check() -> Result<update::UpdateInfo, String> {
     blocking(|| Ok(update::check())).await
 }
 
-/// Reruns the installer for the folder this app lives in. The installer quits, replaces and
-/// reopens the app.
+/// Installs the latest release into the folder this app lives in. On macOS the installer quits,
+/// replaces and reopens the app. On Windows the setup program runs once the app has quit, so the
+/// app quits itself here. Runs off the main thread: Windows downloads the setup program first.
 #[tauri::command]
-pub fn update_install() -> Result<(), String> {
-    let exe = std::env::current_exe().map_err(|_| "Couldn't find where the app is".to_string())?;
-    update::install_latest(&exe, &std::env::temp_dir().join(update::LOG_NAME))
+pub async fn update_install(app: tauri::AppHandle) -> Result<(), String> {
+    blocking(|| {
+        let exe =
+            std::env::current_exe().map_err(|_| "Couldn't find where the app is".to_string())?;
+        update::install_latest(&exe, &std::env::temp_dir().join(update::LOG_NAME))
+    })
+    .await?;
+    if cfg!(windows) {
+        // Give the reply a moment to reach the window before quitting.
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(300));
+            app.exit(0);
+        });
+    }
+    Ok(())
 }
 
 /// Opens the paper's abstract page on arxiv.org in the default browser. Only arXiv IDs are accepted,
