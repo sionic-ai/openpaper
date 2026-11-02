@@ -48,7 +48,7 @@ Exit codes: `0` ready, `1` error, `2` app installed but Claude Code is not logge
 
 ## What you get
 
-- **Side by side reading.** The original on one side, the translation on the other, paired sentence by sentence. Hover or select a sentence and its pair lights up on both sides. Swap sides with `⇄` and drag the divider to resize. Reopening a paper returns to where you stopped reading.
+- **Side by side reading.** The original on one side, the translation on the other, paired sentence by sentence. Hover or select a sentence and its pair lights up on both sides. Swap sides with `⇄` and drag the divider to resize. Press `⌘F` to find text in both columns. Reopening a paper returns to where you stopped reading.
 - **Pick your language.** Translate into Korean, Japanese, Chinese (Simplified), Spanish, French, German, or Portuguese.
 - **arXiv search.** Search arXiv inside the app, or paste an arXiv ID or URL. Local PDFs work too.
 - **AI paper finder.** Describe what you are looking for in plain words. Claude plans the searches, and the app only shows papers that came back from arXiv, never invented ones.
