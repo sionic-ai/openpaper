@@ -17,9 +17,13 @@ Before you open a pull request:
 ```sh
 pnpm build                        # typecheck + web build
 cd src-tauri
+cargo fmt --check
 cargo test --lib
-cargo clippy --all-targets
+cargo clippy --all-targets -- -D warnings
+cargo clippy --features probe --bin openpaper-probe -- -D warnings
 ```
+
+CI (`.github/workflows/ci.yml`) runs the same checks plus `shellcheck` on every pull request, and `main` only accepts changes that pass it.
 
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) maps each stage to its file and describes the `openpaper-probe` CLI, which runs import, translation, search, and chat without the GUI.
 

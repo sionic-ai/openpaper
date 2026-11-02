@@ -1,0 +1,33 @@
+name: Release
+
+# Push a tag that matches the app version (v + version in src-tauri/tauri.conf.json):
+#   git tag v0.2.1 && git push origin v0.2.1
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      # Same script maintainers run locally: universal build, zip, .sha256, GitHub release.
+      - name: Build and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OPENPAPER_REPO: ${{ github.repository }}
+        run: scripts/release.sh "$GITHUB_REF_NAME"

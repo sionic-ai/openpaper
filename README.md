@@ -7,6 +7,7 @@
 Read an English research paper side by side with its translation, sentence by sentence.
 
 [![Release](https://img.shields.io/github/v/release/sionic-ai/openpaper?style=flat-square&labelColor=black&color=white)](https://github.com/sionic-ai/openpaper/releases/latest)
+[![CI](https://img.shields.io/github/actions/workflow/status/sionic-ai/openpaper/ci.yml?branch=main&style=flat-square&labelColor=black&label=CI)](https://github.com/sionic-ai/openpaper/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-white?style=flat-square&labelColor=black)](LICENSE)
 [![Platform: macOS](https://img.shields.io/badge/platform-macOS-white?style=flat-square&labelColor=black&logo=apple)](#install)
 [![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%202-white?style=flat-square&labelColor=black&logo=tauri)](https://tauri.app)

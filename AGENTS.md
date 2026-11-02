@@ -81,8 +81,11 @@ Rules:
 
 ## Releasing (maintainers)
 
+Bump the version in `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`, merge to `main`, then push a matching tag. The `Release` workflow (`.github/workflows/release.yml`) runs `scripts/release.sh` on a macOS runner:
+
 ```sh
-scripts/release.sh v0.2.0     # bumps nothing; uses the version in tauri.conf.json
+git tag v0.2.1 && git push origin v0.2.1
+scripts/release.sh v0.2.1     # the same thing by hand; bumps nothing
 ```
 
-The script builds `--target universal-apple-darwin`, zips `OpenPaper.app` with `ditto` as `OpenPaper-macos-universal.zip` plus its `.sha256`, and creates or updates the GitHub release for that tag on `sionic-ai/openpaper`. `install.sh` always downloads that exact asset name from `releases/latest`, so keep the name unchanged. The tag must equal `v` + the app version, and replacing assets of an existing release needs `OPENPAPER_CLOBBER=1`.
+The script builds `--target universal-apple-darwin`, zips `OpenPaper.app` with `ditto` as `OpenPaper-macos-universal.zip` plus its `.sha256`, and creates or updates the GitHub release for that tag on `sionic-ai/openpaper`. `install.sh` always downloads that exact asset name, so keep the name unchanged. The in-app Update button runs the `install.sh` of the release tag it found, not the one on `main`, so installer changes reach users only through a release. The tag must equal `v` + the app version, and replacing assets of an existing release needs `OPENPAPER_CLOBBER=1`.
