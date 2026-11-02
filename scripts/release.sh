@@ -1,14 +1,18 @@
 #!/bin/bash
 # Build a universal macOS app and publish it as a GitHub release asset.
-#   scripts/release.sh v0.1.0 [--skip-build]
-# install.sh downloads releases/latest/download/Nanran-macos-universal.zip, so keep that name.
+#
+#   scripts/release.sh v0.2.0 [--skip-build]
+#
+# The version comes from src-tauri/tauri.conf.json; this script bumps nothing.
+# install.sh downloads releases/latest/download/OpenPaper-macos-universal.zip,
+# so keep the asset name unchanged.
 set -euo pipefail
 
 TAG="${1:?usage: scripts/release.sh <tag> [--skip-build]}"
-REPO="${NANRAN_REPO:-sionic-ai/paper-desktop}"
-ASSET="Nanran-macos-universal.zip"
+REPO="${OPENPAPER_REPO:-sionic-ai/openpaper}"
+ASSET="OpenPaper-macos-universal.zip"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-APP="$ROOT/src-tauri/target/universal-apple-darwin/release/bundle/macos/Nanran.app"
+APP="$ROOT/src-tauri/target/universal-apple-darwin/release/bundle/macos/OpenPaper.app"
 OUT="$ROOT/src-tauri/target/$ASSET"
 
 cd "$ROOT"
@@ -17,22 +21,29 @@ if [ "${2:-}" != "--skip-build" ]; then
   pnpm install --frozen-lockfile
   pnpm tauri build --target universal-apple-darwin
 fi
-[ -d "$APP" ] || { echo "missing $APP" >&2; exit 1; }
+[ -d "$APP" ] || { echo "Missing $APP" >&2; exit 1; }
 
-lipo -archs "$APP/Contents/MacOS/nanran"
+PLIST="$APP/Contents/Info.plist"
+EXE="$(/usr/libexec/PlistBuddy -c 'Print CFBundleExecutable' "$PLIST")"
+VERSION="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$PLIST")"
+lipo -archs "$APP/Contents/MacOS/$EXE"
 codesign --verify --deep "$APP"
-rm -f "$OUT"
+[ "$TAG" = "v$VERSION" ] || { echo "Tag $TAG does not match the app version $VERSION (expected v$VERSION)" >&2; exit 1; }
+rm -f "$OUT" "$OUT.sha256"
 ditto -c -k --sequesterRsrc --keepParent "$APP" "$OUT"
-shasum -a 256 "$OUT"
+# install.sh refuses a download without a matching checksum file next to it.
+(cd "$(dirname "$OUT")" && shasum -a 256 "$ASSET" > "$ASSET.sha256")
+cat "$OUT.sha256"
 
-VERSION="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP/Contents/Info.plist")"
-NOTES="Nanran $VERSION (macOS universal, ad-hoc signed).
+NOTES="OpenPaper $VERSION (macOS universal, ad-hoc signed).
 
-Install: \`curl -fsSL https://raw.githubusercontent.com/$REPO/main/install.sh | bash\`"
+Install or update: \`curl -fsSL https://raw.githubusercontent.com/$REPO/main/install.sh | bash\`"
 
 if gh release view "$TAG" -R "$REPO" >/dev/null 2>&1; then
-  gh release upload "$TAG" "$OUT" -R "$REPO" --clobber
+  # Replacing assets of a published release needs an explicit opt-in.
+  [ "${OPENPAPER_CLOBBER:-0}" = 1 ] || { echo "Release $TAG exists. Set OPENPAPER_CLOBBER=1 to replace its assets." >&2; exit 1; }
+  gh release upload "$TAG" "$OUT" "$OUT.sha256" -R "$REPO" --clobber
 else
-  gh release create "$TAG" "$OUT" -R "$REPO" --title "Nanran $VERSION" --notes "$NOTES" --target main
+  gh release create "$TAG" "$OUT" "$OUT.sha256" -R "$REPO" --title "OpenPaper $VERSION" --notes "$NOTES" --target main
 fi
-echo "released $TAG -> https://github.com/$REPO/releases/tag/$TAG"
+echo "Released $TAG: https://github.com/$REPO/releases/tag/$TAG"

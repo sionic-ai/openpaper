@@ -1,45 +1,44 @@
 #!/bin/bash
-# 나란(Nanran) installer for macOS.
+# OpenPaper installer for macOS. Run it again to update.
 #
-#   curl -fsSL https://raw.githubusercontent.com/sionic-ai/paper-desktop/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/sionic-ai/openpaper/main/install.sh | bash
 #
-# Steps: download the latest release app -> install to /Applications (or ~/Applications)
-#        -> make sure Claude Code CLI is installed and logged in -> open the app.
-#
-# Options (flags or environment variables, so agents can run it without prompts):
-#   --no-claude      NANRAN_NO_CLAUDE=1   skip the Claude Code install/login step
-#   --no-login       NANRAN_NO_LOGIN=1    install Claude Code if missing, but never start a login
-#   --no-open        NANRAN_NO_OPEN=1     do not open the app at the end
-#   --dir <path>     NANRAN_DIR=<path>    install the app into this folder
-#   --version <tag>  NANRAN_VERSION=<tag> install a specific release tag (default: latest)
-#   --check                               only report what is installed; change nothing
-#
-# Exit codes: 0 ok (app installed and Claude ready), 1 error, 2 app installed but Claude
-#             Code is not logged in yet (run `claude auth login`, then open the app).
+# Pass options after `bash -s --`. Run with --help for the list.
+# Exit codes: 0 ready, 1 error, 2 app installed but Claude Code is not logged in.
 
 set -euo pipefail
 
-REPO="sionic-ai/paper-desktop"
-APP_NAME="Nanran.app"
-ASSET="Nanran-macos-universal.zip"
+REPO="sionic-ai/openpaper"
+APP="OpenPaper.app"
+OLD_APP="Nanran.app"
+ASSET="OpenPaper-macos-universal.zip"
+SUPPORT="$HOME/Library/Application Support"
 
-NO_CLAUDE="${NANRAN_NO_CLAUDE:-0}"
-NO_LOGIN="${NANRAN_NO_LOGIN:-0}"
-NO_OPEN="${NANRAN_NO_OPEN:-0}"
-DIR="${NANRAN_DIR:-}"
-VERSION="${NANRAN_VERSION:-latest}"
-CHECK=0
+# NANRAN_* are read as a fallback so that the in-app updater of older Nanran builds,
+# which still sets NANRAN_DIR and NANRAN_NO_CLAUDE, upgrades to OpenPaper in place.
+NO_CLAUDE="${OPENPAPER_NO_CLAUDE:-${NANRAN_NO_CLAUDE:-0}}"
+NO_LOGIN="${OPENPAPER_NO_LOGIN:-0}"
+NO_OPEN="${OPENPAPER_NO_OPEN:-0}"
+DIR="${OPENPAPER_DIR:-${NANRAN_DIR:-}}"
+VERSION="${OPENPAPER_VERSION:-latest}"
+ACTION=install
+PURGE=0
 
 usage() {
   cat <<'EOF'
-나란 설치: curl -fsSL https://raw.githubusercontent.com/sionic-ai/paper-desktop/main/install.sh | bash -s -- [options]
-  --no-claude      Claude Code 설치·로그인 단계를 건너뛰어요 (NANRAN_NO_CLAUDE=1)
-  --no-login       Claude Code가 없으면 설치만 하고 로그인은 시작하지 않아요 (NANRAN_NO_LOGIN=1)
-  --no-open        끝나고 앱을 열지 않아요 (NANRAN_NO_OPEN=1)
-  --dir <path>     앱을 설치할 폴더 (NANRAN_DIR, 기본 /Applications 또는 ~/Applications)
-  --version <tag>  설치할 릴리스 태그 (NANRAN_VERSION, 기본 latest)
-  --check          설치 상태만 출력하고 아무것도 바꾸지 않아요
-종료 코드: 0 준비 완료, 1 오류, 2 앱은 설치됐지만 Claude Code 로그인이 필요해요
+Usage: curl -fsSL https://raw.githubusercontent.com/sionic-ai/openpaper/main/install.sh | bash -s -- [options]
+
+  --no-claude      skip installing and logging in to Claude Code   (OPENPAPER_NO_CLAUDE=1)
+  --no-login       never start the Claude Code login               (OPENPAPER_NO_LOGIN=1)
+  --no-open        do not open the app at the end                  (OPENPAPER_NO_OPEN=1)
+  --dir <path>     install into this folder                        (OPENPAPER_DIR)
+                   default: /Applications, or ~/Applications if that is not writable
+  --version <tag>  install this release tag instead of the latest  (OPENPAPER_VERSION)
+  --check          print what is installed and change nothing
+  --uninstall      remove the app and keep your papers
+  --purge          with --uninstall, also delete your papers
+
+Exit codes: 0 ready, 1 error, 2 app installed but Claude Code is not logged in.
 EOF
 }
 
@@ -50,120 +49,162 @@ while [ $# -gt 0 ]; do
     --no-open) NO_OPEN=1 ;;
     --dir) DIR="${2:?--dir needs a path}"; shift ;;
     --version) VERSION="${2:?--version needs a tag}"; shift ;;
-    --check) CHECK=1 ;;
+    --check) ACTION=check ;;
+    --uninstall) ACTION=uninstall ;;
+    --purge) PURGE=1 ;;
     -h|--help) usage; exit 0 ;;
-    *) echo "알 수 없는 옵션이에요: $1" >&2; exit 1 ;;
+    *) echo "Unknown option: $1 (see --help)" >&2; exit 1 ;;
   esac
   shift
 done
 
-say() { printf '\033[1;31m나란\033[0m %s\n' "$*"; }
-fail() { printf '\033[1;31m나란\033[0m 오류: %s\n' "$*" >&2; exit 1; }
+say() { printf 'OpenPaper: %s\n' "$*"; }
+fail() { printf 'OpenPaper error: %s\n' "$*" >&2; exit 1; }
 
-[ "$(uname -s)" = "Darwin" ] || fail "macOS에서만 설치할 수 있어요."
+[ "$(uname -s)" = Darwin ] || fail "OpenPaper runs on macOS only."
 if [ "$(id -u)" -eq 0 ] && [ -n "${SUDO_USER:-}" ]; then
-  fail "sudo 없이 실행해 주세요. 앱과 Claude Code는 사용자 계정에 설치돼요."
+  fail "Run this without sudo. The app and Claude Code install into your user account."
 fi
+[ "$PURGE" = 0 ] || [ "$ACTION" = uninstall ] || fail "--purge only works together with --uninstall."
+
+# Folders to look in: the --dir folder if given, otherwise the two default locations.
+search_dirs() {
+  if [ -n "$DIR" ]; then echo "$DIR"; else printf '%s\n' /Applications "$HOME/Applications"; fi
+}
 
 find_claude() {
+  local c
   for c in "$HOME/.local/bin/claude" "$HOME/.claude/local/claude" "$HOME/.npm-global/bin/claude" \
            /opt/homebrew/bin/claude /usr/local/bin/claude; do
     [ -x "$c" ] && { echo "$c"; return 0; }
   done
-  command -v claude 2>/dev/null || return 1
+  command -v claude 2>/dev/null
 }
 
-claude_logged_in() {
-  "$1" auth status 2>/dev/null | grep -q '"loggedIn": *true'
+logged_in() { "$1" auth status 2>/dev/null | grep -q '"loggedIn": *true'; }
+
+# Quit the copy of an app that lives at this exact path, not a dev build or another copy.
+# The path is escaped and anchored, so ~/Applications/X.app never matches /Applications/X.app.
+quit_app() {
+  local pat
+  # shellcheck disable=SC2016  # the $ in the sed bracket is a literal character
+  pat="^$(printf '%s' "$1/Contents/MacOS/" | sed 's/[][\.*^$(){}+?|/]/\\&/g')"
+  if pgrep -f "$pat" >/dev/null 2>&1; then
+    say "Quitting $(basename "$1")"
+    pkill -f "$pat" || true
+    sleep 1
+  fi
 }
 
-installed_app() {
-  for d in "${DIR:-}" /Applications "$HOME/Applications"; do
-    [ -n "$d" ] && [ -d "$d/$APP_NAME" ] && { echo "$d/$APP_NAME"; return 0; }
-  done
-  return 1
-}
-
-if [ "$CHECK" = 1 ]; then
-  app="$(installed_app || true)"
+# --check ------------------------------------------------------------------------------
+if [ "$ACTION" = check ]; then
+  app=""
+  while read -r d; do
+    [ -d "$d/$APP" ] && { app="$d/$APP"; break; }
+  done < <(search_dirs)
   claude="$(find_claude || true)"
   echo "app: ${app:-not installed}"
   if [ -n "$app" ]; then
-    echo "app_version: $(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$app/Contents/Info.plist" 2>/dev/null || echo unknown)"
+    v="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$app/Contents/Info.plist" 2>/dev/null)" \
+      || v=unknown
+    echo "app_version: $v"
   fi
   echo "claude: ${claude:-not installed}"
-  if [ -n "$claude" ]; then
-    if claude_logged_in "$claude"; then echo "claude_login: yes"; else echo "claude_login: no"; fi
-  fi
-  [ -n "$app" ] && [ -n "$claude" ] && claude_logged_in "$claude" && exit 0
-  exit 2
+  login=no
+  if [ -n "$claude" ] && logged_in "$claude"; then login=yes; fi
+  [ -z "$claude" ] || echo "claude_login: $login"
+  [ -n "$app" ] || exit 1
+  [ "$login" = yes ] || exit 2
+  exit 0
 fi
 
-# 1. App ------------------------------------------------------------------------------
-if [ "$VERSION" = "latest" ]; then
+# --uninstall --------------------------------------------------------------------------
+if [ "$ACTION" = uninstall ]; then
+  removed=0
+  while read -r d; do
+    for a in "$APP" "$OLD_APP"; do
+      [ -d "$d/$a" ] || continue
+      quit_app "$d/$a"
+      rm -rf "${d:?}/$a" || fail "Couldn't remove $d/$a."
+      say "Removed $d/$a"
+      removed=1
+    done
+  done < <(search_dirs)
+  [ "$removed" = 1 ] || say "No app found to remove."
+  if [ "$PURGE" = 1 ]; then
+    for data in "$SUPPORT/dev.rlaope.openpaper" "$SUPPORT/dev.rlaope.nanran"; do
+      [ -d "$data" ] || continue
+      rm -rf "$data" || fail "Couldn't remove $data."
+      say "Removed $data"
+    done
+  elif [ -d "$SUPPORT/dev.rlaope.openpaper" ]; then
+    say "Kept your papers in $SUPPORT/dev.rlaope.openpaper (add --purge to delete them)."
+  fi
+  exit 0
+fi
+
+# Install: 1. app ----------------------------------------------------------------------
+if [ "$VERSION" = latest ]; then
   URL="https://github.com/$REPO/releases/latest/download/$ASSET"
 else
+  [[ "$VERSION" =~ ^v?[0-9]+(\.[0-9]+){1,2}([-+][0-9A-Za-z.]+)?$ ]] || fail "Not a release tag: $VERSION"
   URL="https://github.com/$REPO/releases/download/$VERSION/$ASSET"
 fi
-
 if [ -z "$DIR" ]; then
   if [ -w /Applications ]; then DIR=/Applications; else DIR="$HOME/Applications"; fi
 fi
-mkdir -p "$DIR" || fail "$DIR 폴더를 만들지 못했어요."
-DIR="$(cd "$DIR" && pwd -P)"   # resolve symlinks (/var -> /private/var) so the running-copy check matches
+mkdir -p "$DIR" || fail "Couldn't create $DIR."
+DIR="$(cd "$DIR" && pwd -P)"   # resolve symlinks so the running-app match uses the real path
 
-TMP="$(mktemp -d "${TMPDIR:-/tmp}/nanran-install.XXXXXX")"
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/openpaper-install.XXXXXX")"
 trap 'rm -rf "$TMP"' EXIT
 
-say "앱을 내려받는 중이에요 ($VERSION)"
-curl -fL --progress-bar --retry 3 -o "$TMP/$ASSET" "$URL" || fail "앱을 내려받지 못했어요: $URL"
-ditto -x -k "$TMP/$ASSET" "$TMP/unpacked" || fail "압축을 풀지 못했어요."
-[ -d "$TMP/unpacked/$APP_NAME" ] || fail "내려받은 파일에 $APP_NAME 이 없어요."
+say "Downloading $VERSION"
+curl -fL --proto '=https' --progress-bar --retry 3 -o "$TMP/$ASSET" "$URL" || fail "Couldn't download $URL"
+curl -fsSL --proto '=https' --retry 3 -o "$TMP/$ASSET.sha256" "$URL.sha256" || fail "Couldn't download $URL.sha256"
+( cd "$TMP" && shasum -a 256 -c "$ASSET.sha256" >/dev/null ) || fail "The download does not match its checksum. Nothing was installed."
+ditto -x -k "$TMP/$ASSET" "$TMP/unpacked" || fail "Couldn't unpack the download."
+[ -d "$TMP/unpacked/$APP" ] || fail "The download has no $APP in it."
 
-# Quit only the copy we are about to replace, not a dev build or a copy elsewhere.
-if pgrep -f "$DIR/$APP_NAME/Contents/MacOS/nanran" >/dev/null 2>&1; then
-  say "실행 중인 나란을 종료해요"
-  pkill -f "$DIR/$APP_NAME/Contents/MacOS/nanran" || true
-  sleep 1
+quit_app "$DIR/$APP"
+# Any running Nanran must stop: OpenPaper moves its library over on first launch.
+for d in "$DIR" /Applications "$HOME/Applications"; do quit_app "$d/$OLD_APP"; done
+rm -rf "${DIR:?}/$APP"
+ditto "$TMP/unpacked/$APP" "$DIR/$APP" || fail "Couldn't copy the app into $DIR."
+# The build is ad-hoc signed, not notarized. Clear the download quarantine so it opens.
+xattr -dr com.apple.quarantine "$DIR/$APP" 2>/dev/null || true
+say "Installed $DIR/$APP"
+if [ -d "$DIR/$OLD_APP" ]; then
+  rm -rf "${DIR:?}/$OLD_APP" && say "Removed the old $DIR/$OLD_APP (your papers move over on first launch)"
 fi
-rm -rf "$DIR/$APP_NAME"
-ditto "$TMP/unpacked/$APP_NAME" "$DIR/$APP_NAME" || fail "$DIR 에 앱을 복사하지 못했어요."
-# The app is ad-hoc signed, not notarized. Clear the download quarantine so it opens normally.
-xattr -dr com.apple.quarantine "$DIR/$APP_NAME" 2>/dev/null || true
-say "설치했어요: $DIR/$APP_NAME"
 
-# 2. Claude Code ----------------------------------------------------------------------
+# 2. Claude Code -----------------------------------------------------------------------
 STATUS=0
 if [ "$NO_CLAUDE" != 1 ]; then
   CLAUDE="$(find_claude || true)"
   if [ -z "$CLAUDE" ]; then
-    say "Claude Code가 없어서 공식 설치 스크립트로 설치해요"
-    curl -fsSL https://claude.ai/install.sh | bash || fail "Claude Code를 설치하지 못했어요."
+    say "Installing Claude Code with the official installer"
+    curl -fsSL https://claude.ai/install.sh | bash || fail "Couldn't install Claude Code."
     CLAUDE="$(find_claude || true)"
-    [ -n "$CLAUDE" ] || fail "Claude Code를 설치했지만 claude 명령을 찾지 못했어요."
+    [ -n "$CLAUDE" ] || fail "Claude Code was installed, but the claude command wasn't found."
   fi
-  say "Claude Code: $CLAUDE ($("$CLAUDE" --version 2>/dev/null | head -1))"
+  say "Claude Code: $CLAUDE"
 
-  if claude_logged_in "$CLAUDE"; then
-    say "Claude Code에 로그인돼 있어요. 번역에 이 계정을 써요"
-  elif [ "$NO_LOGIN" != 1 ] && [ -r /dev/tty ] && [ -w /dev/tty ] && ( : < /dev/tty ) 2>/dev/null; then
-    say "Claude Code 로그인이 필요해요. 브라우저가 열리면 로그인해 주세요"
+  if logged_in "$CLAUDE"; then
+    say "Claude Code is logged in."
+  elif [ "$NO_LOGIN" != 1 ] && ( : < /dev/tty ) 2>/dev/null; then
+    say "Log in to Claude Code in the browser window that opens."
     "$CLAUDE" auth login < /dev/tty > /dev/tty 2>&1 || true
-    if claude_logged_in "$CLAUDE"; then
-      say "로그인했어요"
-    else
-      say "아직 로그인되지 않았어요. 터미널에서 'claude auth login'을 실행한 뒤 나란을 열어 주세요"
-      STATUS=2
-    fi
+    logged_in "$CLAUDE" || STATUS=2
   else
-    say "Claude Code 로그인이 필요해요. 터미널에서 'claude auth login'을 실행해 주세요"
     STATUS=2
   fi
+  [ "$STATUS" = 0 ] || say "Claude Code is not logged in. Run 'claude auth login', then open OpenPaper."
 fi
 
-# 3. Open -----------------------------------------------------------------------------
+# 3. Open ------------------------------------------------------------------------------
 if [ "$NO_OPEN" != 1 ]; then
-  open "$DIR/$APP_NAME" || say "앱을 열지 못했어요. Finder에서 $DIR/$APP_NAME 을 열어 주세요"
+  open "$DIR/$APP" || say "Couldn't open the app. Open $DIR/$APP from Finder."
 fi
-[ "$STATUS" = 0 ] && say "준비됐어요. 왼쪽 칸에 arXiv ID나 검색어를 넣어 보세요"
+[ "$STATUS" = 0 ] && say "Ready."
 exit "$STATUS"
