@@ -603,7 +603,15 @@ pub fn translate_batch(
                 }
             }
         };
-        out.push(ko);
+        // Replies sometimes carry a leading space; store sentences without it.
+        out.push(Unit {
+            id: ko.id,
+            sentences: ko
+                .sentences
+                .into_iter()
+                .map(|s| s.trim().to_string())
+                .collect(),
+        });
     }
     Ok(out)
 }
