@@ -1,7 +1,7 @@
 //! In-app update: compares this build with the latest GitHub release, then installs it into
 //! the folder this app was launched from. macOS reruns the one-line installer, detached.
-//! Windows downloads the release's setup program, checks it, and runs it silently once the
-//! app has quit.
+//! Windows downloads the release's setup program, checks it, and runs it silently; the setup
+//! closes the app, installs over it and reopens it.
 
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -289,35 +289,20 @@ fn sha256_hex(bytes: &[u8]) -> String {
         .collect()
 }
 
-/// A PowerShell string literal: single quotes, with any single quote doubled.
-#[cfg(any(windows, test))]
-fn ps_quote(s: &str) -> String {
-    format!("'{}'", s.replace('\'', "''"))
-}
-
-/// The script that waits for this app (`pid`) to quit, runs the setup program silently into the
-/// same per-user folder, and opens the app again.
-#[cfg(any(windows, test))]
-fn windows_script(pid: u32, setup: &Path, exe: &Path) -> String {
-    format!(
-        "Wait-Process -Id {pid} -Timeout 60 -ErrorAction SilentlyContinue; \
-         Start-Process -FilePath {} -ArgumentList '/S' -Wait; \
-         Start-Process -FilePath {}",
-        ps_quote(&setup.display().to_string()),
-        ps_quote(&exe.display().to_string()),
-    )
-}
+/// Arguments for Tauri's NSIS setup: silent (`/S`; it force-closes the running app), as an
+/// update (`/UPDATE`; keeps the user's shortcut choices), and reopen the app when done (`/R`).
+pub const SETUP_ARGS: [&str; 3] = ["/S", "/UPDATE", "/R"];
 
 /// Downloads the setup program of release `version`, checks it against the release's
-/// `.sha256`, and starts a hidden PowerShell that installs it after this app quits. The caller
-/// quits the app. Output of the script is appended to `log`.
+/// `.sha256`, and starts it detached with [`SETUP_ARGS`]. The setup closes this app, installs
+/// over it and reopens it; the caller quits the app as well. A line is appended to `log`.
 #[cfg(windows)]
 pub fn install(
     exe: &Path,
     log: &Path,
     (major, minor, patch): (u64, u64, u64),
 ) -> Result<(), String> {
-    use std::io::Read;
+    use std::io::{Read, Write};
     use std::os::windows::process::CommandExt;
     use std::process::{Command, Stdio};
     const MAX_SETUP: u64 = 200 * 1024 * 1024;
@@ -345,39 +330,38 @@ pub fn install(
     if sha256_hex(&setup) != want {
         return Err("The download does not match its checksum. Nothing was installed".to_string());
     }
-    let path = std::env::temp_dir().join(format!("openpaper-setup-{tag}.exe"));
-    std::fs::write(&path, &setup).map_err(|_| "Couldn't save the update".to_string())?;
-    let out = std::fs::OpenOptions::new()
+    // A new folder and a new file, so nothing placed in the temp dir beforehand can be what runs.
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or_default();
+    let dir = std::env::temp_dir().join(format!("openpaper-update-{}-{nanos}", std::process::id()));
+    let saved = std::fs::create_dir(&dir).and_then(|()| {
+        let mut f = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(dir.join(WINDOWS_ASSET))?;
+        f.write_all(&setup)?;
+        f.sync_all()
+    });
+    saved.map_err(|_| "Couldn't save the update".to_string())?;
+    let path = dir.join(WINDOWS_ASSET);
+    if let Ok(mut f) = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
         .open(log)
-        .map_err(|_| "Couldn't create the update log".to_string())?;
-    let err = out
-        .try_clone()
-        .map_err(|_| "Couldn't open the update log".to_string())?;
-    // A full path, so a powershell.exe elsewhere on PATH is never the one that runs.
-    let root = std::env::var_os("SYSTEMROOT").unwrap_or_else(|| r"C:\Windows".into());
-    let powershell = Path::new(&root).join(r"System32\WindowsPowerShell\v1.0\powershell.exe");
+    {
+        let _ = writeln!(f, "Running {} {}", path.display(), SETUP_ARGS.join(" "));
+    }
     const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
-    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-    let mut child = Command::new(powershell)
-        .args([
-            "-NoProfile",
-            "-NonInteractive",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-Command",
-        ])
-        .arg(windows_script(std::process::id(), &path, exe))
+    Command::new(&path)
+        .args(SETUP_ARGS)
         .stdin(Stdio::null())
-        .stdout(out)
-        .stderr(err)
-        .creation_flags(CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .creation_flags(CREATE_NEW_PROCESS_GROUP)
         .spawn()
         .map_err(|_| "Couldn't start the update".to_string())?;
-    std::thread::spawn(move || {
-        let _ = child.wait();
-    });
     Ok(())
 }
 
@@ -545,16 +529,7 @@ mod tests {
     }
 
     #[test]
-    fn windows_script_quotes_paths() {
-        let s = windows_script(
-            42,
-            Path::new(r"C:\Users\O'Neil\AppData\Local\Temp\openpaper-setup-v1.0.0.exe"),
-            Path::new(r"C:\Users\O'Neil\AppData\Local\OpenPaper\openpaper.exe"),
-        );
-        assert!(s.starts_with("Wait-Process -Id 42 "));
-        assert!(s.contains(r"-FilePath 'C:\Users\O''Neil\AppData\Local\Temp\openpaper-setup-v1.0.0.exe' -ArgumentList '/S' -Wait"));
-        assert!(s.ends_with(
-            r"Start-Process -FilePath 'C:\Users\O''Neil\AppData\Local\OpenPaper\openpaper.exe'"
-        ));
+    fn windows_setup_updates_silently_and_reopens() {
+        assert_eq!(SETUP_ARGS, ["/S", "/UPDATE", "/R"]);
     }
 }
