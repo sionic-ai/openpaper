@@ -76,7 +76,7 @@ fn main() {
         let log = std::env::temp_dir().join(openpaper::update::LOG_NAME);
         println!(
             "{:?} log={}",
-            openpaper::update::install(std::path::Path::new(&args[2]), &log),
+            openpaper::update::install_latest(std::path::Path::new(&args[2]), &log),
             log.display()
         );
         return;

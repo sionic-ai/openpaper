@@ -7,11 +7,19 @@ use std::time::Duration;
 
 const REPO: &str = "sionic-ai/openpaper";
 const TIMEOUT: Duration = Duration::from_secs(8);
-/// The installer script. The app path reaches it only through `OPENPAPER_DIR`, so the command
-/// line never contains `<DIR>/OpenPaper.app/Contents/MacOS/openpaper` and the installer's
-/// `pkill -f` on that path cannot match the installer itself.
-const INSTALL: &str =
-    "curl -fsSL https://raw.githubusercontent.com/sionic-ai/openpaper/main/install.sh | bash";
+/// Installer command for one release. The script comes from the release tag, not `main`, so a
+/// change pushed to `main` never runs on users' machines before it is released. The tag is
+/// rebuilt from parsed numbers, so no text from the network reaches the shell. The app path
+/// reaches the installer only through `OPENPAPER_DIR`, so the command line never contains
+/// `<DIR>/OpenPaper.app/Contents/MacOS/openpaper` and the installer's `pkill -f` on that path
+/// cannot match the installer itself.
+fn install_command((major, minor, patch): (u64, u64, u64)) -> (String, String) {
+    let tag = format!("v{major}.{minor}.{patch}");
+    let cmd = format!(
+        "curl -fsSL --proto '=https' https://raw.githubusercontent.com/{REPO}/{tag}/install.sh | bash"
+    );
+    (cmd, tag)
+}
 /// File name of the installer log, under the temp dir.
 pub const LOG_NAME: &str = "openpaper-update.log";
 
@@ -141,12 +149,26 @@ pub fn install_dir_from_exe(exe: &Path) -> Option<PathBuf> {
 
 const DEV_BUILD: &str = "Development builds can't update from inside the app";
 
-/// Starts the installer in its own process group so it outlives this app, which the
-/// installer quits, replaces and reopens. Output is appended to `log`.
-pub fn install(exe: &Path, log: &Path) -> Result<(), String> {
+/// Installs the newest release when it is newer than this build. Checks again instead of
+/// trusting the webview, so the installer only ever runs for a real, newer release tag.
+pub fn install_latest(exe: &Path, log: &Path) -> Result<(), String> {
+    install_dir_from_exe(exe).ok_or_else(|| DEV_BUILD.to_string())?;
+    let info = check();
+    let latest = info
+        .latest
+        .filter(|_| info.available)
+        .and_then(|l| parse_version(&l))
+        .ok_or_else(|| "No newer release found. Check your connection and try again".to_string())?;
+    install(exe, log, latest)
+}
+
+/// Starts the installer for release `version` in its own process group so it outlives this
+/// app, which the installer quits, replaces and reopens. Output is appended to `log`.
+pub fn install(exe: &Path, log: &Path, version: (u64, u64, u64)) -> Result<(), String> {
     use std::os::unix::process::CommandExt;
     use std::process::{Command, Stdio};
     let dir = install_dir_from_exe(exe).ok_or_else(|| DEV_BUILD.to_string())?;
+    let (cmd, tag) = install_command(version);
     let out = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
@@ -157,8 +179,9 @@ pub fn install(exe: &Path, log: &Path) -> Result<(), String> {
         .map_err(|_| "Couldn't open the update log".to_string())?;
     let mut child = Command::new("/bin/bash")
         .arg("-c")
-        .arg(INSTALL)
+        .arg(cmd)
         .env("OPENPAPER_DIR", &dir)
+        .env("OPENPAPER_VERSION", tag)
         .env("OPENPAPER_NO_CLAUDE", "1")
         .env("PATH", "/usr/bin:/bin:/usr/sbin:/sbin")
         .stdin(Stdio::null())
@@ -278,18 +301,22 @@ mod tests {
 
     #[test]
     fn dev_build_cannot_self_update() {
-        let err = install(
-            Path::new("/x/target/debug/openpaper"),
-            &std::env::temp_dir().join("openpaper-update-test.log"),
-        )
-        .unwrap_err();
-        assert_eq!(err, DEV_BUILD);
+        let log = std::env::temp_dir().join("openpaper-update-test.log");
+        let exe = Path::new("/x/target/debug/openpaper");
+        assert_eq!(install(exe, &log, (9, 9, 9)).unwrap_err(), DEV_BUILD);
+        // The dev-build check comes before any network call.
+        assert_eq!(install_latest(exe, &log).unwrap_err(), DEV_BUILD);
     }
 
     #[test]
-    fn installer_command_has_no_app_path() {
-        assert!(INSTALL.contains("sionic-ai/openpaper/"));
-        assert!(!INSTALL.contains("OpenPaper.app"));
-        assert!(!INSTALL.contains("MacOS"));
+    fn installer_runs_the_release_tag_not_main() {
+        let (cmd, tag) = install_command((0, 2, 1));
+        assert_eq!(tag, "v0.2.1");
+        assert_eq!(
+            cmd,
+            "curl -fsSL --proto '=https' https://raw.githubusercontent.com/sionic-ai/openpaper/v0.2.1/install.sh | bash"
+        );
+        assert!(!cmd.contains("/main/"));
+        assert!(!cmd.contains("OpenPaper.app") && !cmd.contains("MacOS"));
     }
 }

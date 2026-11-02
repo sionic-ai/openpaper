@@ -284,7 +284,7 @@ pub async fn update_check() -> Result<update::UpdateInfo, String> {
 #[tauri::command]
 pub fn update_install() -> Result<(), String> {
     let exe = std::env::current_exe().map_err(|_| "Couldn't find where the app is".to_string())?;
-    update::install(&exe, &std::env::temp_dir().join(update::LOG_NAME))
+    update::install_latest(&exe, &std::env::temp_dir().join(update::LOG_NAME))
 }
 
 /// Opens the paper's abstract page on arxiv.org in the default browser. Only arXiv IDs are accepted,
