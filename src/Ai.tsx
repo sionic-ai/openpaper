@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Hit } from './api'
+import type { Hit, Lang } from './api'
 
 export type Pick = { hit: Hit; why: string }
 
 export type ChatMsg =
   | { role: 'user'; text: string }
-  | { role: 'assistant'; text: string; picks: Pick[] }
+  /** `lang` is the language the reply was asked in. */
+  | { role: 'assistant'; text: string; picks: Pick[]; lang: Lang }
   | { role: 'error'; text: string }
 
 export type ChatState = { messages: ChatMsg[]; loading: boolean }
@@ -19,11 +20,11 @@ type Props = {
   onWeb: (hit: Hit) => void
 }
 
-const EXAMPLES = ['LLM 파라미터에 지식을 저장하는 메모리 방법 서베이', 'RAG 원조 논문이랑 최근 개선 연구', '긴 문맥에서 어텐션을 빠르게 하는 방법']
+const EXAMPLES = ['Surveys on storing knowledge in LLM parameters', 'The original RAG paper and recent improvements', 'Faster attention for long contexts']
 
 function authors(list: string[]): string {
   if (list.length <= 2) return list.join(', ')
-  return `${list[0]} 외 ${list.length - 1}명`
+  return `${list[0]} et al.`
 }
 
 export function AiChat({ state, saved, busyId, onAsk, onTranslate, onWeb }: Props) {
@@ -32,7 +33,10 @@ export function AiChat({ state, saved, busyId, onAsk, onTranslate, onWeb }: Prop
   const box = useRef<HTMLTextAreaElement>(null)
   const { messages, loading } = state
 
-  useEffect(() => end.current?.scrollIntoView({ block: 'end' }), [messages.length, loading])
+  // Braces: newer engines return a Promise from scrollIntoView, which React would take for a cleanup.
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: 'end' })
+  }, [messages.length, loading])
   useEffect(() => box.current?.focus(), [])
 
   const send = (q: string) => {
@@ -47,8 +51,8 @@ export function AiChat({ state, saved, busyId, onAsk, onTranslate, onWeb }: Prop
       <div className="ai-log">
         {messages.length === 0 && (
           <div className="ai-empty">
-            <h1>어떤 논문을 찾고 있어요?</h1>
-            <p>주제나 궁금한 점을 적으면 arXiv에서 찾아 추천해 드려요. 말풍선의 <b>번역하기</b>를 누르면 바로 나란히 읽기로 열려요.</p>
+            <h1>What are you looking for?</h1>
+            <p>Describe a topic or question and Claude picks papers from arXiv. Click <b>Translate</b> on a pick to read it side by side.</p>
             <div className="ai-examples">
               {EXAMPLES.map(e => (
                 <button key={e} onClick={() => send(e)}>{e}</button>
@@ -64,7 +68,7 @@ export function AiChat({ state, saved, busyId, onAsk, onTranslate, onWeb }: Prop
           ) : (
             <div key={i} className="msg bot">
               <div className="bubble">
-                <p className="reply">{m.text}</p>
+                <p className="reply" lang={m.lang}>{m.text}</p>
                 {m.picks.map(({ hit, why }) => (
                   <div key={hit.id} className="pick">
                     <div className="pick-title">{hit.title}</div>
@@ -73,10 +77,10 @@ export function AiChat({ state, saved, busyId, onAsk, onTranslate, onWeb }: Prop
                       <span>{authors(hit.authors)}</span>
                       <span>{hit.published.slice(0, 4)}</span>
                     </div>
-                    {why && <p className="pick-why">{why}</p>}
+                    {why && <p className="pick-why" lang={m.lang}>{why}</p>}
                     <div className="pick-actions">
                       <button className="go" onClick={() => onTranslate(hit)} disabled={busyId !== null}>
-                        {busyId === hit.id ? '가져오는 중…' : saved.has(hit.id) ? '내 논문에서 열기' : '번역하기'}
+                        {busyId === hit.id ? 'Fetching…' : saved.has(hit.id) ? 'Open from library' : 'Translate'}
                       </button>
                       <button className="web" onClick={() => onWeb(hit)} title={`https://arxiv.org/abs/${hit.id}`}>arxiv.org ↗</button>
                     </div>
@@ -87,7 +91,7 @@ export function AiChat({ state, saved, busyId, onAsk, onTranslate, onWeb }: Prop
           )
         )}
         {loading && (
-          <div className="msg bot"><div className="bubble typing">arXiv에서 찾는 중이에요<span className="dots" /></div></div>
+          <div className="msg bot"><div className="bubble typing">Searching arXiv<span className="dots" /></div></div>
         )}
         <div ref={end} />
       </div>
@@ -109,11 +113,11 @@ export function AiChat({ state, saved, busyId, onAsk, onTranslate, onWeb }: Prop
               send(text)
             }
           }}
-          placeholder="예: 트랜스포머 KV 캐시 압축 논문 찾아줘"
-          aria-label="찾고 싶은 논문"
+          placeholder="e.g. papers on compressing the transformer KV cache"
+          aria-label="Papers to find"
           spellCheck={false}
         />
-        <button type="submit" disabled={loading || !text.trim()}>보내기</button>
+        <button type="submit" disabled={loading || !text.trim()}>Send</button>
       </form>
     </section>
   )

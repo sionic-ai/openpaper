@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { api, errorText } from './api'
+import { api, errorText, type Lang } from './api'
 
 export type AskMsg =
   | { role: 'user'; text: string; quote: string | null }
-  | { role: 'assistant'; text: string; streaming?: boolean; summaryOf?: string }
+  /** `lang` is the language the answer was asked in; `summaryOf` is `<docId>:<lang>` for a paper summary. */
+  | { role: 'assistant'; text: string; lang: Lang; streaming?: boolean; summaryOf?: string }
   | { role: 'error'; text: string }
 
 export type Ask = {
@@ -14,8 +15,8 @@ export type Ask = {
   /** The panel opens wider while it holds a paper summary. */
   wide: boolean
   send: (question: string, quote: string | null) => void
-  /** Shows the paper's summary post: the one already in the chat, else the saved one, else a new one. */
-  summarize: (fresh?: boolean) => void
+  /** Shows the paper's summary post in `lang` (default: the current one): the one already in the chat, else the saved one, else a new one. */
+  summarize: (fresh?: boolean, lang?: Lang) => void
   reset: () => void
 }
 
@@ -23,16 +24,16 @@ const HISTORY_TURNS = 8
 const QUOTE_IN_HISTORY = 600
 
 /** One conversation shared by the floating panel and the selection bubble. */
-export function useAsk(docId: string | null): Ask {
+export function useAsk(docId: string | null, lang: Lang): Ask {
   const [messages, setMessages] = useState<AskMsg[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const [wide, setWide] = useState(false)
   const seq = useRef(0)
 
-  /** Adds `asked` to the chat and streams `run`'s answer in after it. */
+  /** Adds `asked` to the chat and streams `run`'s answer, written in `lang`, in after it. */
   const stream = useCallback(
-    (asked: AskMsg, summaryOf: string | undefined, run: (onDelta: (d: string) => void) => Promise<{ reply: string }>) => {
+    (asked: AskMsg, lang: Lang, summaryOf: string | undefined, run: (onDelta: (d: string) => void) => Promise<{ reply: string }>) => {
       const id = ++seq.current
       setMessages(ms => [...ms, asked])
       setLoading(true)
@@ -46,10 +47,10 @@ export function useAsk(docId: string | null): Ask {
           return next ? [...base, next] : base
         })
       run(d => {
-        if (id === seq.current) write(m => ({ role: 'assistant', text: (m?.text ?? '') + d, streaming: true, summaryOf }))
+        if (id === seq.current) write(m => ({ role: 'assistant', text: (m?.text ?? '') + d, lang, streaming: true, summaryOf }))
       })
         .then(r => {
-          if (id === seq.current) write(() => ({ role: 'assistant', text: r.reply, summaryOf }))
+          if (id === seq.current) write(() => ({ role: 'assistant', text: r.reply, lang, summaryOf }))
         })
         .catch(err => {
           // Keep whatever was already written, then say what went wrong.
@@ -75,23 +76,24 @@ export function useAsk(docId: string | null): Ask {
           role: m.role,
           text: m.role === 'user' && m.quote ? `> ${m.quote.slice(0, QUOTE_IN_HISTORY)}\n\n${m.text}` : m.text,
         }))
-      stream({ role: 'user', text: q, quote }, undefined, d => api.ask(q, quote, docId, history, d))
+      stream({ role: 'user', text: q, quote }, lang, undefined, d => api.ask(q, quote, docId, history, lang, d))
     },
-    [docId, loading, messages, stream]
+    [docId, lang, loading, messages, stream]
   )
 
   const summarize = useCallback(
-    (fresh = false) => {
+    (fresh = false, inLang: Lang = lang) => {
       setOpen(true)
       setWide(true)
       if (!docId || loading) return
-      // Already in this chat: just show it again.
-      if (!fresh && messages.some(m => m.role === 'assistant' && m.summaryOf === docId)) return
-      stream({ role: 'user', text: fresh ? '요약 다시 써 줘' : '이 논문 요약해 줘', quote: null }, docId, d =>
-        api.summarize(docId, fresh, d)
+      const key = `${docId}:${inLang}`
+      // Already in this chat in this language: just show it again.
+      if (!fresh && messages.some(m => m.role === 'assistant' && m.summaryOf === key)) return
+      stream({ role: 'user', text: fresh ? 'Rewrite the summary' : 'Summarize this paper', quote: null }, inLang, key, d =>
+        api.summarize(docId, fresh, inLang, d)
       )
     },
-    [docId, loading, messages, stream]
+    [docId, lang, loading, messages, stream]
   )
 
   const reset = useCallback(() => {
@@ -106,12 +108,12 @@ export function useAsk(docId: string | null): Ask {
 
 // Like Claude Code's status line: a turning glyph, a playful verb, and the elapsed time.
 const SPIN = ['·', '✢', '✳', '✶', '✻', '✽', '✻', '✶', '✳', '✢']
-const VERBS = ['생각하는 중', '곱씹는 중', '논문 뒤적이는 중', '궁리하는 중', '되새기는 중', '골똘히 보는 중', '정리하는 중', '실마리 찾는 중']
+const VERBS = ['Thinking', 'Mulling it over', 'Leafing through the paper', 'Pondering', 'Reflecting', 'Looking closely', 'Putting it together', 'Connecting the dots']
 const TIPS = [
-  '본문을 드래그하면 그 부분만 콕 집어 물어볼 수 있어요',
-  '이어서 물어보면 앞 대화를 기억하고 답해요',
-  'Esc로 창을 닫아도 대화는 남아 있어요',
-  '새 대화를 누르면 처음부터 다시 물어볼 수 있어요',
+  'Select text in the paper to ask about just that passage',
+  'Follow-up questions remember the conversation so far',
+  'Esc closes the panel; the conversation stays',
+  'New chat starts over from scratch',
 ]
 
 function Thinking() {
@@ -129,7 +131,7 @@ function Thinking() {
       <div className="thinking-line">
         <span className="thinking-glyph" aria-hidden="true">{SPIN[tick % SPIN.length]}</span>
         <span className="thinking-verb">{verb}…</span>
-        {secs > 0 && <span className="thinking-time">({secs}초)</span>}
+        {secs > 0 && <span className="thinking-time">({secs}s)</span>}
       </div>
       <div className="thinking-tip"><span aria-hidden="true">└ </span>Tip: {TIPS[pick.tip]}</div>
     </div>
@@ -146,7 +148,7 @@ function SendIcon() {
 
 const MIN_W = 320
 const MIN_H = 260
-const SIZE_KEY = 'nanran.askSize'
+const SIZE_KEY = 'openpaper.askSize'
 type Size = { w: number; h: number }
 
 function storedSize(): Size | null {
@@ -256,7 +258,7 @@ export function FloatingAssistant({ ask, docTitle }: { ask: Ask; docTitle: strin
 
   if (!open) {
     return (
-      <button className="asst-fab" onClick={() => setOpen(true)} title="Claude에게 물어보기" aria-label="Claude에게 물어보기">
+      <button className="asst-fab" onClick={() => setOpen(true)} title="Ask Claude" aria-label="Ask Claude">
         <span aria-hidden="true">✦</span>
         {loading && <span className="asst-fab-dot" />}
       </button>
@@ -269,7 +271,7 @@ export function FloatingAssistant({ ask, docTitle }: { ask: Ask; docTitle: strin
       className={`asst${expanded ? ' expanded' : ''}${expanded && wide ? ' wide' : ''}`}
       style={expanded && size ? { width: `min(${size.w}px, calc(100vw - 40px))`, height: `min(${size.h}px, calc(100vh - 40px))` } : undefined}
       role="dialog"
-      aria-label="Claude에게 질문"
+      aria-label="Ask Claude"
     >
       {expanded && (
         <>
@@ -279,15 +281,15 @@ export function FloatingAssistant({ ask, docTitle }: { ask: Ask; docTitle: strin
               className={`asst-edge ${edge}`}
               onPointerDown={resize(edge)}
               onDoubleClick={() => keepSize(null)}
-              title="끌어서 크기 조절, 두 번 누르면 기본 크기"
+              title="Drag to resize · double-click for the default size"
               aria-hidden="true"
             />
           ))}
           <header className="asst-head">
-            <span className="asst-title"><span className="spark" aria-hidden="true">✦</span> Claude에게 질문</span>
+            <span className="asst-title"><span className="spark" aria-hidden="true">✦</span> Ask Claude</span>
             {docTitle ? <span className="asst-chip" title={docTitle} lang="en">{docTitle}</span> : <span className="asst-gap" />}
-            <button className="asst-new" onClick={reset}>새 대화</button>
-            <button className="asst-close" onClick={() => setOpen(false)} aria-label="닫기">×</button>
+            <button className="asst-new" onClick={reset}>New chat</button>
+            <button className="asst-close" onClick={() => setOpen(false)} aria-label="Close">×</button>
           </header>
           <div
             className="asst-log"
@@ -308,12 +310,13 @@ export function FloatingAssistant({ ask, docTitle }: { ask: Ask; docTitle: strin
               ) : (
                 <div key={i} className="msg bot">
                   <div
+                    lang={m.role === 'assistant' ? m.lang : undefined}
                     className={`bubble${m.role === 'error' ? ' error-bubble' : ''}${m.role === 'assistant' && m.streaming ? ' streaming' : ''}${m.role === 'assistant' && m.summaryOf ? ' summary' : ''}`}
                   >
                     {m.role === 'error' ? m.text : <Reply text={m.text} />}
                   </div>
                   {i === lastSummary && m.role === 'assistant' && !m.streaming && !loading && (
-                    <button className="asst-redo" onClick={() => summarize(true)}>다시 요약</button>
+                    <button className="asst-redo" onClick={() => summarize(true, m.lang)}>Rewrite summary</button>
                   )}
                 </div>
               )
@@ -340,11 +343,11 @@ export function FloatingAssistant({ ask, docTitle }: { ask: Ask; docTitle: strin
               submit()
             }
           }}
-          placeholder={docTitle ? '이 논문에 대해 물어보세요' : 'Claude에게 물어보세요'}
-          aria-label="Claude에게 할 질문"
+          placeholder={docTitle ? 'Ask about this paper' : 'Ask Claude anything'}
+          aria-label="Question for Claude"
           spellCheck={false}
         />
-        <button type="submit" disabled={loading || !text.trim()} aria-label="보내기"><SendIcon /></button>
+        <button type="submit" disabled={loading || !text.trim()} aria-label="Send"><SendIcon /></button>
       </form>
     </div>
   )
@@ -356,7 +359,7 @@ type Spot = { quote: string; range: Range }
 
 // Keeps the dragged passage painted after focus moves to the input (which clears the
 // native selection) and while the reader scrolls. WebKit 17.2+ has the Highlight API.
-const HL = 'nanran-quote'
+const HL = 'openpaper-quote'
 type HighlightRegistry = { set: (name: string, h: unknown) => void; delete: (name: string) => void }
 function paintQuote(range: Range | null) {
   const reg = (globalThis.CSS as unknown as { highlights?: HighlightRegistry } | undefined)?.highlights
@@ -498,31 +501,37 @@ export function SelectionAsk({ busy, resetKey, onAsk }: { busy: boolean; resetKe
         <input
           value={text}
           onChange={e => setText(e.target.value)}
-          placeholder={busy ? '앞 질문의 답을 기다리는 중이에요' : '질문을 입력하세요'}
-          aria-label="선택한 부분에 대한 질문"
+          placeholder={busy ? 'Waiting for the previous answer' : 'Ask about this passage'}
+          aria-label="Question about the selection"
           spellCheck={false}
           disabled={busy}
         />
-        <button type="submit" disabled={busy || !text.trim()} aria-label="보내기" title="보내기 (Enter)"><EnterIcon /></button>
+        <button type="submit" disabled={busy || !text.trim()} aria-label="Send" title="Send (Enter)"><EnterIcon /></button>
       </form>
     </div>
   )
 }
 
-/** `문제: …` → a bold label and the rest; anything else unchanged. */
+/**
+ * `Problem: …` → a bold label and the rest; anything else unchanged. Labels come in any target language,
+ * so the full-width `：` of Chinese and Japanese counts too and is kept as written.
+ */
 function Labeled({ text }: { text: string }) {
-  const m = /^([^:\s][^:]{0,7}):\s+(.*)$/s.exec(text)
+  const m = /^([^:：\s][^:：]{0,15})(:\s+|：\s*)(.*)$/s.exec(text)
   if (!m) return <>{text}</>
+  const colon = m[2]!.trim()
   return (
     <>
-      <span className="asst-label">{m[1]}:</span> {m[2]}
+      <span className="asst-label">{m[1]}{colon}</span>
+      {colon === ':' ? ' ' : ''}
+      {m[3]}
     </>
   )
 }
 
 /**
  * Plain-text reply: blank lines split paragraphs, `- ` lines become a list with a hanging indent,
- * and a lone short `1. …` or `마치며:` line becomes a section title.
+ * and a lone short `1. …` or `In closing:` (or `：`) line becomes a section title.
  */
 function Reply({ text }: { text: string }) {
   const blocks = text.trim().split(/\n\s*\n/)
@@ -540,7 +549,7 @@ function Reply({ text }: { text: string }) {
           )
         }
         const one = lines.length === 1 ? lines[0]!.trim() : ''
-        if ((/^\d{1,2}\.\s+\S/.test(one) && one.length <= 100) || /^\S.{0,11}:$/.test(one)) {
+        if ((/^\d{1,2}\.\s+\S/.test(one) && one.length <= 100) || /^\S.{0,23}[:：]$/.test(one)) {
           return <p key={i} className="asst-p asst-h">{one}</p>
         }
         return <p key={i} className="asst-p">{lines.join('\n')}</p>

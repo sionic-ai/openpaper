@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { api, arxivDocId, arxivIdOf, errorText, looksLikeArxivId, type Doc, type Folder, type Hit, type Meta, type Mode, type Status } from './api'
+import { api, arxivDocId, arxivIdOf, errorText, looksLikeArxivId, type Doc, type Folder, type Hit, type Lang, type Language, type Meta, type Mode, type Status } from './api'
 import { Reader } from './Reader'
 import { PaperList } from './Papers'
 import { SearchResults, type SearchState } from './Search'
@@ -11,7 +11,7 @@ import { applyTheme, initialTheme, type Theme } from './theme'
 function ThemeButton() {
   const [theme, setTheme] = useState<Theme>(initialTheme)
   const next: Theme = theme === 'dark' ? 'light' : 'dark'
-  const label = next === 'dark' ? '다크 모드로 바꾸기' : '라이트 모드로 바꾸기'
+  const label = next === 'dark' ? 'Switch to dark mode' : 'Switch to light mode'
   return (
     <button
       className="theme-btn"
@@ -33,6 +33,47 @@ function ThemeButton() {
         </svg>
       )}
     </button>
+  )
+}
+
+const LANG_KEY = 'openpaper.lang'
+
+/** The saved target language if still supported, else the first one matching the system language, else Korean. */
+function pickLang(langs: Language[], saved: string | null): Lang {
+  if (saved && langs.some(l => l.code === saved)) return saved
+  const prefs = navigator.languages?.length ? navigator.languages : [navigator.language]
+  for (const p of prefs) {
+    const hit = langs.find(l => l.code === p.toLowerCase().split('-')[0])
+    if (hit) return hit.code
+  }
+  return 'ko'
+}
+
+function GlobeIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true">
+      <circle cx="8" cy="8" r="6.25" />
+      <path d="M1.75 8h12.5M8 1.75c1.7 1.8 2.5 3.9 2.5 6.25S9.7 12.45 8 14.25C6.3 12.45 5.5 10.35 5.5 8S6.3 3.55 8 1.75Z" />
+    </svg>
+  )
+}
+
+/** Translation language: shows the native name; a transparent native select on top does the picking. */
+function LangPicker({ langs, lang, onChange }: { langs: Language[]; lang: Lang; onChange: (lang: Lang) => void }) {
+  if (!langs.length) return null
+  const current = langs.find(l => l.code === lang)
+  return (
+    <label className="lang-btn" title="Translation language">
+      <GlobeIcon />
+      <span>{current?.native ?? lang}</span>
+      <select value={lang} onChange={e => onChange(e.target.value)} aria-label="Translation language">
+        {langs.map(l => (
+          <option key={l.code} value={l.code}>
+            {l.native} · {l.name}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }
 
@@ -84,11 +125,11 @@ function UpdateButton() {
 
   return (
     <div className="update">
-      <button className="update-btn" onClick={() => void install()} disabled={installing} title={`새 버전${v && ` ${v}`}이 나왔어요. 누르면 설치하고 다시 열어요`}>
+      <button className="update-btn" onClick={() => void install()} disabled={installing} title={`A new version${v && ` ${v}`} is out. Click to install it and reopen`}>
         {installing ? (
-          <><span className="update-spin" aria-hidden="true" /> 업데이트하는 중…</>
+          <><span className="update-spin" aria-hidden="true" /> Updating…</>
         ) : (
-          <><span className="update-glyph" aria-hidden="true">↻</span> 업데이트{v && ` ${v}`}</>
+          <><span className="update-glyph" aria-hidden="true">↻</span> Update{v && ` ${v}`}</>
         )}
       </button>
       {error && <div className="update-error" role="alert">{error}</div>}
@@ -96,12 +137,13 @@ function UpdateButton() {
   )
 }
 
-type Ko = Record<string, string[]>
+/** Translated sentences by unit id. */
+type Tr = Record<string, string[]>
 
 /** Keeps array identity for units that were already translated so their blocks skip re-rendering. */
-function mergeKo(prev: Ko, next: Ko): Ko {
+function mergeTr(prev: Tr, next: Tr): Tr {
   let changed = Object.keys(prev).length !== Object.keys(next).length
-  const out: Ko = {}
+  const out: Tr = {}
   for (const [k, v] of Object.entries(next)) {
     const old = prev[k]
     if (old && old.length === v.length && old.every((s, i) => s === v[i])) out[k] = old
@@ -113,19 +155,19 @@ function mergeKo(prev: Ko, next: Ko): Ko {
   return changed ? out : prev
 }
 
-function onlyHeadingsMissing(doc: Doc, ko: Ko): boolean {
+function onlyHeadingsMissing(doc: Doc, tr: Tr): boolean {
   let headingMissing = false
   for (const b of doc.blocks) {
-    if (b.kind === 'heading') headingMissing ||= b.level > 1 && ko[b.unit.id] === undefined
-    else if (b.kind === 'para' && ko[b.unit.id] === undefined) return false
-    else if ((b.kind === 'figure' || b.kind === 'table') && b.caption && ko[b.caption.id] === undefined) return false
+    if (b.kind === 'heading') headingMissing ||= b.level > 1 && tr[b.unit.id] === undefined
+    else if (b.kind === 'para' && tr[b.unit.id] === undefined) return false
+    else if ((b.kind === 'figure' || b.kind === 'table') && b.caption && tr[b.caption.id] === undefined) return false
   }
   return headingMissing
 }
 
-const modeKey = (id: string) => `nanran.mode.${id}`
+const modeKey = (id: string) => `openpaper.mode.${id}`
 
-/** 번역하기 (or 새 문체로 다시 번역) → pick a faithful translation or an easy explanation. */
+/** Translate (or Retranslate in the new style) → pick a faithful translation or an easy explanation. */
 function StartMenu({ label, title, onPick }: { label: string; title?: string; onPick: (mode: Mode) => void }) {
   const [openMenu, setOpenMenu] = useState(false)
   const box = useRef<HTMLDivElement>(null)
@@ -154,12 +196,12 @@ function StartMenu({ label, title, onPick }: { label: string; title?: string; on
       {openMenu && (
         <div className="start-menu" role="menu">
           <button role="menuitem" onClick={() => pick('plain')}>
-            <b>그냥 번역</b>
-            <span>원문 그대로 옮겨요</span>
+            <b>Translate</b>
+            <span>Faithful, sentence by sentence</span>
           </button>
           <button role="menuitem" onClick={() => pick('easy')}>
-            <b>쉽게 번역</b>
-            <span>어려운 용어를 풀어 쉽게 설명해요</span>
+            <b>Explain simply</b>
+            <span>Hard terms in plain words</span>
           </button>
         </div>
       )}
@@ -171,7 +213,7 @@ export function App() {
   const [papers, setPapers] = useState<Meta[]>([])
   const [folders, setFolders] = useState<Folder[]>([])
   const [doc, setDoc] = useState<Doc | null>(null)
-  const [ko, setKo] = useState<Ko>({})
+  const [tr, setTr] = useState<Tr>({})
   const [status, setStatus] = useState<Status | null>(null)
   const [mode, setMode] = useState<Mode>('plain')
   // Whether the mode not on screen already has text or a running job, so both can be switched between.
@@ -183,18 +225,36 @@ export function App() {
   const [view, setView] = useState<'doc' | 'search' | 'ai'>('doc')
   const [chat, setChat] = useState<ChatState>({ messages: [], loading: false })
   const [fetchingId, setFetchingId] = useState<string | null>(null)
-  const [swapped, setSwapped] = useState(() => localStorage.getItem('nanran.swapped') === '1')
+  const [langs, setLangs] = useState<Language[]>([])
+  const [lang, setLang] = useState<Lang>(() => localStorage.getItem(LANG_KEY) ?? 'ko')
+  useEffect(() => {
+    api
+      .languages()
+      .then(list => {
+        setLangs(list)
+        setLang(pickLang(list, localStorage.getItem(LANG_KEY)))
+      })
+      .catch(() => {})
+  }, [])
+  // Read inside `open` after its awaits, so a paper that finishes importing opens in the language picked meanwhile.
+  const langRef = useRef(lang)
+  langRef.current = lang
+  const changeLang = (next: Lang) => {
+    localStorage.setItem(LANG_KEY, next)
+    setLang(next)
+  }
+  const [swapped, setSwapped] = useState(() => localStorage.getItem('openpaper.swapped') === '1')
   const toggleSwap = () =>
     setSwapped(s => {
-      localStorage.setItem('nanran.swapped', s ? '0' : '1')
+      localStorage.setItem('openpaper.swapped', s ? '0' : '1')
       return !s
     })
   // Sidebar: drag its edge to resize, drag it narrow (or press ⌘B) to fold it away.
   const app = useRef<HTMLDivElement>(null)
-  const [sideW, setSideW] = useState(() => stored('nanran.sideWidth', SIDE_W, SIDE_MIN, SIDE_MAX))
-  const [folded, setFolded] = useState(() => localStorage.getItem('nanran.sideFolded') === '1')
+  const [sideW, setSideW] = useState(() => stored('openpaper.sideWidth', SIDE_W, SIDE_MIN, SIDE_MAX))
+  const [folded, setFolded] = useState(() => localStorage.getItem('openpaper.sideFolded') === '1')
   const fold = (f: boolean) => {
-    localStorage.setItem('nanran.sideFolded', f ? '1' : '0')
+    localStorage.setItem('openpaper.sideFolded', f ? '1' : '0')
     setFolded(f)
   }
   useEffect(() => {
@@ -202,7 +262,7 @@ export function App() {
       if (e.metaKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'b') {
         e.preventDefault()
         setFolded(f => {
-          localStorage.setItem('nanran.sideFolded', f ? '0' : '1')
+          localStorage.setItem('openpaper.sideFolded', f ? '0' : '1')
           return !f
         })
       }
@@ -228,20 +288,22 @@ export function App() {
         el.style.setProperty('--side-w', `${fold ? sideW : w}px`)
         el.classList.remove('folding')
         if (fold) {
-          localStorage.setItem('nanran.sideFolded', '1')
+          localStorage.setItem('openpaper.sideFolded', '1')
           setFolded(true)
         } else {
-          localStorage.setItem('nanran.sideWidth', String(w))
+          localStorage.setItem('openpaper.sideWidth', String(w))
           setSideW(w)
         }
       }
     )
   }
   const openSeq = useRef(0)
+  /** The `open` call still in progress, so a language change can redo it in the new language. */
+  const opening = useRef<{ id: string; start: boolean | 'redo'; want?: Mode; stay: boolean } | null>(null)
   const searchSeq = useRef(0)
   // Questions are about the paper on screen; search results and the welcome page ask without one.
   const shownDoc = view === 'doc' ? doc : null
-  const assistant = useAsk(shownDoc?.id ?? null)
+  const assistant = useAsk(shownDoc?.id ?? null, lang)
 
   const refreshList = useCallback(
     () =>
@@ -267,38 +329,58 @@ export function App() {
     return () => window.removeEventListener('focus', checkClaude)
   }, [checkClaude])
 
-  /** Opens a paper in `want` mode (default: the one last read for it) and optionally starts that mode's job. */
-  const open = useCallback(async (id: string, startTranslation: boolean | 'redo', want?: Mode) => {
+  /**
+   * Opens a paper in `want` mode (default: the one last read for it) in the current language, and optionally starts
+   * that mode's job. `stay` reloads it in place without switching to the reader or scrolling.
+   */
+  const open = useCallback(async (id: string, startTranslation: boolean | 'redo', want?: Mode, stay = false) => {
     const seq = ++openSeq.current
+    opening.current = { id, start: startTranslation, want, stay }
     setError(null)
     try {
       const d = await api.get(id)
       if (seq !== openSeq.current) return
+      const lang = langRef.current
       const m: Mode = want ?? (localStorage.getItem(modeKey(id)) === 'easy' ? 'easy' : 'plain')
       localStorage.setItem(modeKey(id), m)
       setDoc(d)
-      setView('doc')
+      if (!stay) setView('doc')
       setMode(m)
-      setKo({})
+      setTr({})
       setStatus(null)
-      if (!want) document.querySelector('.main')?.scrollTo(0, 0)
-      if (startTranslation === 'redo') await api.retranslate(id)
-      else if (startTranslation) await api.translate(id, m)
-      let s = await api.status(id, m)
+      if (!want && !stay) document.querySelector('.main')?.scrollTo(0, 0)
+      if (startTranslation === 'redo') await api.retranslate(id, lang)
+      else if (startTranslation) await api.translate(id, m, lang)
+      let s = await api.status(id, m, lang)
+      if (seq !== openSeq.current) return
       // Papers translated before headings were translated (in any style): fill in just the headings.
       if (m === 'plain' && !s.running && onlyHeadingsMissing(d, s.units)) {
-        await api.translate(id, m)
-        s = await api.status(id, m)
+        await api.translate(id, m, lang)
+        s = await api.status(id, m, lang)
       }
-      const other = await api.status(id, m === 'plain' ? 'easy' : 'plain')
+      const other = await api.status(id, m === 'plain' ? 'easy' : 'plain', lang)
       if (seq !== openSeq.current) return
       setOtherHas(other.running || Object.keys(other.units).length > 0)
       setStatus(s)
-      setKo(s.units)
+      setTr(s.units)
     } catch (e) {
       if (seq === openSeq.current) setError(errorText(e))
+    } finally {
+      if (seq === openSeq.current) opening.current = null
     }
   }, [])
+
+  // A new target language reloads the paper in it: the one still opening if any (it would otherwise be
+  // dropped or finish in the old language), else the loaded one, in place so search and AI views stay put.
+  const openLang = useRef(lang)
+  useEffect(() => {
+    if (openLang.current === lang) return
+    openLang.current = lang
+    const o = opening.current
+    if (o) void open(o.id, o.start === true, o.want, o.stay)
+    else if (doc) void open(doc.id, false, mode, true)
+    // Only a language change reloads; doc and mode are read as they are at that moment.
+  }, [lang])
 
   // Poll while a translation job runs.
   useEffect(() => {
@@ -306,15 +388,15 @@ export function App() {
     const id = doc.id
     const timer = setInterval(async () => {
       try {
-        const s = await api.status(id, mode)
+        const s = await api.status(id, mode, lang)
         setStatus(s)
-        setKo(prev => mergeKo(prev, s.units))
+        setTr(prev => mergeTr(prev, s.units))
       } catch {
         /* next tick retries */
       }
     }, 1200)
     return () => clearInterval(timer)
-  }, [doc, mode, status?.running])
+  }, [doc, mode, lang, status?.running])
 
   const imported = async (meta: Meta | null) => {
     if (!meta) return
@@ -366,9 +448,10 @@ export function App() {
         text: m.role === 'assistant' && m.picks.length ? `${m.text}\n${m.picks.map(p => `${p.hit.id} ${p.hit.title}`).join('\n')}` : m.text,
       }))
     setChat(c => ({ messages: [...c.messages, { role: 'user', text }], loading: true }))
+    const asked = lang
     try {
-      const a = await api.recommend(text, history)
-      setChat(c => ({ messages: [...c.messages, { role: 'assistant', text: a.reply, picks: a.picks }], loading: false }))
+      const a = await api.recommend(text, history, asked)
+      setChat(c => ({ messages: [...c.messages, { role: 'assistant', text: a.reply, picks: a.picks, lang: asked }], loading: false }))
     } catch (err) {
       setChat(c => ({ messages: [...c.messages, { role: 'error', text: errorText(err) }], loading: false }))
     }
@@ -382,7 +465,7 @@ export function App() {
     const q = input.trim()
     if (!q || busy) return
     if (!looksLikeArxivId(q)) return void runSearch(q, 0)
-    setBusy('arXiv에서 논문을 가져오는 중…')
+    setBusy('Fetching the paper from arXiv…')
     setError(null)
     try {
       await imported(await api.openArxiv(input))
@@ -396,7 +479,7 @@ export function App() {
 
   const pickPdf = async () => {
     if (busy) return
-    setBusy('PDF를 읽는 중…')
+    setBusy('Reading the PDF…')
     setError(null)
     try {
       await imported(await api.openPdf())
@@ -409,6 +492,7 @@ export function App() {
 
   const remove = async (id: string) => {
     await api.remove(id).catch(() => {})
+    if (opening.current?.id === id) opening.current = null
     if (doc?.id === id) {
       openSeq.current++
       setDoc(null)
@@ -427,36 +511,37 @@ export function App() {
     return ids
   }, [doc])
   const total = unitIds.length
-  const translated = unitIds.filter(id => ko[id] !== undefined).length
+  const translated = unitIds.filter(id => tr[id] !== undefined).length
+  const langName = langs.find(l => l.code === lang)?.name ?? lang
   const remaining = total - translated
 
   return (
     <div className={`app${folded ? ' folded' : ''}`} ref={app} style={{ '--side-w': `${sideW}px` } as React.CSSProperties}>
       <aside className="side" aria-hidden={folded || undefined} inert={folded || undefined}>
         <div className="side-top" data-tauri-drag-region>
-          <button className="side-fold" onClick={() => fold(true)} title="사이드바 접기 (⌘B)" aria-label="사이드바 접기">
+          <button className="side-fold" onClick={() => fold(true)} title="Hide sidebar (⌘B)" aria-label="Hide sidebar">
             <SidebarIcon />
           </button>
         </div>
-        <div className="brand" data-tauri-drag-region>나란</div>
+        <div className="brand" data-tauri-drag-region>OpenPaper</div>
         <form className="import" onSubmit={submitArxiv}>
           <input
             value={input}
             onChange={e => setInput(e.target.value)}
-            placeholder="arXiv 검색 · ID · 주소"
+            placeholder="Search arXiv · ID · URL"
             spellCheck={false}
             disabled={!!busy}
-            aria-label="arXiv 검색어, ID 또는 주소"
+            aria-label="arXiv search, ID or URL"
           />
         </form>
-        <button className="pdf-btn" onClick={pickPdf} disabled={!!busy}>PDF 파일 열기</button>
+        <button className="pdf-btn" onClick={pickPdf} disabled={!!busy}>Open PDF</button>
         <button className={`ai-btn${view === 'ai' ? ' active' : ''}`} onClick={() => setView('ai')}>
-          <span className="spark" aria-hidden="true">✦</span> AI로 논문 찾기
-          {chat.loading && <span className="ai-dot" aria-label="찾는 중" />}
+          <span className="spark" aria-hidden="true">✦</span> Find papers with AI
+          {chat.loading && <span className="ai-dot" aria-label="Searching" />}
         </button>
         {search && (
           <button className={`search-tab${view === 'search' ? ' active' : ''}`} onClick={() => setView('search')}>
-            <span className="t">검색: {search.query}</span>
+            <span className="t">Search: {search.query}</span>
             <span className="n">{search.loading && !search.hits.length ? '…' : search.total.toLocaleString()}</span>
           </button>
         )}
@@ -471,6 +556,7 @@ export function App() {
         <UpdateButton />
         <div className="side-foot">
           <ThemeButton />
+          <LangPicker langs={langs} lang={lang} onChange={changeLang} />
         </div>
       </aside>
       {!folded && (
@@ -478,11 +564,11 @@ export function App() {
           className="side-resize"
           role="separator"
           aria-orientation="vertical"
-          aria-label="사이드바 너비"
-          title="끌어서 너비 조절 · 두 번 눌러 기본값"
+          aria-label="Sidebar width"
+          title="Drag to resize · double-click to reset"
           onPointerDown={resizeSide}
           onDoubleClick={() => {
-            localStorage.setItem('nanran.sideWidth', String(SIDE_W))
+            localStorage.setItem('openpaper.sideWidth', String(SIDE_W))
             setSideW(SIDE_W)
           }}
         />
@@ -491,34 +577,34 @@ export function App() {
       <main className="main">
         <header className="bar" data-tauri-drag-region>
           {folded && (
-            <button className="side-fold" onClick={() => fold(false)} title="사이드바 펼치기 (⌘B)" aria-label="사이드바 펼치기">
+            <button className="side-fold" onClick={() => fold(false)} title="Show sidebar (⌘B)" aria-label="Show sidebar">
               <SidebarIcon />
             </button>
           )}
-          <div className="bar-title" data-tauri-drag-region>{view === 'search' ? 'arXiv 검색' : view === 'ai' ? 'AI로 논문 찾기' : doc?.title ?? ''}</div>
+          <div className="bar-title" data-tauri-drag-region>{view === 'search' ? 'arXiv search' : view === 'ai' ? 'Find papers with AI' : doc?.title ?? ''}</div>
           {view === 'doc' && doc && (
-            <button className="bar-link" onClick={toggleSwap} title="원문과 한국어 칸의 좌우 위치를 바꿔요">
-              ⇄ {swapped ? '원문을 왼쪽으로' : '한국어를 왼쪽으로'}
+            <button className="bar-link" onClick={toggleSwap} title={swapped ? 'Put the original on the left' : 'Put the translation on the left'}>
+              ⇄ Swap sides
             </button>
           )}
           {view === 'doc' && doc && arxivIdOf(doc.id) && (
-            <button className="bar-link" onClick={() => openWeb(arxivIdOf(doc.id)!)} title="기본 브라우저로 arxiv.org 열기">
+            <button className="bar-link" onClick={() => openWeb(arxivIdOf(doc.id)!)} title="Open arxiv.org in your browser">
               arxiv.org ↗
             </button>
           )}
           {view === 'doc' && doc && (
             <div className="progress">
               {(translated > 0 || status?.running || otherHas) && (
-                <div className="mode-switch" role="group" aria-label="한국어 칸에 보일 내용">
+                <div className="mode-switch" role="group" aria-label="What the translation column shows">
                   {(['plain', 'easy'] as const).map(m => (
                     <button
                       key={m}
                       className={mode === m ? 'on' : ''}
                       aria-pressed={mode === m}
                       onClick={() => mode !== m && void open(doc.id, false, m)}
-                      title={m === 'plain' ? '원문을 그대로 옮긴 번역을 봐요' : '어려운 용어를 풀어 쉽게 설명한 번역을 봐요'}
+                      title={m === 'plain' ? 'Faithful translation' : 'Easy explanation with hard terms in plain words'}
                     >
-                      {m === 'plain' ? '번역' : '쉽게 읽기'}
+                      {m === 'plain' ? 'Translation' : 'Easy'}
                     </button>
                   ))}
                 </div>
@@ -526,31 +612,31 @@ export function App() {
               {status?.running && status.redo ? (
                 <>
                   <span className="meter"><span style={{ width: `${status.total ? (status.done / status.total) * 100 : 0}%` }} /></span>
-                  <span>다시 번역 중 {status.done}/{status.total}</span>
-                  <button onClick={() => void api.cancel(doc.id, mode)}>멈춤</button>
+                  <span>Retranslating {status.done}/{status.total}</span>
+                  <button onClick={() => void api.cancel(doc.id, mode, lang)}>Stop</button>
                 </>
               ) : status?.running ? (
                 <>
                   <span className="meter"><span style={{ width: `${total ? (translated / total) * 100 : 0}%` }} /></span>
-                  <span>{mode === 'easy' ? '쉽게 번역 중' : '번역 중'} {translated}/{total}</span>
-                  <button onClick={() => void api.cancel(doc.id, mode)}>멈춤</button>
+                  <span>{mode === 'easy' ? 'Explaining' : 'Translating'} {translated}/{total}</span>
+                  <button onClick={() => void api.cancel(doc.id, mode, lang)}>Stop</button>
                 </>
               ) : translated === 0 && !otherHas ? (
-                <StartMenu label="번역하기" onPick={m => void open(doc.id, true, m)} />
+                <StartMenu label="Translate" onPick={m => void open(doc.id, true, m)} />
               ) : remaining > 0 && !status?.outdated ? (
                 <button className="primary" onClick={() => void open(doc.id, true, mode)}>
-                  {translated > 0 ? `이어서 번역 (${remaining}개 남음)` : mode === 'easy' ? '쉽게 번역하기' : '번역하기'}
+                  {translated > 0 ? `Continue (${remaining} left)` : mode === 'easy' ? 'Explain simply' : 'Translate'}
                 </button>
               ) : status?.outdated ? (
                 <StartMenu
-                  label="새 문체로 다시 번역"
-                  title="읽기 편한 합니다체로 처음부터 다시 번역해요. 끝날 때까지 지금 번역이 그대로 보여요"
+                  label="Retranslate in the new style"
+                  title="Translates again from the start in a more readable style. The current translation stays until it finishes"
                   onPick={m => void (m === 'plain' ? open(doc.id, 'redo', 'plain') : open(doc.id, true, 'easy'))}
                 />
               ) : null}
               {!status?.running && (
-                <button className="summary-btn" onClick={() => assistant.summarize()} title="논문 내용을 한국어 글 한 편으로 정리해요">
-                  <span className="spark" aria-hidden="true">✦</span> 요약하기
+                <button className="summary-btn" onClick={() => assistant.summarize()} title="Summarize this paper">
+                  <span className="spark" aria-hidden="true">✦</span> Summarize
                 </button>
               )}
             </div>
@@ -559,9 +645,9 @@ export function App() {
         {(claude === 'missing' || claude === 'logout') && (
           <div className="notice claude-notice" role="status">
             {claude === 'missing' ? (
-              <>Claude Code가 없어서 번역과 AI 찾기를 쓸 수 없어요. 터미널에서 <code>curl -fsSL https://claude.ai/install.sh | bash</code> 후 <code>claude auth login</code>을 실행해 주세요.</>
+              <>Claude Code isn't installed, so translation and AI search are off. In Terminal, run <code>curl -fsSL https://claude.ai/install.sh | bash</code>, then <code>claude auth login</code>.</>
             ) : (
-              <>Claude Code에 로그인되어 있지 않아요. 터미널에서 <code>claude auth login</code>을 실행하면 이 창으로 돌아올 때 자동으로 다시 확인해요.</>
+              <>Claude Code isn't logged in. Run <code>claude auth login</code> in Terminal. The app checks again when you come back to this window.</>
             )}
           </div>
         )}
@@ -586,16 +672,16 @@ export function App() {
             onMore={() => void runSearch(search.query, search.hits.length)}
           />
         ) : doc ? (
-          <Reader doc={doc} ko={ko} swapped={swapped} koLabel={mode === 'easy' ? '쉽게 읽기' : '한국어'} />
+          <Reader doc={doc} tr={tr} lang={lang} swapped={swapped} trLabel={mode === 'easy' ? `${langName} · easy` : langName} />
         ) : (
           !busy && (
             <div className="welcome">
-              <h1>영어 논문을 한국어와 나란히</h1>
+              <h1>Read papers side by side with a translation</h1>
               <p>
-                왼쪽 칸에 <span className="nowrap">검색어(예: flash attention)나</span>{' '}
-                <span className="nowrap">arXiv ID(예: 1706.03762)를</span> 넣거나 PDF를 여세요.
+                In the sidebar, type <span className="nowrap">a search (e.g. flash attention)</span> or{' '}
+                <span className="nowrap">an arXiv ID (e.g. 1706.03762)</span>, or open a PDF.
               </p>
-              <p className="sub">번역은 이 Mac에 로그인된 Claude Code로 하고, 결과는 이 Mac에만 저장돼요.</p>
+              <p className="sub">Translation runs on the Claude Code logged in on this Mac, and results stay on this Mac.</p>
             </div>
           )
         )}

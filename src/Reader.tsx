@@ -1,20 +1,21 @@
 import { Fragment, memo, useEffect, useRef, useState } from 'react'
-import type { Block, Doc, Unit } from './api'
+import type { Block, Doc, Lang, Unit } from './api'
 import { inline, tex } from './render'
 import { dragSplit, stored } from './resize'
 
-type Ko = Record<string, string[]>
+/** Translated sentences by unit id. */
+type Tr = Record<string, string[]>
 
-function Sentences({ unit, lang, math, ko, heading }: { unit: Unit; lang: 'en' | 'ko'; math: string[]; ko: Ko; heading?: boolean }) {
-  const translated = ko[String(unit.id)]
-  if (lang === 'ko' && !translated && heading) {
+function Sentences({ unit, side, math, tr, heading }: { unit: Unit; side: 'en' | 'tr'; math: string[]; tr: Tr; heading?: boolean }) {
+  const translated = tr[String(unit.id)]
+  if (side === 'tr' && !translated && heading) {
     // Until a heading is translated, repeat the original so both columns always show it.
     return <span className="untranslated" dangerouslySetInnerHTML={{ __html: inline(unit.sentences.join(' '), math) }} />
   }
-  if (lang === 'ko' && !translated) {
-    return <span className="pending" aria-label="번역 전">{unit.sentences.map((_, i) => <i key={i} />)}</span>
+  if (side === 'tr' && !translated) {
+    return <span className="pending" aria-label="Not translated yet">{unit.sentences.map((_, i) => <i key={i} />)}</span>
   }
-  const list = lang === 'en' ? unit.sentences : translated!
+  const list = side === 'en' ? unit.sentences : translated!
   return (
     <>
       {list.map((s, i) =>
@@ -28,16 +29,16 @@ function Sentences({ unit, lang, math, ko, heading }: { unit: Unit; lang: 'en' |
   )
 }
 
-function Pair({ unit, math, ko, as: Tag, className }: { unit: Unit; math: string[]; ko: Ko; as: 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'figcaption'; className?: string }) {
+function Pair({ unit, math, tr, lang, as: Tag, className }: { unit: Unit; math: string[]; tr: Tr; lang: Lang; as: 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'figcaption'; className?: string }) {
   return (
     <div className={`row ${className ?? ''}`}>
-      <Tag className="en" lang="en"><Sentences unit={unit} lang="en" math={math} ko={ko} /></Tag>
-      <Tag className="ko" lang="ko"><Sentences unit={unit} lang="ko" math={math} ko={ko} heading={Tag.startsWith('h')} /></Tag>
+      <Tag className="en" lang="en"><Sentences unit={unit} side="en" math={math} tr={tr} /></Tag>
+      <Tag className="tr" lang={lang}><Sentences unit={unit} side="tr" math={math} tr={tr} heading={Tag.startsWith('h')} /></Tag>
     </div>
   )
 }
 
-const BlockView = memo(function BlockView({ block, math, ko }: { block: Block; math: string[]; ko: Ko }) {
+const BlockView = memo(function BlockView({ block, math, tr, lang }: { block: Block; math: string[]; tr: Tr; lang: Lang }) {
   switch (block.kind) {
     case 'heading': {
       const Tag = (['h1', 'h2', 'h3', 'h4'] as const)[Math.min(block.level, 4) - 1] ?? 'h4'
@@ -49,10 +50,10 @@ const BlockView = memo(function BlockView({ block, math, ko }: { block: Block; m
           </div>
         )
       }
-      return <Pair unit={block.unit} math={math} ko={ko} as={Tag} className={`heading ${Tag}`} />
+      return <Pair unit={block.unit} math={math} tr={tr} lang={lang} as={Tag} className={`heading ${Tag}`} />
     }
     case 'para':
-      return <Pair unit={block.unit} math={math} ko={ko} as="p" />
+      return <Pair unit={block.unit} math={math} tr={tr} lang={lang} as="p" />
     case 'static':
       return block.code ? <pre className="wide code">{block.text}</pre> : <p className="wide static" dangerouslySetInnerHTML={{ __html: inline(block.text, math) }} />
     case 'equation':
@@ -63,13 +64,13 @@ const BlockView = memo(function BlockView({ block, math, ko }: { block: Block; m
           {block.images.length > 0 && (
             <div className="images">{block.images.map((src, i) => <img key={i} src={src} alt="" loading="lazy" />)}</div>
           )}
-          {block.caption && <Pair unit={block.caption} math={math} ko={ko} as="figcaption" className="caption" />}
+          {block.caption && <Pair unit={block.caption} math={math} tr={tr} lang={lang} as="figcaption" className="caption" />}
         </figure>
       )
     case 'table':
       return (
         <figure className="wide-figure">
-          {block.caption && <Pair unit={block.caption} math={math} ko={ko} as="figcaption" className="caption" />}
+          {block.caption && <Pair unit={block.caption} math={math} tr={tr} lang={lang} as="figcaption" className="caption" />}
           <div className="table-wrap">
             <table>
               <tbody>
@@ -98,31 +99,31 @@ function unitIds(block: Block): number[] {
 }
 
 /** Only blocks whose translation changed re-render while a job streams in. */
-function sliceKo(ko: Ko, ids: number[]): Ko {
-  const out: Ko = {}
+function sliceTr(tr: Tr, ids: number[]): Tr {
+  const out: Tr = {}
   for (const id of ids) {
-    const t = ko[String(id)]
+    const t = tr[String(id)]
     if (t) out[String(id)] = t
   }
   return out
 }
 
-const KoSlice = memo(
-  function KoSlice({ block, math, ko }: { block: Block; math: string[]; ko: Ko }) {
-    return <BlockView block={block} math={math} ko={ko} />
+const TrSlice = memo(
+  function TrSlice({ block, math, tr, lang }: { block: Block; math: string[]; tr: Tr; lang: Lang }) {
+    return <BlockView block={block} math={math} tr={tr} lang={lang} />
   },
-  (a, b) => a.block === b.block && unitIds(a.block).every(id => a.ko[String(id)] === b.ko[String(id)])
+  (a, b) => a.block === b.block && a.lang === b.lang && unitIds(a.block).every(id => a.tr[String(id)] === b.tr[String(id)])
 )
 
 const GAP = 48
 const SPLIT_MIN = 0.25
 const SPLIT_MAX = 0.75
 
-export function Reader({ doc, ko, swapped, koLabel }: { doc: Doc; ko: Ko; swapped: boolean; koLabel: string }) {
+export function Reader({ doc, tr, lang, swapped, trLabel }: { doc: Doc; tr: Tr; lang: Lang; swapped: boolean; trLabel: string }) {
   const root = useRef<HTMLDivElement>(null)
   const style = useRef<HTMLStyleElement>(null)
   // Share of the width taken by the left column; drag the gap between the columns to change it.
-  const [split, setSplit] = useState(() => stored('nanran.split', 0.5, SPLIT_MIN, SPLIT_MAX))
+  const [split, setSplit] = useState(() => stored('openpaper.split', 0.5, SPLIT_MIN, SPLIT_MAX))
   const resize = (e: React.PointerEvent) => {
     const el = root.current
     if (!el) return
@@ -138,7 +139,7 @@ export function Reader({ doc, ko, swapped, koLabel }: { doc: Doc; ko: Ko; swappe
       },
       () => {
         el.style.setProperty('--split', String(r))
-        localStorage.setItem('nanran.split', r.toFixed(3))
+        localStorage.setItem('openpaper.split', r.toFixed(3))
         setSplit(r)
       }
     )
@@ -174,20 +175,20 @@ export function Reader({ doc, ko, swapped, koLabel }: { doc: Doc; ko: Ko; swappe
         className="col-resize"
         role="separator"
         aria-orientation="vertical"
-        aria-label="원문과 한국어 칸 너비"
-        title="끌어서 좌우 너비 조절 · 두 번 눌러 반반으로"
+        aria-label="Column widths"
+        title="Drag to resize the columns · double-click to split evenly"
         onPointerDown={resize}
         onDoubleClick={() => {
-          localStorage.setItem('nanran.split', '0.5')
+          localStorage.setItem('openpaper.split', '0.5')
           setSplit(0.5)
         }}
       />
       <div className="cols-head">
-        <span className="en">원문</span>
-        <span className="ko">{koLabel}</span>
+        <span className="en">Original</span>
+        <span className="tr">{trLabel}</span>
       </div>
       {doc.blocks.map((block, i) => (
-        <KoSlice key={i} block={block} math={doc.math} ko={sliceKo(ko, unitIds(block))} />
+        <TrSlice key={i} block={block} math={doc.math} tr={sliceTr(tr, unitIds(block))} lang={lang} />
       ))}
     </div>
   )

@@ -1,7 +1,7 @@
 import { getCurrentWindow } from '@tauri-apps/api/window'
 
 export type Theme = 'light' | 'dark'
-const KEY = 'nanran.theme'
+const KEY = 'openpaper.theme'
 
 /** The saved choice, or the system appearance until the reader picks one. */
 export function initialTheme(): Theme {
