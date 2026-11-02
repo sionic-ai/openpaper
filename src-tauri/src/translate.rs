@@ -275,6 +275,9 @@ const PASS_ENV: &[&str] = &[
     "PROCESSOR_ARCHITECTURE",
     "NUMBER_OF_PROCESSORS",
     "CLAUDE_CODE_GIT_BASH_PATH",
+    // Replaced by the private folder for `claude -p`; `claude auth status` keeps the user's.
+    "TEMP",
+    "TMP",
 ];
 #[cfg(windows)]
 const TMP_ENV: &[&str] = &["TEMP", "TMP"];

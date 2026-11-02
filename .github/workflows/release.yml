@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   release:
-    if: github.ref_type == 'tag'
+    if: github.event_name == 'push'
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,7 +42,7 @@ jobs:
   # Windows downloads this exact asset name and checks it against its .sha256.
   windows:
     needs: release
-    if: ${{ !cancelled() && (needs.release.result == 'success' || github.ref_type != 'tag') }}
+    if: ${{ !cancelled() && (needs.release.result == 'success' || github.event_name != 'push') }}
     runs-on: windows-latest
     defaults:
       run:
@@ -51,7 +51,7 @@ jobs:
       ASSET: OpenPaper-windows-x64-setup.exe
     steps:
       - uses: actions/checkout@v4
-      - if: github.ref_type == 'tag'
+      - if: github.event_name == 'push'
         run: scripts/check-versions.sh "$GITHUB_REF_NAME"
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
@@ -70,12 +70,12 @@ jobs:
           mkdir out
           cp src-tauri/target/release/bundle/nsis/OpenPaper_*_x64-setup.exe "out/$ASSET"
           cd out && sha256sum "$ASSET" | sed 's/ \*/  /' > "$ASSET.sha256" && cat "$ASSET.sha256"
-      - if: github.ref_type == 'tag'
+      - if: github.event_name == 'push'
         name: Upload to the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "$GITHUB_REF_NAME" "out/$ASSET" "out/$ASSET.sha256" -R "$GITHUB_REPOSITORY" --clobber
-      - if: github.ref_type != 'tag'
+      - if: github.event_name != 'push'
         uses: actions/upload-artifact@v4
         with:
           name: openpaper-windows
