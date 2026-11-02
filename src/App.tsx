@@ -142,17 +142,25 @@ function UpdateButton() {
     }
   }
 
+  const label = installing ? 'Updating…' : error ? `Update failed: ${error}` : `Update to ${v || 'the latest version'}`
   return (
-    <div className="update">
-      <button className="update-btn" onClick={() => void install()} disabled={installing} title={`A new version${v && ` ${v}`} is out. Click to install it and reopen`}>
-        {installing ? (
-          <><span className="update-spin" aria-hidden="true" /> Updating…</>
-        ) : (
-          <><span className="update-glyph" aria-hidden="true">↻</span> Update{v && ` ${v}`}</>
-        )}
-      </button>
-      {error && <div className="update-error" role="alert">{error}</div>}
-    </div>
+    <button
+      className={`update-btn${error ? ' failed' : ''}`}
+      onClick={() => void install()}
+      disabled={installing}
+      title={installing ? label : error ? `${label}. Click to try again` : `${label}. Click to install it and reopen`}
+      aria-label={label}
+    >
+      {installing ? <span className="update-spin" aria-hidden="true" /> : <UpdateIcon />}
+    </button>
+  )
+}
+
+function UpdateIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8 12.5V3.5M4 7.5l4-4 4 4" />
+    </svg>
   )
 }
 
@@ -576,10 +584,10 @@ export function App() {
           onOpen={id => void open(id, false)}
           onRemove={id => void remove(id)}
         />
-        <UpdateButton />
         <div className="side-foot">
           <ThemeButton />
           <LangPicker langs={langs} lang={lang} onChange={changeLang} />
+          <UpdateButton />
         </div>
       </aside>
       {!folded && (
