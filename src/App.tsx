@@ -5,6 +5,7 @@ import { PaperList } from './Papers'
 import { SearchResults, type SearchState } from './Search'
 import { AiChat, type ChatState } from './Ai'
 import { FloatingAssistant, SelectionAsk, useAsk } from './Assistant'
+import { posKey } from './position'
 import { dragSplit, stored } from './resize'
 import { applyTheme, initialTheme, type Theme } from './theme'
 
@@ -375,7 +376,6 @@ export function App() {
       setMode(m)
       setTr({})
       setStatus(null)
-      if (!want && !stay) document.querySelector('.main')?.scrollTo(0, 0)
       if (startTranslation === 'redo') await api.retranslate(id, lang)
       else if (startTranslation) await api.translate(id, m, lang)
       let s = await api.status(id, m, lang)
@@ -519,6 +519,7 @@ export function App() {
 
   const remove = async (id: string) => {
     await api.remove(id).catch(() => {})
+    localStorage.removeItem(posKey(id))
     if (opening.current?.id === id) opening.current = null
     if (doc?.id === id) {
       openSeq.current++

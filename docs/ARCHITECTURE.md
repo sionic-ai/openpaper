@@ -16,7 +16,7 @@ OpenPaper is a Tauri 2 app: a Rust core in `src-tauri/` and a React 19 / Vite fr
 | Languages | `src-tauri/src/lang.rs` | The list of target languages. The frontend reads it through the `languages` command. Korean keeps its own detailed prompts; other languages use parameterized English prompts. |
 | Claude lookup | `src-tauri/src/translate.rs` | Looks for the CLI at `~/.local/bin/claude`, `~/.claude/local/claude`, Homebrew paths, then `PATH`. Checks login with `claude auth status`, which makes no model call. |
 | Update | `src-tauri/src/update.rs` | Reads the latest tag from the redirect of `releases/latest` (GitHub API as fallback; the button stays hidden if both fail). Installing runs `install.sh` detached from the app with `OPENPAPER_DIR=<folder of the running app>` and `OPENPAPER_NO_CLAUDE=1`, logging to `$TMPDIR/openpaper-update.log`. |
-| Reader | `src/Reader.tsx` | Lays out each row as a 2-column grid of original and translation. Inline math is kept through translation as `⟦M n⟧` tokens and rendered with KaTeX. Hover changes a single CSS rule so both sentences with the same `data-s` light up. |
+| Reader | `src/Reader.tsx` | Lays out each row as a 2-column grid of original and translation. Inline math is kept through translation as `⟦M n⟧` tokens and rendered with KaTeX. Hover changes a single CSS rule so both sentences with the same `data-s` light up. The reading position (the original sentence at the top of the view) is saved per paper in `localStorage` (`src/position.ts`). |
 
 ## Library files
 
