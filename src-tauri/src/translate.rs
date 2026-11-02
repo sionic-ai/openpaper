@@ -181,9 +181,13 @@ struct CliEnvelope {
 }
 
 pub fn find_claude() -> Option<PathBuf> {
-    let home = std::env::var_os("HOME").map(PathBuf::from);
+    claude_candidates().into_iter().find(|p| is_program(p))
+}
+
+#[cfg(not(windows))]
+fn claude_candidates() -> Vec<PathBuf> {
     let mut candidates: Vec<PathBuf> = Vec::new();
-    if let Some(h) = &home {
+    if let Some(h) = std::env::var_os("HOME").map(PathBuf::from) {
         candidates.push(h.join(".local/bin/claude"));
         candidates.push(h.join(".claude/local/claude"));
         candidates.push(h.join(".npm-global/bin/claude"));
@@ -193,13 +197,98 @@ pub fn find_claude() -> Option<PathBuf> {
     if let Some(path) = std::env::var_os("PATH") {
         candidates.extend(std::env::split_paths(&path).map(|d| d.join("claude")));
     }
-    candidates.into_iter().find(|p| {
-        std::fs::metadata(p).is_ok_and(|m| {
-            use std::os::unix::fs::PermissionsExt;
-            m.is_file() && m.permissions().mode() & 0o111 != 0
-        })
-    })
+    candidates
 }
+
+/// Only `claude.exe` (the official native installer) is used on Windows. npm's `claude.cmd`
+/// runs through `cmd.exe`, which can't pass the multi-line system prompt as an argument.
+#[cfg(windows)]
+fn claude_candidates() -> Vec<PathBuf> {
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    if let Some(h) = std::env::var_os("USERPROFILE").map(PathBuf::from) {
+        candidates.push(h.join(r".local\bin\claude.exe"));
+        candidates.push(h.join(r".claude\local\claude.exe"));
+    }
+    if let Some(path) = std::env::var_os("PATH") {
+        candidates.extend(std::env::split_paths(&path).map(|d| d.join("claude.exe")));
+    }
+    candidates
+}
+
+#[cfg(unix)]
+fn is_program(p: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::metadata(p).is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
+}
+
+#[cfg(not(unix))]
+fn is_program(p: &Path) -> bool {
+    std::fs::metadata(p).is_ok_and(|m| m.is_file())
+}
+
+/// Clears the environment of `cmd` and passes back only what the CLI needs to find its login,
+/// so no API key or other setting from the app's environment reaches it. `tmp` becomes its temp dir.
+fn scrub_env(cmd: &mut Command, claude: &Path, tmp: Option<&Path>) {
+    cmd.env_clear()
+        .env("PATH", child_path(claude))
+        .env("LANG", "en_US.UTF-8");
+    for key in PASS_ENV {
+        if let Some(v) = std::env::var_os(key) {
+            cmd.env(key, v);
+        }
+    }
+    if let Some(dir) = tmp {
+        for key in TMP_ENV {
+            cmd.env(key, dir);
+        }
+    }
+    hide_console(cmd);
+}
+
+#[cfg(not(windows))]
+const PASS_ENV: &[&str] = &["HOME", "USER", "LOGNAME"];
+#[cfg(not(windows))]
+const TMP_ENV: &[&str] = &["TMPDIR"];
+
+/// Windows programs need these to find the user's profile, app data and system folders.
+/// `CLAUDE_CODE_GIT_BASH_PATH` is where the user told Claude Code to find Git Bash.
+#[cfg(windows)]
+const PASS_ENV: &[&str] = &[
+    "USERPROFILE",
+    "USERNAME",
+    "USERDOMAIN",
+    "HOMEDRIVE",
+    "HOMEPATH",
+    "APPDATA",
+    "LOCALAPPDATA",
+    "PROGRAMDATA",
+    "PROGRAMFILES",
+    "PROGRAMFILES(X86)",
+    "PROGRAMW6432",
+    "COMMONPROGRAMFILES",
+    "SYSTEMROOT",
+    "SYSTEMDRIVE",
+    "WINDIR",
+    "COMSPEC",
+    "PATHEXT",
+    "OS",
+    "PROCESSOR_ARCHITECTURE",
+    "NUMBER_OF_PROCESSORS",
+    "CLAUDE_CODE_GIT_BASH_PATH",
+];
+#[cfg(windows)]
+const TMP_ENV: &[&str] = &["TEMP", "TMP"];
+
+/// A GUI app on Windows would otherwise open a console window for every child process.
+#[cfg(windows)]
+pub fn hide_console(cmd: &mut Command) {
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    cmd.creation_flags(CREATE_NO_WINDOW);
+}
+
+#[cfg(not(windows))]
+pub fn hide_console(_cmd: &mut Command) {}
 
 /// Login state of the Claude Code CLI, checked with `claude auth status` (no model call).
 #[derive(Debug, Serialize, PartialEq)]
@@ -219,14 +308,7 @@ pub fn claude_status() -> ClaudeStatus {
         };
     };
     let mut cmd = Command::new(&claude);
-    cmd.env_clear()
-        .env("PATH", child_path(&claude))
-        .env("LANG", "en_US.UTF-8");
-    for key in ["HOME", "USER", "LOGNAME"] {
-        if let Some(v) = std::env::var_os(key) {
-            cmd.env(key, v);
-        }
-    }
+    scrub_env(&mut cmd, &claude, None);
     let logged_in = cmd
         .args(["auth", "status"])
         .stdin(Stdio::null())
@@ -305,13 +387,18 @@ fn private_dir() -> Result<PathBuf, String> {
         SEQ.fetch_add(1, Ordering::Relaxed)
     ));
     std::fs::create_dir(&dir).map_err(|_| "Couldn't create a working folder".to_string())?;
-    use std::os::unix::fs::PermissionsExt;
-    std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700))
-        .map_err(|_| "Couldn't set the working folder's permissions".to_string())?;
+    // On Windows the temp dir is already inside the user's own profile.
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&dir, std::fs::Permissions::from_mode(0o700))
+            .map_err(|_| "Couldn't set the working folder's permissions".to_string())?;
+    }
     Ok(dir)
 }
 
-fn child_path(claude: &Path) -> String {
+#[cfg(not(windows))]
+fn child_path(claude: &Path) -> std::ffi::OsString {
     let mut dirs: Vec<String> = Vec::new();
     if let Some(d) = claude.parent() {
         dirs.push(d.display().to_string());
@@ -319,22 +406,24 @@ fn child_path(claude: &Path) -> String {
     for d in ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin"] {
         dirs.push(d.into());
     }
-    dirs.join(":")
+    dirs.join(":").into()
+}
+
+/// The CLI's folder, then the user's PATH: Claude Code on Windows looks for Git Bash there.
+#[cfg(windows)]
+fn child_path(claude: &Path) -> std::ffi::OsString {
+    let mut dirs: Vec<PathBuf> = claude.parent().map(Path::to_path_buf).into_iter().collect();
+    if let Some(path) = std::env::var_os("PATH") {
+        dirs.extend(std::env::split_paths(&path));
+    }
+    std::env::join_paths(dirs).unwrap_or_default()
 }
 
 /// `claude -p` with every tool, MCP server, setting source and session file disabled, run in
 /// `dir` with a scrubbed environment.
 fn claude_command(claude: &Path, dir: &Path, system_prompt: &str, stream: bool) -> Command {
     let mut cmd = Command::new(claude);
-    cmd.env_clear()
-        .env("PATH", child_path(claude))
-        .env("TMPDIR", dir)
-        .env("LANG", "en_US.UTF-8");
-    for key in ["HOME", "USER", "LOGNAME"] {
-        if let Some(v) = std::env::var_os(key) {
-            cmd.env(key, v);
-        }
-    }
+    scrub_env(&mut cmd, claude, Some(dir));
     cmd.current_dir(dir)
         .args(["-p", "--model", MODEL, "--output-format"]);
     if stream {
