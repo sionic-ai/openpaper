@@ -13,7 +13,7 @@ Read an English research paper side by side with its translation, sentence by se
 
 </div>
 
-<a href=".github/assets/demo.mp4"><img src=".github/assets/demo.webp" alt="OpenPaper demo: search, translate, summarize, ask, and linked sentence highlight" width="100%"></a>
+<a href=".github/assets/demo.mp4"><img src=".github/assets/demo.webp" alt="OpenPaper demo: search, translate, linked sentence highlight, summarize, ask, and switch languages" width="100%"></a>
 
 ## Install
 
