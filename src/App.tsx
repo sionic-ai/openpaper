@@ -49,6 +49,25 @@ function pickLang(langs: Language[], saved: string | null): Lang {
   return 'ko'
 }
 
+function PdfIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9.5 1.75H4.25a1.5 1.5 0 0 0-1.5 1.5v9.5a1.5 1.5 0 0 0 1.5 1.5h7.5a1.5 1.5 0 0 0 1.5-1.5V5.5Z" />
+      <path d="M9.5 1.75V5.5h3.75" />
+      <path d="M5.5 9.25h5M5.5 11.5h3.25" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function SearchIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden="true">
+      <circle cx="7" cy="7" r="4.75" />
+      <path d="m10.5 10.5 3.75 3.75" />
+    </svg>
+  )
+}
+
 function GlobeIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true">
@@ -534,11 +553,15 @@ export function App() {
             aria-label="arXiv search, ID or URL"
           />
         </form>
-        <button className="pdf-btn" onClick={pickPdf} disabled={!!busy}>Open PDF</button>
-        <button className={`ai-btn${view === 'ai' ? ' active' : ''}`} onClick={() => setView('ai')}>
-          <span className="spark" aria-hidden="true">✦</span> Find papers with AI
-          {chat.loading && <span className="ai-dot" aria-label="Searching" />}
-        </button>
+        <div className="side-actions">
+          <button className="pdf-btn" onClick={pickPdf} disabled={!!busy} title="Open a PDF file" aria-label="Open a PDF file">
+            <PdfIcon /> PDF
+          </button>
+          <button className={`ai-btn${view === 'ai' ? ' active' : ''}`} onClick={() => setView('ai')} title="Find papers with AI" aria-label="Find papers with AI">
+            <SearchIcon /> AI
+            {chat.loading && <span className="ai-dot" aria-label="Searching" />}
+          </button>
+        </div>
         {search && (
           <button className={`search-tab${view === 'search' ? ' active' : ''}`} onClick={() => setView('search')}>
             <span className="t">Search: {search.query}</span>

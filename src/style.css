@@ -115,8 +115,15 @@ button:disabled { cursor: default; opacity: .5; }
   outline: none;
 }
 .import input:focus { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+/* Open PDF and the AI finder share one row. */
+.side-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
 .pdf-btn {
-  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
   padding: 7px 10px;
   border: 1px solid var(--line);
   border-radius: 7px;
@@ -312,14 +319,14 @@ tr:last-child td { border-bottom: 1px solid var(--rule); }
 
 /* AI paper finder */
 .ai-btn {
-  position: relative; display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 8px; padding: 7px 10px;
+  position: relative; display: flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; white-space: nowrap; padding: 7px 10px;
   border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line)); border-radius: 7px;
   background: var(--paper); font-size: 13px; color: var(--accent);
 }
 .ai-btn:hover { background: color-mix(in srgb, var(--accent) 9%, var(--paper)); }
 .ai-btn.active { background: color-mix(in srgb, var(--accent) 12%, var(--paper)); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
-.ai-btn .spark { font-size: 12px; }
-.ai-dot { position: absolute; right: 10px; width: 6px; height: 6px; border-radius: 3px; background: var(--accent); animation: shimmer 1.2s ease-in-out infinite; }
+.ai-btn svg, .pdf-btn svg { flex: none; }
+.ai-dot { position: absolute; right: 8px; width: 6px; height: 6px; border-radius: 3px; background: var(--accent); animation: shimmer 1.2s ease-in-out infinite; }
 
 .ai { max-width: 760px; margin: 0 auto; min-height: calc(100% - 48px); display: flex; flex-direction: column; padding: 0 32px; }
 .ai-log { flex: 1; padding: 24px 0 16px; display: flex; flex-direction: column; gap: 14px; }
