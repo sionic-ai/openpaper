@@ -1,5 +1,6 @@
-import { Fragment, memo, useEffect, useRef, useState } from 'react'
+import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Block, Doc, Lang, Unit } from './api'
+import { applyPos, loadPos, posKey, readPos } from './position'
 import { inline, tex } from './render'
 import { dragSplit, stored } from './resize'
 
@@ -167,6 +168,66 @@ export function Reader({ doc, tr, lang, swapped, trLabel }: { doc: Doc; tr: Tr; 
       el.removeEventListener('mouseleave', leave)
     }
   }, [])
+
+  // Reading position: reopening a paper returns to the sentence last at the top of the view.
+  // Until the reader scrolls or types, the view stays pinned to that sentence while the translation
+  // fills in and figures load above it. WebKit has no scroll anchoring, so a translation update
+  // also keeps the last saved sentence in place after that.
+  const pinned = useRef<ReturnType<typeof loadPos>>(null)
+  // The sentence a translation update keeps in place; none while the top of the view has no sentence.
+  const anchor = useRef<ReturnType<typeof loadPos>>(null)
+  useLayoutEffect(() => {
+    const el = root.current
+    const main = el?.closest<HTMLElement>('.main')
+    if (!el || !main) return
+    const id = doc.id
+    const pos = loadPos(id)
+    pinned.current = pos
+    if (!pos || !applyPos(main, el, pos)) {
+      pinned.current = null
+      main.scrollTop = 0
+    }
+    anchor.current = pinned.current
+    let frame = 0
+    const scroll = () => {
+      if (pinned.current || frame) return
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        const p = readPos(main, el)
+        anchor.current = p ?? null
+        if (p) localStorage.setItem(posKey(id), JSON.stringify(p))
+        else if (p === null) localStorage.removeItem(posKey(id))
+      })
+    }
+    // Images have no reserved height, so loading one above the pinned sentence would push it down.
+    const resized = new ResizeObserver(() => {
+      if (pinned.current) applyPos(main, el, pinned.current)
+    })
+    resized.observe(el)
+    const release = () => {
+      pinned.current = null
+      resized.disconnect()
+    }
+    main.addEventListener('scroll', scroll, { passive: true })
+    main.addEventListener('wheel', release, { passive: true })
+    main.addEventListener('pointerdown', release)
+    window.addEventListener('keydown', release, true)
+    return () => {
+      cancelAnimationFrame(frame)
+      resized.disconnect()
+      main.removeEventListener('scroll', scroll)
+      main.removeEventListener('wheel', release)
+      main.removeEventListener('pointerdown', release)
+      window.removeEventListener('keydown', release, true)
+    }
+  }, [doc])
+  useLayoutEffect(() => {
+    const el = root.current
+    const main = el?.closest<HTMLElement>('.main')
+    const pos = pinned.current ?? anchor.current
+    if (el && main && pos) applyPos(main, el, pos)
+    // Only a translation update or swap re-anchors; doc changes are handled above.
+  }, [tr, swapped])
 
   return (
     <div className={swapped ? 'reader swapped' : 'reader'} ref={root} style={{ '--split': split } as React.CSSProperties}>
