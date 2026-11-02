@@ -1,5 +1,6 @@
-import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Block, Doc, Lang, Unit } from './api'
+import { FindBar } from './Find'
 import { applyPos, loadPos, posKey, readPos } from './position'
 import { inline, tex } from './render'
 import { dragSplit, stored } from './resize'
@@ -229,9 +230,25 @@ export function Reader({ doc, tr, lang, swapped, trLabel }: { doc: Doc; tr: Tr; 
     // Only a translation update or swap re-anchors; doc changes are handled above.
   }, [tr, swapped])
 
+  const [finding, setFinding] = useState(false)
+  const [findFocus, setFindFocus] = useState(0)
+  const findContent = useMemo(() => ({}), [doc, tr, swapped])
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (e.metaKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        setFinding(true)
+        setFindFocus(n => n + 1)
+      }
+    }
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  }, [])
+
   return (
     <div className={swapped ? 'reader swapped' : 'reader'} ref={root} style={{ '--split': split } as React.CSSProperties}>
       <style ref={style} />
+      {finding && <FindBar root={root} content={findContent} paper={doc.id} focus={findFocus} onClose={() => setFinding(false)} />}
       <div
         className="col-resize"
         role="separator"
