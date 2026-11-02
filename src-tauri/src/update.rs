@@ -1,5 +1,7 @@
-//! In-app update: compares this build with the latest GitHub release and reruns the
-//! one-line installer, detached, into the folder this app was launched from.
+//! In-app update: compares this build with the latest GitHub release, then installs it into
+//! the folder this app was launched from. macOS reruns the one-line installer, detached.
+//! Windows downloads the release's setup program, checks it, and runs it silently once the
+//! app has quit.
 
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -13,6 +15,7 @@ const TIMEOUT: Duration = Duration::from_secs(8);
 /// reaches the installer only through `OPENPAPER_DIR`, so the command line never contains
 /// `<DIR>/OpenPaper.app/Contents/MacOS/openpaper` and the installer's `pkill -f` on that path
 /// cannot match the installer itself.
+#[cfg(not(windows))]
 fn install_command((major, minor, patch): (u64, u64, u64)) -> (String, String) {
     let tag = format!("v{major}.{minor}.{patch}");
     let cmd = format!(
@@ -125,7 +128,9 @@ fn latest_tag() -> Option<String> {
 pub fn check() -> UpdateInfo {
     let current = env!("CARGO_PKG_VERSION").to_string();
     let latest = latest_tag();
-    let available = latest.as_deref().is_some_and(|l| is_newer(l, &current));
+    let available = latest
+        .as_deref()
+        .is_some_and(|l| is_newer(l, &current) && has_installer(l));
     UpdateInfo {
         current,
         latest,
@@ -134,6 +139,7 @@ pub fn check() -> UpdateInfo {
 }
 
 /// `<DIR>/OpenPaper.app/Contents/MacOS/openpaper` → `<DIR>`. `None` outside an `.app` bundle.
+#[cfg(not(windows))]
 pub fn install_dir_from_exe(exe: &Path) -> Option<PathBuf> {
     let macos = exe.parent()?;
     let contents = macos.parent()?;
@@ -164,6 +170,7 @@ pub fn install_latest(exe: &Path, log: &Path) -> Result<(), String> {
 
 /// Starts the installer for release `version` in its own process group so it outlives this
 /// app, which the installer quits, replaces and reopens. Output is appended to `log`.
+#[cfg(not(windows))]
 pub fn install(exe: &Path, log: &Path, version: (u64, u64, u64)) -> Result<(), String> {
     use std::os::unix::process::CommandExt;
     use std::process::{Command, Stdio};
@@ -191,6 +198,183 @@ pub fn install(exe: &Path, log: &Path, version: (u64, u64, u64)) -> Result<(), S
         .spawn()
         .map_err(|_| "Couldn't start the update".to_string())?;
     // Reap the child if the app is still running when it ends.
+    std::thread::spawn(move || {
+        let _ = child.wait();
+    });
+    Ok(())
+}
+
+/// The setup program each release carries for Windows, made by `tauri build --bundles nsis`.
+pub const WINDOWS_ASSET: &str = "OpenPaper-windows-x64-setup.exe";
+
+/// The folder of an installed copy: the setup program puts `uninstall.exe` next to the app.
+/// `None` for a development build.
+#[cfg(windows)]
+pub fn install_dir_from_exe(exe: &Path) -> Option<PathBuf> {
+    let dir = exe.parent()?;
+    dir.join("uninstall.exe")
+        .is_file()
+        .then(|| dir.to_path_buf())
+}
+
+#[cfg(windows)]
+fn download_client(timeout: Duration) -> Option<reqwest::blocking::Client> {
+    reqwest::blocking::Client::builder()
+        .user_agent(concat!(
+            "openpaper/",
+            env!("CARGO_PKG_VERSION"),
+            " (paper reader)"
+        ))
+        .redirect(reqwest::redirect::Policy::custom(|attempt| {
+            if may_follow_download(attempt.url(), attempt.previous().len()) {
+                attempt.follow()
+            } else {
+                attempt.stop()
+            }
+        }))
+        .connect_timeout(TIMEOUT)
+        .timeout(timeout)
+        .build()
+        .ok()
+}
+
+/// The Windows installer is uploaded a few minutes after a release is published, and older
+/// releases have none. Until it is there, there is nothing to update to. GET, not HEAD: the
+/// asset host signs its redirect URLs for GET only.
+#[cfg(windows)]
+fn has_installer(version: &str) -> bool {
+    let Some((major, minor, patch)) = parse_version(version) else {
+        return false;
+    };
+    let url = format!(
+        "https://github.com/{REPO}/releases/download/v{major}.{minor}.{patch}/{WINDOWS_ASSET}.sha256"
+    );
+    download_client(TIMEOUT)
+        .and_then(|http| http.get(url).send().ok())
+        .is_some_and(|r| r.status().is_success())
+}
+
+/// macOS releases always carry the app; the release job fails before publishing otherwise.
+#[cfg(not(windows))]
+fn has_installer(_version: &str) -> bool {
+    true
+}
+
+/// Release downloads redirect from github.com to GitHub's asset hosts.
+#[cfg(any(windows, test))]
+fn may_follow_download(url: &reqwest::Url, hops: usize) -> bool {
+    hops < MAX_HOPS
+        && url.scheme() == "https"
+        && url.port().is_none()
+        && url.host_str().is_some_and(|h| {
+            h == "github.com"
+                || h == "objects.githubusercontent.com"
+                || h.ends_with(".githubusercontent.com")
+        })
+}
+
+/// `<sha256 hex>  <name>` (as written by `sha256sum` or `shasum`) → the lowercase hex.
+#[cfg(any(windows, test))]
+fn checksum_of(file: &str) -> Option<String> {
+    let hex = file.split_whitespace().next()?.to_ascii_lowercase();
+    (hex.len() == 64 && hex.bytes().all(|b| b.is_ascii_hexdigit())).then_some(hex)
+}
+
+#[cfg(any(windows, test))]
+fn sha256_hex(bytes: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+    Sha256::digest(bytes)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
+}
+
+/// A PowerShell string literal: single quotes, with any single quote doubled.
+#[cfg(any(windows, test))]
+fn ps_quote(s: &str) -> String {
+    format!("'{}'", s.replace('\'', "''"))
+}
+
+/// The script that waits for this app (`pid`) to quit, runs the setup program silently into the
+/// same per-user folder, and opens the app again.
+#[cfg(any(windows, test))]
+fn windows_script(pid: u32, setup: &Path, exe: &Path) -> String {
+    format!(
+        "Wait-Process -Id {pid} -Timeout 60 -ErrorAction SilentlyContinue; \
+         Start-Process -FilePath {} -ArgumentList '/S' -Wait; \
+         Start-Process -FilePath {}",
+        ps_quote(&setup.display().to_string()),
+        ps_quote(&exe.display().to_string()),
+    )
+}
+
+/// Downloads the setup program of release `version`, checks it against the release's
+/// `.sha256`, and starts a hidden PowerShell that installs it after this app quits. The caller
+/// quits the app. Output of the script is appended to `log`.
+#[cfg(windows)]
+pub fn install(
+    exe: &Path,
+    log: &Path,
+    (major, minor, patch): (u64, u64, u64),
+) -> Result<(), String> {
+    use std::io::Read;
+    use std::os::windows::process::CommandExt;
+    use std::process::{Command, Stdio};
+    const MAX_SETUP: u64 = 200 * 1024 * 1024;
+    const DOWNLOAD_FAILED: &str =
+        "Couldn't download the update. Check your connection and try again";
+    install_dir_from_exe(exe).ok_or_else(|| DEV_BUILD.to_string())?;
+    let tag = format!("v{major}.{minor}.{patch}");
+    let url = format!("https://github.com/{REPO}/releases/download/{tag}/{WINDOWS_ASSET}");
+    let http =
+        download_client(Duration::from_secs(300)).ok_or_else(|| DOWNLOAD_FAILED.to_string())?;
+    let fetch = |url: &str| -> Result<Vec<u8>, String> {
+        let mut body = Vec::new();
+        http.get(url)
+            .send()
+            .and_then(|r| r.error_for_status())
+            .map_err(|_| DOWNLOAD_FAILED.to_string())?
+            .take(MAX_SETUP)
+            .read_to_end(&mut body)
+            .map_err(|_| DOWNLOAD_FAILED.to_string())?;
+        Ok(body)
+    };
+    let want = checksum_of(&String::from_utf8_lossy(&fetch(&format!("{url}.sha256"))?))
+        .ok_or_else(|| DOWNLOAD_FAILED.to_string())?;
+    let setup = fetch(&url)?;
+    if sha256_hex(&setup) != want {
+        return Err("The download does not match its checksum. Nothing was installed".to_string());
+    }
+    let path = std::env::temp_dir().join(format!("openpaper-setup-{tag}.exe"));
+    std::fs::write(&path, &setup).map_err(|_| "Couldn't save the update".to_string())?;
+    let out = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log)
+        .map_err(|_| "Couldn't create the update log".to_string())?;
+    let err = out
+        .try_clone()
+        .map_err(|_| "Couldn't open the update log".to_string())?;
+    // A full path, so a powershell.exe elsewhere on PATH is never the one that runs.
+    let root = std::env::var_os("SYSTEMROOT").unwrap_or_else(|| r"C:\Windows".into());
+    let powershell = Path::new(&root).join(r"System32\WindowsPowerShell\v1.0\powershell.exe");
+    const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    let mut child = Command::new(powershell)
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+        ])
+        .arg(windows_script(std::process::id(), &path, exe))
+        .stdin(Stdio::null())
+        .stdout(out)
+        .stderr(err)
+        .creation_flags(CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW)
+        .spawn()
+        .map_err(|_| "Couldn't start the update".to_string())?;
     std::thread::spawn(move || {
         let _ = child.wait();
     });
@@ -270,6 +454,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(windows))]
     fn install_dir_needs_app_bundle() {
         assert_eq!(
             install_dir_from_exe(Path::new(
@@ -309,6 +494,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(windows))]
     fn installer_runs_the_release_tag_not_main() {
         let (cmd, tag) = install_command((0, 2, 1));
         assert_eq!(tag, "v0.2.1");
@@ -318,5 +504,57 @@ mod tests {
         );
         assert!(!cmd.contains("/main/"));
         assert!(!cmd.contains("OpenPaper.app") && !cmd.contains("MacOS"));
+    }
+
+    #[test]
+    fn windows_downloads_stay_on_github() {
+        let ok = |u: &str| may_follow_download(&reqwest::Url::parse(u).unwrap(), 0);
+        assert!(ok(
+            "https://github.com/sionic-ai/openpaper/releases/download/v1.0.0/x.exe"
+        ));
+        assert!(ok(
+            "https://release-assets.githubusercontent.com/github-production-release-asset/1"
+        ));
+        assert!(ok("https://objects.githubusercontent.com/x"));
+        assert!(!ok("http://objects.githubusercontent.com/x"));
+        assert!(!ok("https://githubusercontent.com.evil.example/x"));
+        assert!(!ok("https://evil.example/x"));
+        assert!(!may_follow_download(
+            &reqwest::Url::parse("https://github.com/x").unwrap(),
+            MAX_HOPS
+        ));
+    }
+
+    #[test]
+    fn reads_checksum_files() {
+        let hex = "a".repeat(64);
+        assert_eq!(
+            checksum_of(&format!("{hex}  OpenPaper.exe\n")),
+            Some(hex.clone())
+        );
+        assert_eq!(
+            checksum_of(&format!("{}  *OpenPaper.exe", hex.to_uppercase())),
+            Some(hex)
+        );
+        assert_eq!(checksum_of("not a checksum"), None);
+        assert_eq!(checksum_of(""), None);
+        assert_eq!(
+            sha256_hex(b"abc"),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+    }
+
+    #[test]
+    fn windows_script_quotes_paths() {
+        let s = windows_script(
+            42,
+            Path::new(r"C:\Users\O'Neil\AppData\Local\Temp\openpaper-setup-v1.0.0.exe"),
+            Path::new(r"C:\Users\O'Neil\AppData\Local\OpenPaper\openpaper.exe"),
+        );
+        assert!(s.starts_with("Wait-Process -Id 42 "));
+        assert!(s.contains(r"-FilePath 'C:\Users\O''Neil\AppData\Local\Temp\openpaper-setup-v1.0.0.exe' -ArgumentList '/S' -Wait"));
+        assert!(s.ends_with(
+            r"Start-Process -FilePath 'C:\Users\O''Neil\AppData\Local\OpenPaper\openpaper.exe'"
+        ));
     }
 }
