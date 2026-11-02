@@ -1,6 +1,6 @@
 # Architecture
 
-OpenPaper is a Tauri 2 app: a Rust core in `src-tauri/` and a React 19 / Vite frontend in `src/`. Every model call goes through the user's logged-in Claude Code CLI.
+OpenPaper is a Tauri 2 app for macOS and Windows: a Rust core in `src-tauri/` and a React 19 / Vite frontend in `src/`. Every model call goes through the user's logged-in Claude Code CLI.
 
 ## Pipeline
 
@@ -14,14 +14,14 @@ OpenPaper is a Tauri 2 app: a Rust core in `src-tauri/` and a React 19 / Vite fr
 | Sentences | `src-tauri/src/sentence.rs` | Splits sentences while respecting academic abbreviations (e.g., Fig., et al.). |
 | Translation | `src-tauri/src/translate.rs` | Runs `claude -p` with tools, MCP, and settings off in an empty temp folder. Expects JSON whose paragraph IDs and sentence counts match the source 1:1, and retries any paragraph that does not match on its own. Runs 3 batches at a time. Jobs are keyed by paper, mode, and target language. |
 | Languages | `src-tauri/src/lang.rs` | The list of target languages. The frontend reads it through the `languages` command. Korean keeps its own detailed prompts; other languages use parameterized English prompts. |
-| Claude lookup | `src-tauri/src/translate.rs` | Looks for the CLI at `~/.local/bin/claude`, `~/.claude/local/claude`, Homebrew paths, then `PATH`. Checks login with `claude auth status`, which makes no model call. |
-| Update | `src-tauri/src/update.rs` | Reads the latest tag from the redirect of `releases/latest` (GitHub API as fallback; the button stays hidden if both fail). Installing runs `install.sh` detached from the app with `OPENPAPER_DIR=<folder of the running app>` and `OPENPAPER_NO_CLAUDE=1`, logging to `$TMPDIR/openpaper-update.log`. |
+| Claude lookup | `src-tauri/src/translate.rs` | Looks for the CLI at `~/.local/bin/claude`, `~/.claude/local/claude`, Homebrew paths, then `PATH`. On Windows: `%USERPROFILE%\.local\bin\claude.exe`, then `claude.exe` on `PATH`; child processes get no console window. Checks login with `claude auth status`, which makes no model call. |
+| Update | `src-tauri/src/update.rs` | Reads the latest tag from the redirect of `releases/latest` (GitHub API as fallback; the button stays hidden if both fail). macOS: installing runs that tag's `install.sh` detached from the app with `OPENPAPER_DIR=<folder of the running app>` and `OPENPAPER_NO_CLAUDE=1`. Windows: an update is offered only when the release has `OpenPaper-windows-x64-setup.exe`; installing downloads it, checks its `.sha256`, starts a hidden PowerShell that waits for the app to quit, runs the setup with `/S` and reopens the app, and the app quits itself. Both log to `$TMPDIR/openpaper-update.log` (`%TEMP%` on Windows). |
 | Reader | `src/Reader.tsx` | Lays out each row as a 2-column grid of original and translation. Inline math is kept through translation as `⟦M n⟧` tokens and rendered with KaTeX. Hover changes a single CSS rule so both sentences with the same `data-s` light up. The reading position (the original sentence at the top of the view) is saved per paper in `localStorage` (`src/position.ts`). |
 | Find | `src/Find.tsx` | `⌘F` searches the text of both columns and paints matches with the CSS Highlight API, so the paper's DOM is not changed. |
 
 ## Library files
 
-Everything lives in `~/Library/Application Support/dev.rlaope.openpaper/papers/` as plain JSON. There is no database.
+Everything lives in `~/Library/Application Support/dev.rlaope.openpaper/papers/` (Windows: `%APPDATA%\dev.rlaope.openpaper\papers\`) as plain JSON. There is no database.
 
 | What | Korean (`ko`) | Other languages |
 |---|---|---|

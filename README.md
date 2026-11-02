@@ -9,7 +9,7 @@ Read an English research paper side by side with its translation, sentence by se
 [![Release](https://img.shields.io/github/v/release/sionic-ai/openpaper?style=flat-square&labelColor=black&color=white)](https://github.com/sionic-ai/openpaper/releases/latest)
 [![CI](https://img.shields.io/github/actions/workflow/status/sionic-ai/openpaper/ci.yml?branch=main&style=flat-square&labelColor=black&label=CI)](https://github.com/sionic-ai/openpaper/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-white?style=flat-square&labelColor=black)](LICENSE)
-[![Platform: macOS](https://img.shields.io/badge/platform-macOS-white?style=flat-square&labelColor=black&logo=apple)](#install)
+[![Platform: macOS | Windows](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-white?style=flat-square&labelColor=black)](#install)
 [![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%202-white?style=flat-square&labelColor=black&logo=tauri)](https://tauri.app)
 
 </div>
@@ -17,6 +17,8 @@ Read an English research paper side by side with its translation, sentence by se
 <a href=".github/assets/demo.mp4"><img src=".github/assets/demo.webp" alt="OpenPaper demo: search, translate, linked sentence highlight, summarize, ask, and switch languages" width="100%"></a>
 
 ## Install
+
+### macOS
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/sionic-ai/openpaper/main/install.sh | bash
@@ -46,6 +48,21 @@ Exit codes: `0` ready, `1` error, `2` app installed but Claude Code is not logge
 
 </details>
 
+### Windows
+
+Download [OpenPaper-windows-x64-setup.exe](https://github.com/sionic-ai/openpaper/releases/latest/download/OpenPaper-windows-x64-setup.exe) and run it. It installs for your user only, with no admin rights, and adds OpenPaper to the Start menu. The app shows an Update button when a new release is out.
+
+The setup program is not code-signed, so Windows SmartScreen may warn about it. Choose **More info**, then **Run anyway**.
+
+Translation needs [Claude Code](https://docs.claude.com/claude-code). If it is not installed, run this in PowerShell, then log in:
+
+```powershell
+irm https://claude.ai/install.ps1 | iex
+claude auth login
+```
+
+Requires Windows 10 or 11 (x64) and a Claude account. The setup program installs Microsoft Edge WebView2 if it is missing.
+
 ## What you get
 
 - **Side by side reading.** The original on one side, the translation on the other, paired sentence by sentence. Hover or select a sentence and its pair lights up on both sides. Swap sides with `⇄` and drag the divider to resize. Press `⌘F` to find text in both columns. Reopening a paper returns to where you stopped reading.
@@ -55,14 +72,14 @@ Exit codes: `0` ready, `1` error, `2` app installed but Claude Code is not logge
 - **Easy mode.** An explanatory translation that unpacks jargon and adds the missing reasoning, while keeping facts and numbers as written.
 - **Summary post.** One click writes a short explainer post about the paper with its real numbers. It is saved and shows up instantly next time.
 - **Ask the paper.** Ask questions in a chat grounded in the open paper. Select any passage to ask about it directly. Answers stream in as they are written.
-- **Folders and dark mode.** Drag papers onto each other to group them. Light and dark themes follow macOS until you pick one.
+- **Folders and dark mode.** Drag papers onto each other to group them. Light and dark themes follow the system until you pick one.
 - **In-app update.** An Update button appears when a new release is out.
 
 ## How it works
 
 - **Claude Code CLI, isolated.** Every model call runs `claude -p` with tools, MCP servers, and settings turned off, in an empty temporary folder. The app sends paper text and reads JSON or text back. No API key, no direct HTTP calls to Anthropic.
 - **No invented papers.** The AI finder lets Claude plan queries, fetches real results from the arXiv API, and keeps only picks whose IDs are in those results.
-- **Your files stay local.** Papers, translations, summaries, and folders are plain JSON files in `~/Library/Application Support/dev.rlaope.openpaper/papers/`.
+- **Your files stay local.** Papers, translations, summaries, and folders are plain JSON files in `~/Library/Application Support/dev.rlaope.openpaper/papers/` on macOS and `%APPDATA%\dev.rlaope.openpaper\papers\` on Windows.
 
 The full pipeline, file formats, and the command-line probe are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -74,7 +91,8 @@ Needs Rust 1.85+, Node 20+, pnpm, and a logged-in `claude` CLI (`claude auth sta
 pnpm install
 pnpm dev          # run the app in development
 pnpm build        # typecheck and build the web side
-pnpm tauri build  # src-tauri/target/release/bundle/macos/OpenPaper.app
+pnpm tauri build  # macOS: src-tauri/target/release/bundle/macos/OpenPaper.app
+                  # Windows: pnpm tauri build --bundles nsis → bundle/nsis/OpenPaper_<version>_x64-setup.exe
 ```
 
 ## Uninstall
@@ -85,10 +103,13 @@ curl -fsSL https://raw.githubusercontent.com/sionic-ai/openpaper/main/install.sh
 
 Add `--purge` to also delete your papers. By hand: `rm -rf /Applications/OpenPaper.app`, and `~/Library/Application Support/dev.rlaope.openpaper` for the papers.
 
+On Windows, remove OpenPaper in **Settings > Apps > Installed apps**. Your papers stay in `%APPDATA%\dev.rlaope.openpaper`; delete that folder to remove them too.
+
 ## Limits
 
-- macOS only.
-- The build is ad-hoc signed, not notarized. The installer clears the download quarantine. If you download the zip in a browser, right-click the app and choose Open the first time.
+- macOS 11+ and Windows 10/11 (x64). Linux is not supported.
+- On Windows, only Claude Code from the official installer (`claude.exe`) is found. An npm install (`claude.cmd`) is not used.
+- The macOS build is ad-hoc signed, not notarized, and the Windows setup program is not code-signed. The installer clears the download quarantine. If you download the zip in a browser, right-click the app and choose Open the first time.
 - PDFs use the text layer only. Scanned PDFs do not work, and PDF equations, figures, and tables show as plain text.
 - Speed and quality follow your Claude Code account's model and usage limits.
 
