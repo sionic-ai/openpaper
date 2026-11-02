@@ -8,6 +8,7 @@ import { FloatingAssistant, SelectionAsk, useAsk } from './Assistant'
 import { posKey } from './position'
 import { dragSplit, stored } from './resize'
 import { applyTheme, initialTheme, type Theme } from './theme'
+import logo from '../src-tauri/icons/128x128.png'
 
 function ThemeButton() {
   const [theme, setTheme] = useState<Theme>(initialTheme)
@@ -551,7 +552,10 @@ export function App() {
             <SidebarIcon />
           </button>
         </div>
-        <div className="brand" data-tauri-drag-region>OpenPaper</div>
+        <div className="brand" data-tauri-drag-region>
+          <img src={logo} alt="" width="22" height="22" draggable={false} />
+          OpenPaper
+        </div>
         <form className="import" onSubmit={submitArxiv}>
           <input
             value={input}
