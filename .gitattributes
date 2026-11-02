@@ -1,0 +1,41 @@
+# Normalize line endings.
+* text=auto
+
+# Scripts must keep LF so `curl ... | bash` works everywhere.
+*.sh text eol=lf
+install.sh text eol=lf
+
+# GitHub language bar: show Rust only.
+*.ts linguist-detectable=false
+*.tsx linguist-detectable=false
+*.js linguist-detectable=false
+*.jsx linguist-detectable=false
+*.mjs linguist-detectable=false
+*.cjs linguist-detectable=false
+*.css linguist-detectable=false
+*.html linguist-detectable=false
+*.sh linguist-detectable=false
+*.json linguist-detectable=false
+*.toml linguist-detectable=false
+*.yaml linguist-detectable=false
+*.yml linguist-detectable=false
+*.md linguist-detectable=false
+*.plist linguist-detectable=false
+
+# Generated files.
+*.lock linguist-generated
+pnpm-lock.yaml linguist-generated
+src-tauri/gen/** linguist-generated
+
+# Binary assets.
+*.png binary
+*.jpg binary
+*.gif binary
+*.webp binary
+*.icns binary
+*.ico binary
+*.mp4 binary
+*.webm binary
+*.pdf binary
+*.woff binary
+*.woff2 binary

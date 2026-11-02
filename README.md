@@ -1,107 +1,100 @@
-# 나란 (nanran)
+<div align="center">
 
-영어 논문을 왼쪽에 원문, 오른쪽에 한국어 번역으로 나란히 보여 주는 macOS 데스크톱 앱입니다. 한쪽 문장에 마우스를 올리면 짝이 되는 문장이 양쪽에서 함께 하이라이트됩니다. 번역은 이 Mac에 로그인된 [Claude Code](https://docs.claude.com/claude-code)로 하므로 API 키가 필요 없습니다.
+<img src="src-tauri/icons/128x128@2x.png" alt="OpenPaper icon" width="128" height="128">
 
-## 설치
+# OpenPaper
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/sionic-ai/paper-desktop/main/install.sh | bash
-```
+Read an English research paper side by side with its translation, sentence by sentence.
 
-이 한 줄이 하는 일:
+[![Release](https://img.shields.io/github/v/release/sionic-ai/openpaper?style=flat-square&labelColor=black&color=white)](https://github.com/sionic-ai/openpaper/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-white?style=flat-square&labelColor=black)](LICENSE)
+[![Platform: macOS](https://img.shields.io/badge/platform-macOS-white?style=flat-square&labelColor=black&logo=apple)](#install)
+[![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%202-white?style=flat-square&labelColor=black&logo=tauri)](https://tauri.app)
 
-1. 최신 릴리스의 `Nanran.app`(Apple Silicon·Intel 공용)을 받아 `/Applications`에 넣습니다. 쓰기 권한이 없으면 `~/Applications`에 넣습니다.
-2. Claude Code가 없으면 공식 설치 스크립트(`https://claude.ai/install.sh`)로 설치합니다.
-3. Claude Code에 로그인되어 있지 않으면 `claude auth login`을 띄웁니다. 브라우저에서 로그인하면 끝납니다.
-4. 앱을 엽니다. 앱은 실행할 때마다 Claude Code 로그인 상태를 확인하고, 로그인이 안 되어 있으면 상단에 안내를 띄웁니다.
+</div>
 
-이미 Claude Code에 로그인되어 있다면 설치가 끝나는 즉시 번역과 AI 찾기를 쓸 수 있습니다.
+<a href=".github/assets/demo.mp4"><img src=".github/assets/demo.webp" alt="OpenPaper demo: search, translate, summarize, ask, and linked sentence highlight" width="100%"></a>
 
-옵션은 `bash -s --` 뒤에 붙입니다.
+## Install
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/sionic-ai/paper-desktop/main/install.sh | bash -s -- --no-open
+curl -fsSL https://raw.githubusercontent.com/sionic-ai/openpaper/main/install.sh | bash
 ```
 
-| 옵션 | 환경 변수 | 내용 |
+Run it again to update. The app also shows an Update button when a new release is out.
+
+The installer puts `OpenPaper.app` in `/Applications` (or `~/Applications`), installs [Claude Code](https://docs.claude.com/claude-code) if it is missing, and starts the Claude Code login if you are not logged in. Translation uses your Claude Code account, so there is no API key to set. Requires macOS 11 or later and a Claude account.
+
+<details>
+<summary>Installer options</summary>
+
+Options go after `bash -s --`, for example `... | bash -s -- --no-open`:
+
+| Option | Env var | What it does |
 |---|---|---|
-| `--no-claude` | `NANRAN_NO_CLAUDE=1` | Claude Code 설치·로그인 단계를 건너뜁니다 |
-| `--no-login` | `NANRAN_NO_LOGIN=1` | Claude Code가 없으면 설치만 하고 로그인은 시작하지 않습니다 |
-| `--no-open` | `NANRAN_NO_OPEN=1` | 설치 후 앱을 열지 않습니다 |
-| `--dir <path>` | `NANRAN_DIR` | 앱을 설치할 폴더 |
-| `--version <tag>` | `NANRAN_VERSION` | 특정 릴리스 태그(기본 latest) |
-| `--check` | | 설치 상태만 출력하고 아무것도 바꾸지 않습니다 |
+| `--no-claude` | `OPENPAPER_NO_CLAUDE=1` | Skip installing and logging in to Claude Code |
+| `--no-login` | `OPENPAPER_NO_LOGIN=1` | Never start the Claude Code login |
+| `--no-open` | `OPENPAPER_NO_OPEN=1` | Do not open the app at the end |
+| `--dir <path>` | `OPENPAPER_DIR` | Install into this folder |
+| `--version <tag>` | `OPENPAPER_VERSION` | Install a specific release tag |
+| `--check` | | Print what is installed and change nothing |
+| `--uninstall` | | Remove the app, keep your papers |
+| `--purge` | | With `--uninstall`, also delete your papers |
 
-종료 코드는 `0` 준비 완료, `1` 오류, `2` 앱은 설치됐지만 Claude Code 로그인이 필요함입니다. 에이전트에게 설치를 맡길 때의 절차는 [AGENTS.md](AGENTS.md)에 있습니다.
+Exit codes: `0` ready, `1` error, `2` app installed but Claude Code is not logged in. Agents installing for a user should follow [AGENTS.md](AGENTS.md).
 
-다시 실행하면 최신 버전으로 덮어씁니다. 지우려면 `rm -rf /Applications/Nanran.app`을 실행하고, 저장된 논문까지 지우려면 `~/Library/Application Support/dev.rlaope.nanran`도 삭제합니다.
+</details>
 
-> 앱은 Apple 공증을 받지 않은 ad-hoc 서명 빌드입니다. 설치 스크립트가 다운로드 격리 속성(`com.apple.quarantine`)을 지워서 바로 열립니다. 릴리스 zip을 브라우저로 직접 받았다면 처음 한 번은 Finder에서 앱을 우클릭하고 `열기`를 누르거나 `xattr -dr com.apple.quarantine /Applications/Nanran.app`을 실행합니다.
+## What you get
 
-요구 사항: macOS 11 이상, Claude Code 계정(claude.ai 구독 또는 Console).
+- **Side by side reading.** The original on one side, the translation on the other, paired sentence by sentence. Hover or select a sentence and its pair lights up on both sides. Swap sides with `⇄` and drag the divider to resize.
+- **Pick your language.** Translate into Korean, Japanese, Chinese (Simplified), Spanish, French, German, or Portuguese.
+- **arXiv search.** Search arXiv inside the app, or paste an arXiv ID or URL. Local PDFs work too.
+- **AI paper finder.** Describe what you are looking for in plain words. Claude plans the searches, and the app only shows papers that came back from arXiv, never invented ones.
+- **Easy mode.** An explanatory translation that unpacks jargon and adds the missing reasoning, while keeping facts and numbers as written.
+- **Summary post.** One click writes a short explainer post about the paper with its real numbers. It is saved and shows up instantly next time.
+- **Ask the paper.** Ask questions in a chat grounded in the open paper. Select any passage to ask about it directly. Answers stream in as they are written.
+- **Folders and dark mode.** Drag papers onto each other to group them. Light and dark themes follow macOS until you pick one.
+- **In-app update.** An Update button appears when a new release is out.
 
-## 기능
+## How it works
 
-- **찾기**: 왼쪽 칸에 검색어(`flash attention`, `"sliding window" mistral`)를 넣으면 arXiv를 앱 안에서 검색합니다. 결과에서 바로 나란히 읽거나 arxiv.org를 기본 브라우저로 열 수 있습니다
-- **AI로 찾기**: 왼쪽 칸의 `AI로 논문 찾기`에 원하는 주제를 말로 적으면 Claude가 arXiv를 검색해 논문 번호와 링크를 추천합니다. 말풍선의 `번역하기`를 누르면 그 논문을 가져와 바로 나란히 읽기로 열고 번역을 시작합니다
-- **불러오기**: arXiv ID나 주소(`1706.03762`, `https://arxiv.org/abs/2310.06825`)는 바로 가져오고, 로컬 PDF 파일도 열 수 있습니다
-- **번역 문체**: 교재처럼 읽히는 합니다체로 번역합니다. 영어 어순을 따르지 않고 한국어 어순으로 다시 짜며, 처음 나오는 전문 용어는 `파국적 망각(catastrophic forgetting)`처럼 영어를 함께 적습니다. 섹션 제목도 `1 Introduction | 1 서론`처럼 나란히 번역하고, 논문 제목은 영어 그대로 두 칸에 걸쳐 한 번만 보여 줍니다. 예전 문체로 번역한 논문에는 상단에 `새 문체로 다시 번역 ▾` 버튼이 뜨고, 여기서도 `그냥 번역`과 `쉽게 번역`을 고를 수 있습니다. 다시 번역하는 동안에도 기존 번역은 그대로 보입니다
-- **쉽게 읽기**: `번역하기`를 누르면 `그냥 번역`과 `쉽게 번역`을 고를 수 있습니다. 쉽게 번역은 문장마다 짝을 유지한 채, 어려운 용어를 `파인튜닝(이미 학습된 모델을 특정 작업에 맞게 조금 더 학습시키는 것)`처럼 풀어 쓰고 생략된 이유를 짧게 덧붙입니다. 사실·수치·단서는 원문대로 둡니다. 둘 다 만들어 두면 상단의 `번역 | 쉽게 읽기` 스위치로 오가며, 논문마다 마지막에 본 쪽으로 열립니다. 쉽게 번역은 `<id>.easy.json`에 따로 저장됩니다
-- **나란히 읽기**: 문장 단위로 원문과 번역을 짝지어 보여 줍니다. 상단의 `⇄` 버튼으로 원문과 한국어의 좌우 위치를 바꿀 수 있습니다. 두 칸 사이 경계를 끌면 한쪽을 더 넓게 볼 수 있고, 두 번 누르면 반반으로 돌아갑니다
-- **다크 모드**: 사이드바 왼쪽 아래의 달/해 아이콘으로 라이트와 다크를 바꿉니다. 처음에는 macOS 설정을 따르고, 고른 뒤에는 그 선택이 남습니다
-- **폴더**: `내 논문`에서 논문을 끌어 다른 논문 위에 놓으면 둘이 새 폴더로 묶입니다. 폴더 이름 줄이나 폴더 안 논문 위에 놓으면 그 폴더에 들어가고, 목록 빈 곳에 놓으면 폴더에서 빠집니다. 폴더를 접으면 맨 앞 논문 하나만 대표로 보이며, 대표를 바꾸려면 다른 논문을 맨 앞에 끌어 놓으면 됩니다. 이름 줄을 두 번 누르면 이름을 바꿀 수 있고, 폴더를 지워도 논문은 남습니다. 폴더는 `folders.json`에 저장됩니다
-- **사이드바**: 오른쪽 가장자리를 끌어 너비를 조절하고, 상단 아이콘이나 `⌘B`로 접고 펼칩니다. 아주 좁게 끌어도 접힙니다. 너비와 상태는 다음 실행에도 남습니다
-- **요약하기**: 번역이 끝나면 상단에 `✦ 요약하기`가 생깁니다. 누르면 대화창이 평소보다 넓게 열리고, Claude가 논문을 한국어 글 한 편으로 정리합니다. 질문형 도입과 `결론부터 말하면`으로 시작해 `1. 핵심 주장 (영어 원어)` 절마다 `문제·해결책·결과` 불릿과 논문의 실제 수치를 담고 `마치며:`로 끝납니다. 요약은 `<id>.summary.json`에 저장되어 다음부터는 바로 뜨며, 글 아래 `다시 요약`으로 새로 쓸 수 있습니다
-- **물어보기**: 오른쪽 아래 떠 있는 ✦ 버튼을 누르고 질문을 적어 Enter를 치면 대화창이 열리고, Claude가 열린 논문을 근거로 답합니다. 첫 글자가 나오기 전까지는 Claude Code처럼 `✻ 생각하는 중…` 상태가 보이고, 답은 쓰이는 대로 바로 흘러나옵니다. 본문을 드래그하면 작은 입력창이 떠서 질문을 적고 Enter(또는 ↵ 버튼)로 그 부분과 함께 보낼 수 있습니다. 입력하거나 스크롤해도 고른 부분은 표시된 채 남습니다. 대화창 왼쪽·위 가장자리나 왼쪽 위 모서리를 끌면 크기를 바꿀 수 있고(바꾼 크기는 기억), 두 번 누르면 기본 크기로 돌아갑니다
-- **업데이트**: 새 릴리스가 나오면 왼쪽 칸 맨 아래에 파란 `업데이트` 버튼이 뜹니다. 누르면 설치 스크립트로 새 버전을 받아 교체하고 다시 엽니다
-- **저장**: 논문과 번역은 `~/Library/Application Support/dev.rlaope.nanran/papers/`에만 저장됩니다
+- **Claude Code CLI, isolated.** Every model call runs `claude -p` with tools, MCP servers, and settings turned off, in an empty temporary folder. The app sends paper text and reads JSON or text back. No API key, no direct HTTP calls to Anthropic.
+- **No invented papers.** The AI finder lets Claude plan queries, fetches real results from the arXiv API, and keeps only picks whose IDs are in those results.
+- **Your files stay local.** Papers, translations, summaries, and folders are plain JSON files in `~/Library/Application Support/dev.rlaope.openpaper/papers/`.
 
-## 소스에서 빌드
+The full pipeline, file formats, and the command-line probe are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-필요한 것: Rust 1.85 이상, Node 20 이상, pnpm, 로그인된 `claude` CLI(`claude auth status`로 확인)
+## Build from source
+
+Needs Rust 1.85+, Node 20+, pnpm, and a logged-in `claude` CLI (`claude auth status`).
 
 ```sh
 pnpm install
-pnpm dev                 # 개발 실행
-pnpm tauri build         # src-tauri/target/release/bundle/macos/Nanran.app 생성
-scripts/release.sh       # 유니버설 빌드 후 GitHub 릴리스에 올림 (관리자용)
+pnpm dev          # run the app in development
+pnpm build        # typecheck and build the web side
+pnpm tauri build  # src-tauri/target/release/bundle/macos/OpenPaper.app
 ```
 
-## 동작 방식
-
-| 단계 | 위치 | 내용 |
-|---|---|---|
-| arXiv | `src-tauri/src/arxiv.rs` | arXiv HTML(LaTeXML)을 섹션, 문단, 그림, 표, 수식 단위로 파싱합니다. HTML 판이 없으면 PDF로 대신 처리합니다. 그림은 data URL로 임베드합니다. |
-| 검색 | `src-tauri/src/search.rs` | arXiv 공개 API(`export.arxiv.org/api/query`)에 모든 단어가 들어간 논문을 관련도순으로 20개씩 요청하고 Atom 응답을 파싱합니다. 따옴표로 묶은 구절은 붙여서 찾습니다. arxiv.org 열기는 ID만 받아 `https://arxiv.org/abs/<id>`로만 엽니다. |
-| AI 추천 | `src-tauri/src/recommend.rs` | Claude가 요청을 영어 검색어 3개 이내와 확신하는 arXiv ID로 바꾸고, 앱이 arXiv API로 실제 결과를 가져온 뒤 Claude가 그 안에서만 최대 5개를 고릅니다. 후보에 없는 ID는 버리므로 존재하지 않는 논문 링크는 나오지 않습니다. 요청 하나에 Claude 호출 2번과 arXiv 요청 최대 4번이 들어가고 15초 안팎 걸립니다. |
-| 질문 | `src-tauri/src/ask.rs` | `claude -p --output-format stream-json`으로 답을 조각조각 받아 Tauri Channel로 화면에 흘려 보냅니다. 열린 논문을 수식까지 복원한 영어 평문(최대 6만 자, 선택 부분이 뒤쪽이면 그 주변)으로 만들어 선택 문장, 최근 대화 8개와 함께 Claude에 보냅니다. 답은 한국어 평문입니다. |
-| 업데이트 | `src-tauri/src/update.rs` | `releases/latest`의 리다이렉트 태그로 최신 버전을 확인하고(실패하면 버튼을 숨김), 설치를 누르면 `install.sh`를 앱과 분리된 프로세스로 `NANRAN_DIR=<현재 앱 폴더> NANRAN_NO_CLAUDE=1`과 함께 실행합니다. 기록은 `$TMPDIR/nanran-update.log`에 남습니다. |
-| PDF | `src-tauri/src/pdf.rs` | 텍스트를 추출한 뒤 제목과 번호 붙은 섹션을 복원합니다. 쪽 번호를 제거하고, 줄 끝 하이픈을 문서 어휘를 기준으로 판정해 이어 붙입니다. |
-| 문장 | `src-tauri/src/sentence.rs` | 학술 약어(e.g., Fig., et al. 등)를 고려해 문장을 분할합니다. |
-| 번역 | `src-tauri/src/translate.rs` | `claude -p`를 도구, MCP, 설정을 모두 끈 상태로 빈 임시 폴더에서 실행합니다. 문단 ID와 문장 수가 1:1로 맞는 JSON을 받고, 맞지 않는 문단은 단독으로 다시 요청합니다. 3개 배치를 동시에 처리합니다. |
-| Claude 연결 | `src-tauri/src/translate.rs` | `~/.local/bin/claude`, `~/.claude/local/claude`, Homebrew 경로, PATH 순서로 CLI를 찾습니다. 로그인 여부는 모델 호출 없이 `claude auth status`로 확인합니다. |
-| 리더 | `src/Reader.tsx` | 행마다 원문과 번역을 2열 그리드로 배치합니다. 인라인 수식은 `⟦M n⟧` 토큰으로 번역에서 보존한 뒤 KaTeX로 렌더합니다. hover하면 CSS 규칙 하나만 바꿔 같은 `data-s`를 가진 두 문장을 칠합니다. |
-
-명령줄 점검용 바이너리도 함께 들어 있습니다.
+## Uninstall
 
 ```sh
-cd src-tauri
-cargo run --release --features probe --bin nanran-probe -- claude -                # Claude Code 설치·로그인 상태
-cargo run --release --features probe --bin nanran-probe -- search 'flash attention' # arXiv 검색
-cargo run --release --features probe --bin nanran-probe -- ask 'KV 캐시 압축 논문 추천해줘' # AI 추천
-cargo run --release --features probe --bin nanran-probe -- update                  # 최신 릴리스 확인
-cargo run --release --features probe --bin nanran-probe -- askpaper arxiv-1706.03762 '핵심이 뭐야?' # 논문에 질문
-cargo run --release --features probe --bin nanran-probe -- summary arxiv-1706.03762 /tmp/lib-copy # 요약 글 (라이브러리 사본에 저장)
-cargo run --release --features probe --bin nanran-probe -- parse 1706.03762        # 블록 통계
-cargo run --release --features probe --bin nanran-probe -- dump paper.pdf          # 블록별 한 줄 출력
-cargo run --release --features probe --bin nanran-probe -- translate 1706.03762 6  # 앞 6개 문단 번역
-cargo run --release --features probe --bin nanran-probe -- job paper.pdf /tmp/lib  # 앱과 같은 전체 번역 작업
-cargo run --release --features probe --bin nanran-probe -- redo <doc-id> /tmp/lib  # 저장된 논문을 새 문체로 다시 번역
-NANRAN_MODE=easy cargo run --release --features probe --bin nanran-probe -- translate 2510.15103 6  # 쉽게 번역으로 확인
+curl -fsSL https://raw.githubusercontent.com/sionic-ai/openpaper/main/install.sh | bash -s -- --uninstall
 ```
 
-## 한계
+Add `--purge` to also delete your papers. By hand: `rm -rf /Applications/OpenPaper.app`, and `~/Library/Application Support/dev.rlaope.openpaper` for the papers.
 
-- macOS 전용입니다.
-- PDF는 텍스트 레이어만 사용합니다. 스캔본은 읽지 못하고, PDF의 수식, 그림, 표는 원문 텍스트로만 표시됩니다.
-- 번역 품질과 속도는 Claude Code 계정의 모델과 사용량 한도를 따릅니다.
+## Limits
+
+- macOS only.
+- The build is ad-hoc signed, not notarized. The installer clears the download quarantine. If you download the zip in a browser, right-click the app and choose Open the first time.
+- PDFs use the text layer only. Scanned PDFs do not work, and PDF equations, figures, and tables show as plain text.
+- Speed and quality follow your Claude Code account's model and usage limits.
+
+## Contributing
+
+Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). Report security issues privately as described in [SECURITY.md](SECURITY.md).
+
+## License
+
+[MIT](LICENSE)
