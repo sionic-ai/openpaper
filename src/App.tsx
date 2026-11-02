@@ -230,7 +230,7 @@ function StartMenu({ label, title, onPick }: { label: string; title?: string; on
             <span>Faithful, sentence by sentence</span>
           </button>
           <button role="menuitem" onClick={() => pick('easy')}>
-            <b>Explain simply</b>
+            <b>Make easy version</b>
             <span>Hard terms in plain words</span>
           </button>
         </div>
@@ -655,14 +655,14 @@ export function App() {
               ) : status?.running ? (
                 <>
                   <span className="meter"><span style={{ width: `${total ? (translated / total) * 100 : 0}%` }} /></span>
-                  <span>{mode === 'easy' ? 'Explaining' : 'Translating'} {translated}/{total}</span>
+                  <span>{mode === 'easy' ? 'Making easy version' : 'Translating'} {translated}/{total}</span>
                   <button onClick={() => void api.cancel(doc.id, mode, lang)}>Stop</button>
                 </>
               ) : translated === 0 && !otherHas ? (
                 <StartMenu label="Translate" onPick={m => void open(doc.id, true, m)} />
               ) : remaining > 0 && !status?.outdated ? (
                 <button className="primary" onClick={() => void open(doc.id, true, mode)}>
-                  {translated > 0 ? `Continue (${remaining} left)` : mode === 'easy' ? 'Explain simply' : 'Translate'}
+                  {translated > 0 ? `Continue (${remaining} left)` : mode === 'easy' ? 'Make easy version' : 'Translate'}
                 </button>
               ) : status?.outdated ? (
                 <StartMenu
