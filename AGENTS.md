@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Instructions for coding agents (Claude Code, Codex, ...) that are asked to **install** OpenPaper for a user or to **work on** this repository. OpenPaper is a macOS Tauri 2 app that shows an English research paper side by side with its translation in a language the user picks. Translation, summaries, chat, and the AI paper finder run through the user's logged-in Claude Code CLI; there is no API key.
+Instructions for coding agents (Claude Code, Codex, ...) that are asked to **install** OpenPaper for a user or to **work on** this repository. OpenPaper is a Tauri 2 app for macOS and Windows that shows an English research paper side by side with its translation in a language the user picks. Translation, summaries, chat, and the AI paper finder run through the user's logged-in Claude Code CLI; there is no API key.
 
 ## Installing for a user
 
@@ -54,11 +54,13 @@ Troubleshooting:
 - Translation fails with a usage-limit message → the Claude account hit its limit. Nothing to fix locally
 - User data lives in `~/Library/Application Support/dev.rlaope.openpaper/papers/`. Do not delete it unless asked
 
+Windows has no one-line installer. Download `OpenPaper-windows-x64-setup.exe` from the latest release and run it (per-user, no admin; `/S` installs silently). The app data is in `%APPDATA%\dev.rlaope.openpaper\papers\`. Claude Code on Windows must be the native `claude.exe` (`irm https://claude.ai/install.ps1 | iex`).
+
 Uninstall: run the installer with `--uninstall`, or `rm -rf /Applications/OpenPaper.app`. Delete the data folder above (or pass `--purge`) only if the user asks.
 
 ## Working on the code
 
-Stack: Tauri 2 + Rust (`src-tauri/`) + React 19 / Vite (`src/`). macOS only. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) maps each pipeline stage to its file and lists the library file formats.
+Stack: Tauri 2 + Rust (`src-tauri/`) + React 19 / Vite (`src/`). macOS and Windows; keep platform code behind `#[cfg(windows)]` / `#[cfg(not(windows))]` in Rust and `src/platform.ts` in the frontend (⌘ on macOS, Ctrl on Windows). CI compiles, lints and tests on both. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) maps each pipeline stage to its file and lists the library file formats.
 
 ```sh
 pnpm install
@@ -88,4 +90,4 @@ git tag v0.2.1 && git push origin v0.2.1
 scripts/release.sh v0.2.1     # the same thing by hand; bumps nothing
 ```
 
-The script builds `--target universal-apple-darwin`, zips `OpenPaper.app` with `ditto` as `OpenPaper-macos-universal.zip` plus its `.sha256`, and creates or updates the GitHub release for that tag on `sionic-ai/openpaper`. `install.sh` always downloads that exact asset name, so keep the name unchanged. The in-app Update button runs the `install.sh` of the release tag it found, not the one on `main`, so installer changes reach users only through a release. `scripts/check-versions.sh [tag]` checks that the four version fields (including `Cargo.lock`) agree; CI runs it on every push and the release runs it with the tag first. The tag must equal `v` + the app version, and replacing assets of an existing release needs `OPENPAPER_CLOBBER=1`.
+The `windows` job then builds the NSIS installer on a Windows runner and adds `OpenPaper-windows-x64-setup.exe` plus its `.sha256` to the same release; the Windows app offers an update only once that asset is there. Running the workflow by hand (`workflow_dispatch`) builds the Windows installer as an artifact without publishing. The script builds `--target universal-apple-darwin`, zips `OpenPaper.app` with `ditto` as `OpenPaper-macos-universal.zip` plus its `.sha256`, and creates or updates the GitHub release for that tag on `sionic-ai/openpaper`. `install.sh` always downloads that exact asset name, so keep the name unchanged. The in-app Update button runs the `install.sh` of the release tag it found, not the one on `main`, so installer changes reach users only through a release. `scripts/check-versions.sh [tag]` checks that the four version fields (including `Cargo.lock`) agree; CI runs it on every push and the release runs it with the tag first. The tag must equal `v` + the app version, and replacing assets of an existing release needs `OPENPAPER_CLOBBER=1`.
