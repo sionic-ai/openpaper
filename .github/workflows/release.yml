@@ -14,6 +14,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      # Fail in seconds, not after the universal build, when the tag or a version file is off.
+      - run: scripts/check-versions.sh "$GITHUB_REF_NAME"
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
