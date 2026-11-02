@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { modKey, shortcut } from './platform'
 import { BAR_H } from './position'
 
 // Matches are painted with the CSS Highlight API (WebKit 17.2+), so the paper's DOM is never touched.
@@ -70,12 +71,12 @@ type Props = {
   content: unknown
   /** The open paper; a new one restarts the search from the top of the view. */
   paper: string
-  /** Bumped by ⌘F while the bar is already open, to focus and select the query again. */
+  /** Bumped by ⌘F (Ctrl+F) while the bar is already open, to focus and select the query again. */
   focus: number
   onClose: () => void
 }
 
-/** ⌘F bar over the reader: finds text in both columns. Enter for the next match, Shift+Enter for the previous. */
+/** ⌘F (Ctrl+F) bar over the reader: finds text in both columns. Enter for the next match, Shift+Enter for the previous. */
 export function FindBar({ root, content, paper, focus, onClose }: Props) {
   const [query, setQuery] = useState('')
   const [ranges, setRanges] = useState<Range[]>([])
@@ -119,12 +120,12 @@ export function FindBar({ root, content, paper, focus, onClose }: Props) {
     if (r) reveal(el, r)
   }
 
-  // ⌘G and ⇧⌘G step through matches from anywhere, as in other Mac apps.
+  // ⌘G / ⇧⌘G (Ctrl+G / Ctrl+Shift+G on Windows) step through matches from anywhere.
   const stepRef = useRef(step)
   stepRef.current = step
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if (e.metaKey && !e.altKey && e.key.toLowerCase() === 'g') {
+      if (modKey(e) && !e.altKey && e.key.toLowerCase() === 'g') {
         e.preventDefault()
         stepRef.current(e.shiftKey ? -1 : 1)
       }
@@ -159,8 +160,8 @@ export function FindBar({ root, content, paper, focus, onClose }: Props) {
           spellCheck={false}
         />
         <span className="count" aria-live="polite">{count}</span>
-        <button onClick={() => step(-1)} disabled={ranges.length === 0} title="Previous match (⇧⌘G)" aria-label="Previous match"><Chevron up /></button>
-        <button onClick={() => step(1)} disabled={ranges.length === 0} title="Next match (⌘G)" aria-label="Next match"><Chevron /></button>
+        <button onClick={() => step(-1)} disabled={ranges.length === 0} title={`Previous match (${shortcut('G', true)})`} aria-label="Previous match"><Chevron up /></button>
+        <button onClick={() => step(1)} disabled={ranges.length === 0} title={`Next match (${shortcut('G')})`} aria-label="Next match"><Chevron /></button>
         <button onClick={onClose} title="Close (Esc)" aria-label="Close find">
           <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
             <path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />

@@ -1,6 +1,7 @@
 import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Block, Doc, Lang, Unit } from './api'
 import { FindBar } from './Find'
+import { modKey } from './platform'
 import { applyPos, loadPos, posKey, readPos } from './position'
 import { inline, tex } from './render'
 import { dragSplit, stored } from './resize'
@@ -235,7 +236,7 @@ export function Reader({ doc, tr, lang, swapped, trLabel }: { doc: Doc; tr: Tr; 
   const findContent = useMemo(() => ({}), [doc, tr, swapped])
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if (e.metaKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f') {
+      if (modKey(e) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f') {
         e.preventDefault()
         setFinding(true)
         setFindFocus(n => n + 1)

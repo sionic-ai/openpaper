@@ -5,6 +5,7 @@ import { PaperList } from './Papers'
 import { SearchResults, type SearchState } from './Search'
 import { AiChat, type ChatState } from './Ai'
 import { FloatingAssistant, SelectionAsk, useAsk } from './Assistant'
+import { isMac, modKey, shortcut } from './platform'
 import { posKey } from './position'
 import { dragSplit, stored } from './resize'
 import { applyTheme, initialTheme, type Theme } from './theme'
@@ -278,7 +279,7 @@ export function App() {
       localStorage.setItem('openpaper.swapped', s ? '0' : '1')
       return !s
     })
-  // Sidebar: drag its edge to resize, drag it narrow (or press ⌘B) to fold it away.
+  // Sidebar: drag its edge to resize, drag it narrow (or press ⌘B / Ctrl+B) to fold it away.
   const app = useRef<HTMLDivElement>(null)
   const [sideW, setSideW] = useState(() => stored('openpaper.sideWidth', SIDE_W, SIDE_MIN, SIDE_MAX))
   const [folded, setFolded] = useState(() => localStorage.getItem('openpaper.sideFolded') === '1')
@@ -288,7 +289,7 @@ export function App() {
   }
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if (e.metaKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'b') {
+      if (modKey(e) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'b') {
         e.preventDefault()
         setFolded(f => {
           localStorage.setItem('openpaper.sideFolded', f ? '0' : '1')
@@ -548,7 +549,7 @@ export function App() {
     <div className={`app${folded ? ' folded' : ''}`} ref={app} style={{ '--side-w': `${sideW}px` } as React.CSSProperties}>
       <aside className="side" aria-hidden={folded || undefined} inert={folded || undefined}>
         <div className="side-top" data-tauri-drag-region>
-          <button className="side-fold" onClick={() => fold(true)} title="Hide sidebar (⌘B)" aria-label="Hide sidebar">
+          <button className="side-fold" onClick={() => fold(true)} title={`Hide sidebar (${shortcut('B')})`} aria-label="Hide sidebar">
             <SidebarIcon />
           </button>
         </div>
@@ -613,7 +614,7 @@ export function App() {
       <main className="main">
         <header className="bar" data-tauri-drag-region>
           {folded && (
-            <button className="side-fold" onClick={() => fold(false)} title="Show sidebar (⌘B)" aria-label="Show sidebar">
+            <button className="side-fold" onClick={() => fold(false)} title={`Show sidebar (${shortcut('B')})`} aria-label="Show sidebar">
               <SidebarIcon />
             </button>
           )}
@@ -681,9 +682,13 @@ export function App() {
         {(claude === 'missing' || claude === 'logout') && (
           <div className="notice claude-notice" role="status">
             {claude === 'missing' ? (
-              <>Claude Code isn't installed, so translation and AI search are off. In Terminal, run <code>curl -fsSL https://claude.ai/install.sh | bash</code>, then <code>claude auth login</code>.</>
+              isMac ? (
+                <>Claude Code isn't installed, so translation and AI search are off. In Terminal, run <code>curl -fsSL https://claude.ai/install.sh | bash</code>, then <code>claude auth login</code>.</>
+              ) : (
+                <>Claude Code isn't installed, so translation and AI search are off. In PowerShell, run <code>irm https://claude.ai/install.ps1 | iex</code>, then <code>claude auth login</code>.</>
+              )
             ) : (
-              <>Claude Code isn't logged in. Run <code>claude auth login</code> in Terminal. The app checks again when you come back to this window.</>
+              <>Claude Code isn't logged in. Run <code>claude auth login</code> in {isMac ? 'Terminal' : 'PowerShell'}. The app checks again when you come back to this window.</>
             )}
           </div>
         )}
@@ -717,7 +722,7 @@ export function App() {
                 In the sidebar, type <span className="nowrap">a search (e.g. flash attention)</span> or{' '}
                 <span className="nowrap">an arXiv ID (e.g. 1706.03762)</span>, or open a PDF.
               </p>
-              <p className="sub">Translation runs on the Claude Code logged in on this Mac, and results stay on this Mac.</p>
+              <p className="sub">Translation runs on the Claude Code logged in on this computer, and results stay on this computer.</p>
             </div>
           )
         )}

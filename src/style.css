@@ -55,7 +55,7 @@ html, body, #root { height: 100%; margin: 0; }
 body {
   background: var(--bg);
   color: var(--text);
-  font: 15px/1.6 -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Hiragino Sans', 'PingFang SC', 'Pretendard', sans-serif;
+  font: 15px/1.6 -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Hiragino Sans', 'PingFang SC', 'Segoe UI', 'Malgun Gothic', 'Yu Gothic UI', 'Microsoft YaHei UI', 'Pretendard', sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-wrap: break-word;
 }
@@ -87,7 +87,7 @@ button:disabled { cursor: default; opacity: .5; }
   background: none; color: var(--muted);
 }
 .side-fold:hover { color: var(--text); background: color-mix(in srgb, var(--text) 6%, transparent); }
-.app.folded .bar { padding-left: 84px; }
+:root.mac .app.folded .bar { padding-left: 84px; }
 .app.folded .bar .side-fold { margin-left: -8px; margin-right: -8px; }
 
 /* Sidebar */
@@ -257,7 +257,7 @@ button:disabled { cursor: default; opacity: .5; }
 
 .wide { margin: 0 0 1em; }
 .static { font-size: 13px; color: var(--muted); line-height: 1.55; }
-.code { font: 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--side); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto; }
+.code { font: 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--side); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto; }
 .equation { overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
 .equation .katex-display { margin: .4em 0; }
 
@@ -374,7 +374,7 @@ tr:last-child td { border-bottom: 1px solid var(--rule); }
 .ai-input textarea:focus { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
 .ai-input button { height: 40px; padding: 0 14px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; font-size: 13px; font-weight: 500; }
 
-.claude-notice code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--side); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; color: var(--text); }
+.claude-notice code { font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--side); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; color: var(--text); }
 
 /* Centered copy wraps into even lines instead of leaving one word alone on the last line. */
 .ai-empty, .notice, .error { text-wrap: balance; }
