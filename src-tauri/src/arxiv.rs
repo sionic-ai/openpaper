@@ -48,7 +48,7 @@ pub fn parse_id(input: &str) -> Option<String> {
 pub fn client() -> reqwest::blocking::Client {
     reqwest::blocking::Client::builder()
         .user_agent(concat!(
-            "nanran/",
+            "openpaper/",
             env!("CARGO_PKG_VERSION"),
             " (paper reader)"
         ))
@@ -63,9 +63,9 @@ fn read_capped(resp: reqwest::blocking::Response, cap: usize) -> Result<Vec<u8>,
     let mut buf = Vec::new();
     resp.take(cap as u64 + 1)
         .read_to_end(&mut buf)
-        .map_err(|_| "응답을 읽지 못했어요".to_string())?;
+        .map_err(|_| "Couldn't read the response".to_string())?;
     if buf.len() > cap {
-        return Err("파일이 너무 커요".into());
+        return Err("The file is too large".into());
     }
     Ok(buf)
 }
@@ -77,7 +77,7 @@ pub fn fetch(id: &str) -> Result<Doc, String> {
     let resp = http
         .get(&html_url)
         .send()
-        .map_err(|_| "arXiv에 연결하지 못했어요".to_string())?;
+        .map_err(|_| "Couldn't connect to arXiv".to_string())?;
     if resp.status().is_success() {
         // Image paths look like "1706.03762v7/x1.png" relative to /html/.
         let base = Url::parse("https://arxiv.org/html/paper").unwrap();
@@ -93,9 +93,9 @@ pub fn fetch(id: &str) -> Result<Doc, String> {
     let resp = http
         .get(format!("https://arxiv.org/pdf/{id}"))
         .send()
-        .map_err(|_| "arXiv에 연결하지 못했어요".to_string())?;
+        .map_err(|_| "Couldn't connect to arXiv".to_string())?;
     if !resp.status().is_success() {
-        return Err(format!("arXiv에서 {id} 논문을 찾지 못했어요"));
+        return Err(format!("Couldn't find paper {id} on arXiv"));
     }
     let bytes = read_capped(resp, MAX_PDF)?;
     let mut builder = crate::pdf::parse(&bytes)?;

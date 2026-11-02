@@ -1,55 +1,82 @@
 //! Command-line check of import and translation without the GUI.
 //!
-//! nanran-probe parse <arxiv-id | file.pdf>            print block statistics
-//! nanran-probe translate <arxiv-id | file.pdf> [n]    translate the first n units (default 6)
-//! nanran-probe dump <arxiv-id | file.pdf>             print every block on one line
-//! nanran-probe import <arxiv-id | file.pdf> <dir> [n] save into a library dir with n translated units
-//! nanran-probe search <query> [start]                 run an arXiv search
-//! nanran-probe ask <request>                          run the AI paper finder
-//! nanran-probe claude -                               show Claude Code install/login state
-//! nanran-probe update                                 compare with the latest GitHub release
-//! nanran-probe askpaper <doc-id> <question> [quote]   ask about a paper in the app's library
-//! nanran-probe summary <doc-id> [dir]               write the Korean summary post (dir: a library copy)
-//! nanran-probe redo <doc-id> <dir>                    retranslate a saved paper in the current style
+//! openpaper-probe parse <arxiv-id | file.pdf>            print block statistics
+//! openpaper-probe translate <arxiv-id | file.pdf> [n]    translate the first n units (default 6)
+//! openpaper-probe dump <arxiv-id | file.pdf>             print every block on one line
+//! openpaper-probe import <arxiv-id | file.pdf> <dir> [n] save into a library dir with n translated units
+//! openpaper-probe search <query> [start]                 run an arXiv search
+//! openpaper-probe ask <request>                          run the AI paper finder
+//! openpaper-probe claude -                               show Claude Code install/login state
+//! openpaper-probe update                                 compare with the latest GitHub release
+//! openpaper-probe askpaper <doc-id> <question> [quote]   ask about a paper in the app's library
+//! openpaper-probe summary <doc-id> [dir]               write the summary post (dir: a library copy)
+//! openpaper-probe redo <doc-id> <dir>                    retranslate a saved paper in the current style
 //!
-//! Set NANRAN_MODE=easy to run translate/job/import as the easy explanation instead.
+//! openpaper-probe selfupdate <path to .app/Contents/MacOS/openpaper>  run the in-app updater
+//!
+//! Set OPENPAPER_MODE=easy to run translate/job/import as the easy explanation instead.
+//! Set OPENPAPER_LANG=<code> (ko, ja, zh, es, fr, de, pt; default ko) to pick the target
+//! language for translate/job/import/redo/summary/askpaper/ask.
 
-use nanran::model::{Block, Builder, Doc};
-use nanran::translate::Mode;
+use openpaper::lang::Lang;
+use openpaper::model::{Block, Builder, Doc};
+use openpaper::translate::Mode;
 use std::sync::atomic::AtomicBool;
 
 fn load(arg: &str) -> Doc {
     if arg.ends_with(".pdf") {
         let bytes = std::fs::read(arg).expect("read pdf");
-        let b: Builder = nanran::pdf::parse(&bytes).expect("parse pdf");
-        b.finish(format!("pdf-{}", nanran::model::content_id(&bytes)), arg)
+        let b: Builder = openpaper::pdf::parse(&bytes).expect("parse pdf");
+        b.finish(format!("pdf-{}", openpaper::model::content_id(&bytes)), arg)
     } else {
-        let id = nanran::arxiv::parse_id(arg).expect("arxiv id");
-        nanran::arxiv::fetch(&id).expect("fetch")
+        let id = openpaper::arxiv::parse_id(arg).expect("arxiv id");
+        openpaper::arxiv::fetch(&id).expect("fetch")
     }
 }
 
 fn mode() -> Mode {
-    if std::env::var("NANRAN_MODE").as_deref() == Ok("easy") {
+    if std::env::var("OPENPAPER_MODE").as_deref() == Ok("easy") {
         Mode::Easy
     } else {
         Mode::Plain
     }
 }
 
+fn lang() -> Lang {
+    match std::env::var("OPENPAPER_LANG") {
+        Ok(code) => Lang::from_code(&code).unwrap_or_else(|| {
+            eprintln!("unknown OPENPAPER_LANG {code:?}; use one of ko ja zh es fr de pt");
+            std::process::exit(2)
+        }),
+        Err(_) => Lang::Ko,
+    }
+}
+
+/// The installed app's real library.
+fn app_library() -> std::path::PathBuf {
+    std::path::Path::new(&std::env::var_os("HOME").expect("HOME"))
+        .join("Library/Application Support/dev.rlaope.openpaper/papers")
+}
+
+const USAGE: &str = "usage: openpaper-probe <parse|dump|translate|import|job|search|ask|claude|update|selfupdate|askpaper|summary|redo> <arg> ... (see the header of src/bin/probe.rs)";
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    if args.len() < 2 || (args[1] != "update" && args.len() < 3) {
+        eprintln!("{USAGE}");
+        std::process::exit(2);
+    }
     if args[1] == "update" {
-        println!("{:?}", nanran::update::check());
+        println!("{:?}", openpaper::update::check());
         return;
     }
     if args[1] == "selfupdate" {
         // Runs the in-app updater as if the app lived at <exe>, e.g. a test copy's
-        // `<dir>/Nanran.app/Contents/MacOS/nanran`.
-        let log = std::env::temp_dir().join("nanran-update.log");
+        // `<dir>/OpenPaper.app/Contents/MacOS/openpaper`.
+        let log = std::env::temp_dir().join(openpaper::update::LOG_NAME);
         println!(
             "{:?} log={}",
-            nanran::update::install(std::path::Path::new(&args[2]), &log),
+            openpaper::update::install(std::path::Path::new(&args[2]), &log),
             log.display()
         );
         return;
@@ -57,19 +84,17 @@ fn main() {
     let (cmd, target) = (args[1].as_str(), args[2].as_str());
     if cmd == "askpaper" {
         // Uses the installed app's real library.
-        let home = std::env::var_os("HOME").expect("HOME");
-        let dir = std::path::Path::new(&home)
-            .join("Library/Application Support/dev.rlaope.nanran/papers");
-        let state = std::sync::Arc::new(nanran::AppState::new(dir).expect("state"));
+        let state = std::sync::Arc::new(openpaper::AppState::new(app_library()).expect("state"));
         let started = std::time::Instant::now();
         let mut first: Option<f32> = None;
         let mut pieces = 0usize;
-        let a = nanran::commands::ask_paper_stream(
+        let a = openpaper::commands::ask_paper_stream(
             &state,
             &args[3],
             args.get(4).map(String::as_str),
             Some(target),
             &[],
+            lang(),
             |d| {
                 use std::io::Write;
                 first.get_or_insert(started.elapsed().as_secs_f32());
@@ -92,13 +117,12 @@ fn main() {
         // A fresh summary, saved into <dir> (a copy of the library) or the app's real library.
         let dir = match args.get(3) {
             Some(d) => std::path::PathBuf::from(d),
-            None => std::path::Path::new(&std::env::var_os("HOME").expect("HOME"))
-                .join("Library/Application Support/dev.rlaope.nanran/papers"),
+            None => app_library(),
         };
-        let state = std::sync::Arc::new(nanran::AppState::new(dir).expect("state"));
+        let state = std::sync::Arc::new(openpaper::AppState::new(dir).expect("state"));
         let started = std::time::Instant::now();
         let mut first: Option<f32> = None;
-        let r = nanran::commands::summarize(&state, target, true, |_| {
+        let r = openpaper::commands::summarize(&state, target, true, lang(), |_| {
             first.get_or_insert(started.elapsed().as_secs_f32());
         })
         .expect("summary");
@@ -112,17 +136,23 @@ fn main() {
         return;
     }
     if cmd == "redo" {
-        // Retranslates a saved paper in the current style, like the app's 다시 번역 button.
+        // Retranslates a saved paper in the current style, like the app's Retranslate button.
         let dir = std::path::PathBuf::from(&args[3]);
-        let state = std::sync::Arc::new(nanran::AppState::new(dir).expect("state"));
-        let before = nanran::commands::status(&state, target, Mode::Plain);
+        let state = std::sync::Arc::new(openpaper::AppState::new(dir).expect("state"));
+        let before = openpaper::commands::status(&state, target, Mode::Plain, lang());
         println!("outdated before {}", before.outdated);
         let started = std::time::Instant::now();
-        nanran::commands::start_translation(&state, target.to_string(), Mode::Plain, true)
-            .expect("start");
+        openpaper::commands::start_translation(
+            &state,
+            target.to_string(),
+            Mode::Plain,
+            lang(),
+            true,
+        )
+        .expect("start");
         loop {
             std::thread::sleep(std::time::Duration::from_secs(3));
-            let s = nanran::commands::status(&state, target, Mode::Plain);
+            let s = openpaper::commands::status(&state, target, Mode::Plain, lang());
             println!(
                 "{:>4.0}s units {}/{} redo {} running {} error {:?}",
                 started.elapsed().as_secs_f32(),
@@ -139,12 +169,12 @@ fn main() {
         }
     }
     if cmd == "claude" {
-        println!("{:?}", nanran::translate::claude_status());
+        println!("{:?}", openpaper::translate::claude_status());
         return;
     }
     if cmd == "ask" {
         let started = std::time::Instant::now();
-        let a = nanran::recommend::recommend(target, &[]).expect("recommend");
+        let a = openpaper::recommend::recommend(target, &[], lang()).expect("recommend");
         println!("{:.1}s  {}", started.elapsed().as_secs_f32(), a.reply);
         for p in a.picks {
             println!(
@@ -156,7 +186,7 @@ fn main() {
     }
     if cmd == "search" {
         let start = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(0);
-        let p = nanran::search::search(target, start).expect("search");
+        let p = openpaper::search::search(target, start).expect("search");
         println!("total {} start {}", p.total, p.start);
         for h in p.hits {
             println!(
@@ -240,13 +270,14 @@ fn main() {
     if cmd == "job" {
         // Runs the same background job the app starts, on a library dir.
         let dir = std::path::PathBuf::from(&args[3]);
-        let state = std::sync::Arc::new(nanran::AppState::new(dir).expect("state"));
+        let state = std::sync::Arc::new(openpaper::AppState::new(dir).expect("state"));
         state.library.save(&doc).expect("save");
         let started = std::time::Instant::now();
-        nanran::commands::start_translation(&state, doc.id.clone(), mode(), false).expect("start");
+        openpaper::commands::start_translation(&state, doc.id.clone(), mode(), lang(), false)
+            .expect("start");
         loop {
             std::thread::sleep(std::time::Duration::from_secs(3));
-            let s = nanran::commands::status(&state, &doc.id, mode());
+            let s = openpaper::commands::status(&state, &doc.id, mode(), lang());
             println!(
                 "{:>4.0}s batches {}/{} units {} running {} error {:?}",
                 started.elapsed().as_secs_f32(),
@@ -278,48 +309,51 @@ fn main() {
     if cmd == "import" {
         let dir = std::path::PathBuf::from(&args[3]);
         let n: usize = args.get(4).and_then(|s| s.parse().ok()).unwrap_or(20);
-        let lib = nanran::library::Library::open(dir).expect("library");
+        let lib = openpaper::library::Library::open(dir).expect("library");
         lib.save(&doc).expect("save");
-        let claude = nanran::translate::find_claude().expect("claude cli");
+        let claude = openpaper::translate::find_claude().expect("claude cli");
         let pending: Vec<_> = units.into_iter().take(n).cloned().collect();
-        for batch in nanran::translate::batches(&pending) {
-            let ko = nanran::translate::translate_batch(
+        for batch in openpaper::translate::batches(&pending) {
+            let out = openpaper::translate::translate_batch(
                 &claude,
                 &doc.title,
                 &batch,
                 &doc.heading_ids(),
                 mode(),
+                lang(),
                 &AtomicBool::new(false),
             )
             .expect("translate");
-            lib.add_translations(&doc.id, mode(), &ko)
+            lib.add_translations(&doc.id, mode(), lang(), &out)
                 .expect("save translations");
         }
         println!(
             "saved {} with {} translated units",
             doc.id,
-            lib.translations(&doc.id, mode()).len()
+            lib.translations(&doc.id, mode(), lang()).len()
         );
         return;
     }
     if cmd == "translate" {
         let n: usize = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(6);
-        let claude = nanran::translate::find_claude().expect("claude cli");
+        let claude = openpaper::translate::find_claude().expect("claude cli");
         let batch: Vec<_> = units.into_iter().take(n).cloned().collect();
         let started = std::time::Instant::now();
-        let ko = nanran::translate::translate_batch(
+        let out = openpaper::translate::translate_batch(
             &claude,
             &doc.title,
             &batch,
             &doc.heading_ids(),
             mode(),
+            lang(),
             &AtomicBool::new(false),
         )
         .expect("translate");
-        println!("translated {} units in {:?}", ko.len(), started.elapsed());
-        for (en, ko) in batch.iter().zip(&ko) {
-            for (e, k) in en.sentences.iter().zip(&ko.sentences) {
-                println!("EN {e}\nKO {k}\n");
+        println!("translated {} units in {:?}", out.len(), started.elapsed());
+        let tag = lang().code().to_uppercase();
+        for (en, tr) in batch.iter().zip(&out) {
+            for (e, t) in en.sentences.iter().zip(&tr.sentences) {
+                println!("EN {e}\n{tag} {t}\n");
             }
         }
     }

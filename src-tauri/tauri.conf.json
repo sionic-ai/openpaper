@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Nanran",
-  "version": "0.1.16",
-  "identifier": "dev.rlaope.nanran",
+  "productName": "OpenPaper",
+  "version": "0.2.0",
+  "identifier": "dev.rlaope.openpaper",
   "build": {
     "beforeDevCommand": "pnpm dev:web",
     "devUrl": "http://127.0.0.1:1430",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [{
       "label": "main",
-      "title": "나란",
+      "title": "OpenPaper",
       "width": 1360,
       "height": 880,
       "minWidth": 820,

@@ -1,6 +1,7 @@
 pub mod arxiv;
 pub mod ask;
 pub mod commands;
+pub mod lang;
 pub mod library;
 pub mod model;
 pub mod pdf;

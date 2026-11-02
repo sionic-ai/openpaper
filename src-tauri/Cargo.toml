@@ -1,23 +1,23 @@
 [package]
-name = "nanran"
-version = "0.1.16"
-description = "Side-by-side Korean paper reader"
+name = "openpaper"
+version = "0.2.0"
+description = "Side-by-side research paper reader with translation"
 edition = "2024"
 rust-version = "1.85"
-default-run = "nanran"
+default-run = "openpaper"
 
 [lib]
-name = "nanran"
+name = "openpaper"
 path = "src/lib.rs"
 
 [[bin]]
-name = "nanran"
+name = "openpaper"
 path = "src/main.rs"
 
 [[bin]]
-name = "nanran-probe"
+name = "openpaper-probe"
 path = "src/bin/probe.rs"
-# Dev-only CLI. Gated so `tauri build` does not try to bundle it into Nanran.app.
+# Dev-only CLI. Gated so `tauri build` does not try to bundle it into OpenPaper.app.
 required-features = ["probe"]
 
 [features]

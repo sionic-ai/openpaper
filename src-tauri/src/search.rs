@@ -80,8 +80,8 @@ fn strip_version(id: &str) -> &str {
 }
 
 pub fn parse_feed(xml: &str) -> Result<Page, String> {
-    let doc =
-        roxmltree::Document::parse(xml).map_err(|_| "검색 결과를 읽지 못했어요".to_string())?;
+    let doc = roxmltree::Document::parse(xml)
+        .map_err(|_| "Couldn't read the search results".to_string())?;
     let feed = doc.root_element();
     let num = |name: &str| {
         feed.children()
@@ -154,7 +154,7 @@ pub fn search_n(input: &str, start: usize, max: usize) -> Result<Page, String> {
         url.query_pairs_mut()
             .append_pair("id_list", strip_version(&id));
     } else {
-        let q = build_query(input).ok_or_else(|| "검색어를 넣어 주세요".to_string())?;
+        let q = build_query(input).ok_or_else(|| "Enter a search term".to_string())?;
         url.query_pairs_mut()
             .append_pair("search_query", &q)
             .append_pair("sortBy", "relevance")
@@ -168,13 +168,13 @@ fn fetch_page(url: url::Url) -> Result<Page, String> {
     let resp = arxiv::client()
         .get(url)
         .send()
-        .map_err(|_| "arXiv에 연결하지 못했어요".to_string())?;
+        .map_err(|_| "Couldn't connect to arXiv".to_string())?;
     if !resp.status().is_success() {
         return Err(
             if resp.status().as_u16() == 429 || resp.status().as_u16() == 503 {
-                "arXiv가 잠시 바빠요. 몇 초 뒤에 다시 검색해 주세요".into()
+                "arXiv is busy. Search again in a few seconds".into()
             } else {
-                format!("arXiv 검색이 실패했어요 ({})", resp.status().as_u16())
+                format!("arXiv search failed ({})", resp.status().as_u16())
             },
         );
     }
@@ -182,7 +182,7 @@ fn fetch_page(url: url::Url) -> Result<Page, String> {
     let mut body = String::new();
     resp.take(MAX_FEED)
         .read_to_string(&mut body)
-        .map_err(|_| "검색 결과를 읽지 못했어요".to_string())?;
+        .map_err(|_| "Couldn't read the search results".to_string())?;
     parse_feed(&body)
 }
 

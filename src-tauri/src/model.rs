@@ -211,8 +211,10 @@ mod tests {
 
     #[test]
     fn list_prefix_attaches_to_next_paragraph() {
-        let mut b = Builder::default();
-        b.prefix = Some("•".into());
+        let mut b = Builder {
+            prefix: Some("•".into()),
+            ..Default::default()
+        };
         b.para("First item.");
         b.para("Plain.");
         let Block::Para { unit } = &b.blocks[0] else {

@@ -218,11 +218,11 @@ pub fn structure(text: &str) -> Builder {
 pub fn parse(bytes: &[u8]) -> Result<Builder, String> {
     let owned = bytes.to_vec();
     let text = std::panic::catch_unwind(move || pdf_extract::extract_text_from_mem(&owned))
-        .map_err(|_| "이 PDF는 읽을 수 없어요".to_string())?
-        .map_err(|_| "이 PDF는 읽을 수 없어요 (암호화되었거나 손상됨)".to_string())?;
+        .map_err(|_| "Can't read this PDF".to_string())?
+        .map_err(|_| "Can't read this PDF (it may be encrypted or damaged)".to_string())?;
     let b = structure(&text);
     if b.translatable_count() == 0 {
-        return Err("PDF에서 텍스트를 찾지 못했어요 (스캔본일 수 있어요)".into());
+        return Err("No text found in the PDF (it may be a scan)".into());
     }
     Ok(b)
 }

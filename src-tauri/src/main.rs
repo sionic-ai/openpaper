@@ -8,36 +8,41 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            let root = app.path().app_data_dir()?.join("papers");
-            app.manage(Arc::new(nanran::AppState::new(root)?));
+            let data = app.path().app_data_dir()?;
+            // Moves the library of the app's former name; a failure must not stop startup.
+            if let Err(e) = openpaper::library::migrate_legacy(&data) {
+                eprintln!("could not move the old library: {e}");
+            }
+            app.manage(Arc::new(openpaper::AppState::new(data.join("papers"))?));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            nanran::commands::library_list,
-            nanran::commands::library_get,
-            nanran::commands::library_remove,
-            nanran::commands::library_folders,
-            nanran::commands::library_set_folders,
-            nanran::commands::open_arxiv,
-            nanran::commands::open_pdf,
-            nanran::commands::arxiv_search,
-            nanran::commands::ai_recommend,
-            nanran::commands::claude_status,
-            nanran::commands::open_arxiv_page,
-            nanran::commands::translation_start,
-            nanran::commands::translation_redo,
-            nanran::commands::translation_status,
-            nanran::commands::translation_cancel,
-            nanran::commands::update_check,
-            nanran::commands::update_install,
-            nanran::commands::ask_claude,
-            nanran::commands::summarize_paper,
+            openpaper::commands::languages,
+            openpaper::commands::library_list,
+            openpaper::commands::library_get,
+            openpaper::commands::library_remove,
+            openpaper::commands::library_folders,
+            openpaper::commands::library_set_folders,
+            openpaper::commands::open_arxiv,
+            openpaper::commands::open_pdf,
+            openpaper::commands::arxiv_search,
+            openpaper::commands::ai_recommend,
+            openpaper::commands::claude_status,
+            openpaper::commands::open_arxiv_page,
+            openpaper::commands::translation_start,
+            openpaper::commands::translation_redo,
+            openpaper::commands::translation_status,
+            openpaper::commands::translation_cancel,
+            openpaper::commands::update_check,
+            openpaper::commands::update_install,
+            openpaper::commands::ask_claude,
+            openpaper::commands::summarize_paper,
         ])
         .build(tauri::generate_context!())
-        .expect("nanran failed to start")
+        .expect("openpaper failed to start")
         .run(|app, event| {
             if let tauri::RunEvent::Exit = event {
-                app.state::<Arc<nanran::AppState>>().cancel_all();
+                app.state::<Arc<openpaper::AppState>>().cancel_all();
             }
         });
 }
