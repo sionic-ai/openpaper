@@ -216,7 +216,7 @@ pub fn llm_set_key(state: State<'_, Arc<AppState>>, key: String) -> Result<LlmSe
 
 /// Models the current API endpoint lists. Empty for the CLIs.
 #[tauri::command]
-pub async fn llm_models(state: State<'_, Arc<AppState>>) -> Result<Vec<String>, String> {
+pub async fn llm_models(state: State<'_, Arc<AppState>>) -> Result<Vec<llm::ModelOption>, String> {
     let state = state.inner().clone();
     blocking(move || llm::models(&state.llm.settings(), &state.llm)).await
 }

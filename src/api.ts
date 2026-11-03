@@ -60,7 +60,10 @@ export type LlmConfig = {
 
 export type LlmProblem = 'missing' | 'logged-out' | 'no-key' | 'no-model' | 'bad-url'
 
-export type LlmStatus = { provider: Provider; label: string; problem: LlmProblem | null }
+/** `model` is empty when the CLI picks its own default (Codex). */
+export type LlmStatus = { provider: Provider; label: string; model: string; preset: string; problem: LlmProblem | null }
+/** A model to pick. `name` and `note` come from Codex's own list; API lists have ids only. */
+export type ModelOption = { id: string; name?: string; note?: string }
 
 /** Key and model slot of the current choice, as in Rust's `Settings::slot`. */
 export function slotOf(s: LlmSettings): string {
@@ -92,7 +95,7 @@ export const api = {
   llmSetSettings: (settings: LlmSettings) => invoke<LlmConfig>('llm_set_settings', { settings }),
   /** Saves the API key of the current choice; an empty key removes it. */
   llmSetKey: (key: string) => invoke<LlmConfig>('llm_set_key', { key }),
-  llmModels: () => invoke<string[]>('llm_models'),
+  llmModels: () => invoke<ModelOption[]>('llm_models'),
   llmTest: () => invoke<{ reply: string; ms: number }>('llm_test'),
   recommend: (request: string, history: { role: string; text: string }[], lang: Lang) =>
     invoke<{ reply: string; picks: { hit: Hit; why: string }[] }>('ai_recommend', { request, history, lang }),
