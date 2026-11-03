@@ -554,3 +554,52 @@ tr:last-child td { border-bottom: 1px solid var(--rule); }
 .find button:disabled { opacity: .4; }
 ::highlight(openpaper-find) { background-color: var(--hl); }
 ::highlight(openpaper-find-current) { background-color: color-mix(in srgb, var(--accent) 38%, transparent); }
+
+/* Model settings: the sidebar button, the notice link, and the dialog. */
+.model-btn { border: 0; background: none; font: inherit; font-size: 12px; max-width: 120px; }
+.model-btn.warn { color: var(--accent); }
+.notice-link { border: 0; background: none; padding: 0; font: inherit; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.modal-back { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 24px; background: color-mix(in srgb, #000 38%, transparent); }
+.modal {
+  width: min(520px, 100%); max-height: calc(100vh - 48px); overflow-y: auto; padding: 20px 22px 22px; border-radius: 14px;
+  background: var(--bg); border: 1px solid var(--line); box-shadow: var(--shadow); outline: none;
+}
+.modal-head { display: flex; align-items: center; justify-content: space-between; }
+.modal-head h2 { margin: 0; font-size: 16px; font-weight: 600; color: var(--text); }
+.modal-close { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--muted); }
+.modal-close:hover { color: var(--text); background: color-mix(in srgb, var(--text) 7%, transparent); }
+.modal-sub { margin: 4px 0 16px; font-size: 13px; color: var(--muted); }
+.providers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+.providers button {
+  display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; text-align: left; border-radius: 9px;
+  border: 1px solid var(--line); background: var(--paper); color: var(--text);
+}
+.providers button:hover { border-color: var(--line-2); }
+.providers button.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--paper)); }
+.providers b { font-size: 13px; font-weight: 600; }
+.providers span { font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+.field { margin-bottom: 14px; }
+.field > label { display: block; margin-bottom: 5px; font-size: 12px; font-weight: 500; color: var(--text-2); }
+.field input, .field select {
+  width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper);
+  font: inherit; font-size: 13px; color: var(--text); outline: none;
+}
+.field input:focus, .field select:focus { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.field input::placeholder { color: var(--placeholder); }
+.key-row { display: flex; gap: 6px; }
+.key-row input { flex: 1; min-width: 0; }
+.key-row button, .test-row button {
+  flex: none; height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper);
+  font-size: 12.5px; color: var(--text); white-space: nowrap;
+}
+.key-row button:disabled, .test-row button:disabled { opacity: .5; cursor: default; }
+.key-saved { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; color: var(--text-2); }
+.key-saved code { font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.link { border: 0; background: none; padding: 0; font-size: 12.5px; color: var(--accent); }
+.modal-note { margin: -4px 0 14px; font-size: 12px; color: var(--muted); }
+.test-row { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+.test-row button.primary { border-color: var(--accent); color: var(--accent); background: transparent; }
+.test-result { font-size: 12.5px; color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
+.test-result.ok { color: var(--text-2); }
+.test-result.error { color: var(--accent); }
+.modal-error { margin-top: 12px; padding: 8px 10px; border-radius: 8px; font-size: 12.5px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { api, arxivDocId, arxivIdOf, errorText, looksLikeArxivId, type Doc, type Folder, type Hit, type Lang, type Language, type Meta, type Mode, type Status } from './api'
+import { api, arxivDocId, arxivIdOf, errorText, looksLikeArxivId, type Doc, type Folder, type Hit, type Lang, type Language, type LlmStatus, type Meta, type Mode, type Status } from './api'
 import { Reader } from './Reader'
 import { PaperList } from './Papers'
 import { SearchResults, type SearchState } from './Search'
 import { AiChat, type ChatState } from './Ai'
 import { FloatingAssistant, SelectionAsk, useAsk } from './Assistant'
-import { isMac, modKey, shortcut } from './platform'
+import { ModelButton, ModelDialog, ProblemNotice } from './Model'
+import { modKey, shortcut } from './platform'
 import { posKey } from './position'
 import { dragSplit, stored } from './resize'
 import { applyTheme, initialTheme, type Theme } from './theme'
@@ -347,17 +348,17 @@ export function App() {
   }, [])
   useEffect(() => void refreshList(), [refreshList])
 
-  // Translation and AI search need a logged-in Claude Code CLI; say so up front instead of on first use.
-  const [claude, setClaude] = useState<'ok' | 'missing' | 'logout' | null>(null)
-  const checkClaude = useCallback(
-    () => api.claude().then(s => setClaude(!s.installed ? 'missing' : s.loggedIn ? 'ok' : 'logout')).catch(() => {}),
-    []
-  )
+  // Translation and AI search need a working model backend (Claude Code by default); say so up
+  // front instead of on first use.
+  const [llm, setLlm] = useState<LlmStatus | null>(null)
+  const [modelOpen, setModelOpen] = useState(false)
+  const checkLlm = useCallback(() => void api.llmStatus().then(setLlm).catch(() => {}), [])
+  const closeModel = useCallback(() => setModelOpen(false), [])
   useEffect(() => {
-    void checkClaude()
-    window.addEventListener('focus', checkClaude)
-    return () => window.removeEventListener('focus', checkClaude)
-  }, [checkClaude])
+    void checkLlm()
+    window.addEventListener('focus', checkLlm)
+    return () => window.removeEventListener('focus', checkLlm)
+  }, [checkLlm])
 
   /**
    * Opens a paper in `want` mode (default: the one last read for it) in the current language, and optionally starts
@@ -593,6 +594,7 @@ export function App() {
         <div className="side-foot">
           <ThemeButton />
           <LangPicker langs={langs} lang={lang} onChange={changeLang} />
+          <ModelButton status={llm} onOpen={() => setModelOpen(true)} />
           <UpdateButton />
         </div>
       </aside>
@@ -679,19 +681,7 @@ export function App() {
             </div>
           )}
         </header>
-        {(claude === 'missing' || claude === 'logout') && (
-          <div className="notice claude-notice" role="status">
-            {claude === 'missing' ? (
-              isMac ? (
-                <>Claude Code isn't installed, so translation and AI search are off. In Terminal, run <code>curl -fsSL https://claude.ai/install.sh | bash</code>, then <code>claude auth login</code>.</>
-              ) : (
-                <>Claude Code isn't installed, so translation and AI search are off. In PowerShell, run <code>irm https://claude.ai/install.ps1 | iex</code>, then <code>claude auth login</code>.</>
-              )
-            ) : (
-              <>Claude Code isn't logged in. Run <code>claude auth login</code> in {isMac ? 'Terminal' : 'PowerShell'}. The app checks again when you come back to this window.</>
-            )}
-          </div>
-        )}
+        {llm?.problem && <ProblemNotice status={llm} onOpen={() => setModelOpen(true)} />}
         {(error || status?.error) && <div className="error" role="alert">{error ?? status?.error}</div>}
         {busy && <div className="notice">{busy}</div>}
         {view === 'ai' ? (
@@ -727,6 +717,7 @@ export function App() {
           )
         )}
       </main>
+      {modelOpen && <ModelDialog onClose={closeModel} onChanged={checkLlm} />}
       {view !== 'ai' && (
         <>
           <FloatingAssistant ask={assistant} docTitle={shownDoc?.title ?? null} />
