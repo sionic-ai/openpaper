@@ -4,7 +4,7 @@ use crate::lang::{self, Lang, LangInfo};
 use crate::library::{Folder, Library, Meta};
 use crate::model::{self, Doc};
 use crate::translate::Mode;
-use crate::{arxiv, ask, pdf, recommend, search, translate, update};
+use crate::{arxiv, ask, llm, pdf, recommend, search, translate, update};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -28,6 +28,8 @@ pub(crate) struct Job {
 
 pub struct AppState {
     pub library: Library,
+    /// Model settings and API keys, next to the library in the app data folder.
+    pub llm: llm::Store,
     /// Keyed by paper id, mode and language; a translation and an easy explanation, or two
     /// languages, can run at once.
     pub(crate) jobs: Mutex<HashMap<(String, Mode, Lang), Job>>,
@@ -35,10 +37,20 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(root: PathBuf) -> std::io::Result<Self> {
+        let app_data = root
+            .parent()
+            .map(PathBuf::from)
+            .unwrap_or_else(|| root.clone());
         Ok(Self {
             library: Library::open(root)?,
+            llm: llm::Store::new(&app_data),
             jobs: Mutex::new(HashMap::new()),
         })
+    }
+
+    /// The model backend chosen in Model settings.
+    pub fn backend(&self) -> Result<llm::Backend, String> {
+        llm::backend(&self.llm.settings(), &self.llm)
     }
 
     pub fn cancel_all(&self) {
@@ -128,20 +140,125 @@ pub async fn arxiv_search(query: String, start: usize) -> Result<search::Page, S
     blocking(move || search::search(&query, start)).await
 }
 
+/// Whether the chosen model backend can run (installed, logged in, key and model set).
 #[tauri::command]
-pub async fn claude_status() -> Result<translate::ClaudeStatus, String> {
-    blocking(|| Ok(translate::claude_status())).await
+pub async fn llm_status(state: State<'_, Arc<AppState>>) -> Result<llm::Status, String> {
+    let state = state.inner().clone();
+    blocking(move || Ok(llm::status(&state.llm.settings(), &state.llm))).await
 }
 
-/// AI paper finder: Claude plans arXiv searches for the request, then picks from real results.
-/// The reply and reasons are written in `lang`.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PresetInfo {
+    id: &'static str,
+    name: &'static str,
+    base: &'static str,
+    needs_key: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LlmSettings {
+    settings: llm::Settings,
+    presets: Vec<PresetInfo>,
+    /// Last four characters of each saved key, by slot. The keys themselves never leave Rust.
+    key_hints: HashMap<String, String>,
+}
+
+fn llm_settings_now(state: &AppState) -> LlmSettings {
+    LlmSettings {
+        settings: state.llm.settings(),
+        presets: llm::PRESETS
+            .iter()
+            .map(|p| PresetInfo {
+                id: p.id,
+                name: p.name,
+                base: p.base,
+                needs_key: p.needs_key,
+            })
+            .collect(),
+        key_hints: state.llm.key_hints(),
+    }
+}
+
+#[tauri::command]
+pub fn llm_settings(state: State<'_, Arc<AppState>>) -> LlmSettings {
+    llm_settings_now(&state)
+}
+
+#[tauri::command]
+pub fn llm_set_settings(
+    state: State<'_, Arc<AppState>>,
+    settings: llm::Settings,
+) -> Result<LlmSettings, String> {
+    // A key saved for one custom address must not follow the user to another host.
+    let host = |u: &str| {
+        reqwest::Url::parse(u.trim())
+            .ok()
+            .and_then(|u| u.host_str().map(str::to_string))
+    };
+    if host(&state.llm.settings().base_url) != host(&settings.base_url) {
+        state.llm.set_key("openai:custom", None)?;
+    }
+    state.llm.save_settings(&settings)?;
+    Ok(llm_settings_now(&state))
+}
+
+/// Saves (or with an empty `key`, removes) the API key of the current choice.
+#[tauri::command]
+pub fn llm_set_key(state: State<'_, Arc<AppState>>, key: String) -> Result<LlmSettings, String> {
+    let slot = state.llm.settings().slot();
+    state
+        .llm
+        .set_key(&slot, Some(key.as_str()).filter(|k| !k.trim().is_empty()))?;
+    Ok(llm_settings_now(&state))
+}
+
+/// Models the current API endpoint lists. Empty for the CLIs.
+#[tauri::command]
+pub async fn llm_models(state: State<'_, Arc<AppState>>) -> Result<Vec<String>, String> {
+    let state = state.inner().clone();
+    blocking(move || llm::models(&state.llm.settings(), &state.llm)).await
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LlmTest {
+    reply: String,
+    ms: u128,
+}
+
+/// One tiny call through the chosen backend, to check the whole path works.
+#[tauri::command]
+pub async fn llm_test(state: State<'_, Arc<AppState>>) -> Result<LlmTest, String> {
+    let state = state.inner().clone();
+    blocking(move || {
+        let backend = state.backend()?;
+        let started = std::time::Instant::now();
+        let reply = backend.complete(
+            "Reply with the single word OK.",
+            "Say OK.",
+            &AtomicBool::new(false),
+        )?;
+        Ok(LlmTest {
+            reply: reply.trim().chars().take(60).collect(),
+            ms: started.elapsed().as_millis(),
+        })
+    })
+    .await
+}
+
+/// AI paper finder: the model plans arXiv searches for the request, then picks from real
+/// results. The reply and reasons are written in `lang`.
 #[tauri::command]
 pub async fn ai_recommend(
+    state: State<'_, Arc<AppState>>,
     request: String,
     history: Vec<recommend::Turn>,
     lang: Lang,
 ) -> Result<recommend::Answer, String> {
-    blocking(move || recommend::recommend(&request, &history, lang)).await
+    let state = state.inner().clone();
+    blocking(move || recommend::recommend(&state.backend()?, &request, &history, lang)).await
 }
 
 #[derive(Serialize)]
@@ -217,7 +334,16 @@ pub fn ask_paper_stream(
         ),
         None => None,
     };
-    let reply = ask::ask_stream(doc.as_ref(), question, quote, history, lang, on_delta)?;
+    let backend = state.backend()?;
+    let reply = ask::ask_stream(
+        &backend,
+        doc.as_ref(),
+        question,
+        quote,
+        history,
+        lang,
+        on_delta,
+    )?;
     Ok(AskReply { reply })
 }
 
@@ -265,7 +391,7 @@ pub fn summarize(
         .library
         .doc(doc_id)
         .map_err(|_| "Couldn't find the paper".to_string())?;
-    let reply = ask::summarize_stream(&doc, lang, on_delta)?;
+    let reply = ask::summarize_stream(&state.backend()?, &doc, lang, on_delta)?;
     state.library.set_summary(doc_id, lang, &reply)?;
     Ok(SummaryReply {
         reply,
@@ -415,7 +541,7 @@ pub fn start_translation(
     lang: Lang,
     redo: bool,
 ) -> Result<(), String> {
-    let claude = translate::find_claude().ok_or_else(|| translate::NOT_INSTALLED.to_string())?;
+    let backend = state.backend()?;
     let doc = state.library.doc(&id)?;
     let have = state.library.translations(&id, mode, lang);
     let pending: Vec<model::Unit> = doc
@@ -468,7 +594,7 @@ pub fn start_translation(
                             return;
                         };
                         match translate::translate_batch(
-                            &claude, &doc.title, &batch, &headings, mode, lang, &cancel,
+                            &backend, &doc.title, &batch, &headings, mode, lang, &cancel,
                         ) {
                             Ok(units) => {
                                 let _ = state.library.add_translations(&id, mode, lang, &units);

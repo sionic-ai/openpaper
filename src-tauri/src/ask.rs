@@ -244,17 +244,19 @@ fn fit(text: &str, quote: Option<&str>, cap: usize) -> String {
 
 /// Answers a question about `doc` (or a general one when `doc` is `None`) in `lang`.
 pub fn ask(
+    backend: &crate::llm::Backend,
     doc: Option<&Doc>,
     question: &str,
     quote: Option<&str>,
     history: &[Turn],
     lang: Lang,
 ) -> Result<String, String> {
-    ask_stream(doc, question, quote, history, lang, |_| {})
+    ask_stream(backend, doc, question, quote, history, lang, |_| {})
 }
 
 /// [`ask`], calling `on_delta` with each piece of the answer as Claude writes it.
 pub fn ask_stream(
+    backend: &crate::llm::Backend,
     doc: Option<&Doc>,
     question: &str,
     quote: Option<&str>,
@@ -266,10 +268,8 @@ pub fn ask_stream(
     if question.is_empty() {
         return Err("Type a question".into());
     }
-    let claude = translate::find_claude().ok_or_else(|| translate::NOT_INSTALLED.to_string())?;
     let input = build_input(doc, question, quote, history);
-    let reply = translate::run_claude_stream(
-        &claude,
+    let reply = backend.stream(
         &ask_prompt(lang),
         &input.to_string(),
         &AtomicBool::new(false),
@@ -285,14 +285,13 @@ pub fn ask_stream(
 /// Writes an explainer post about `doc` in `lang`, calling `on_delta` with each piece as it is
 /// written.
 pub fn summarize_stream(
+    backend: &crate::llm::Backend,
     doc: &Doc,
     lang: Lang,
     on_delta: impl FnMut(&str),
 ) -> Result<String, String> {
-    let claude = translate::find_claude().ok_or_else(|| translate::NOT_INSTALLED.to_string())?;
     let input = summary_input(doc);
-    let reply = translate::run_claude_stream(
-        &claude,
+    let reply = backend.stream(
         &summary_prompt(lang),
         &input.to_string(),
         &AtomicBool::new(false),
@@ -423,7 +422,19 @@ mod tests {
     #[test]
     fn empty_question_is_rejected() {
         assert_eq!(
-            ask(None, "  ", None, &[], Lang::Ko).unwrap_err(),
+            ask(
+                &crate::llm::Backend::Openai {
+                    base: "https://unused.invalid".into(),
+                    key: None,
+                    model: "unused".into(),
+                },
+                None,
+                "  ",
+                None,
+                &[],
+                Lang::Ko
+            )
+            .unwrap_err(),
             "Type a question"
         );
     }

@@ -3,6 +3,7 @@ pub mod ask;
 pub mod commands;
 pub mod lang;
 pub mod library;
+pub mod llm;
 pub mod model;
 pub mod pdf;
 pub mod recommend;
