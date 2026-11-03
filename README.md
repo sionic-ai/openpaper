@@ -4,6 +4,8 @@
 
 # OpenPaper
 
+**[sionic-ai.github.io/openpaper](https://sionic-ai.github.io/openpaper/)**
+
 Read an English research paper side by side with its translation, sentence by sentence.
 
 [![Release](https://img.shields.io/github/v/release/sionic-ai/openpaper?style=flat-square&labelColor=black&color=white)](https://github.com/sionic-ai/openpaper/releases/latest)
