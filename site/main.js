@@ -205,3 +205,39 @@ fetch('https://api.github.com/repos/sionic-ai/openpaper/releases/latest', { head
     }
   })
   .catch(() => {})
+
+// Motion: sections rise into place as they scroll into view, the hero screenshot stands up from a
+// tilt as it comes up the screen, and the nav gets a hairline once the page scrolls.
+const still = matchMedia('(prefers-reduced-motion: reduce)').matches
+const revealed = document.querySelectorAll('[data-reveal]')
+if (still || !('IntersectionObserver' in window)) {
+  revealed.forEach(el => el.classList.add('in'))
+} else {
+  const seen = new IntersectionObserver(
+    entries => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue
+        e.target.classList.add('in')
+        seen.unobserve(e.target)
+      }
+    },
+    { rootMargin: '0px 0px -8% 0px', threshold: 0.12 }
+  )
+  revealed.forEach(el => seen.observe(el))
+}
+
+const nav = document.querySelector('.nav')
+const shot = document.querySelector('.hero-shot')
+let frame = 0
+function onScroll() {
+  frame = 0
+  nav.classList.toggle('scrolled', scrollY > 8)
+  if (still || !shot) return
+  // 0 while the screenshot's top sits at the bottom of the screen, 1 once it reaches 25% from the top.
+  const top = shot.parentElement.getBoundingClientRect().top
+  const p = Math.min(1, Math.max(0, (innerHeight - top) / (innerHeight * 0.75)))
+  shot.style.setProperty('--p', p.toFixed(3))
+}
+addEventListener('scroll', () => { if (!frame) frame = requestAnimationFrame(onScroll) }, { passive: true })
+addEventListener('resize', onScroll)
+onScroll()
