@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Instructions for coding agents (Claude Code, Codex, ...) that are asked to **install** OpenPaper for a user or to **work on** this repository. OpenPaper is a Tauri 2 app for macOS and Windows that shows an English research paper side by side with its translation in a language the user picks. Translation, summaries, chat, and the AI paper finder run through the user's logged-in Claude Code CLI; there is no API key.
+Instructions for coding agents (Claude Code, Codex, ...) that are asked to **install** OpenPaper for a user or to **work on** this repository. OpenPaper is a Tauri 2 app for macOS and Windows that shows an English research paper side by side with its translation in a language the user picks. Translation, summaries, chat, and the AI paper finder run through the user's logged-in Claude Code CLI by default. In the app's Model settings the user can switch to the Codex CLI, the Anthropic API, or any OpenAI-compatible API (OpenAI, OpenRouter, DeepSeek, Gemini, a local Ollama, or a custom URL).
 
 ## Installing for a user
 
@@ -72,7 +72,7 @@ cargo run --release --features probe --bin openpaper-probe -- claude -   # CLI p
 
 Rules:
 
-- **Claude only through the CLI.** No API keys and no HTTP calls to Anthropic. `translate::run_claude_with` runs `claude -p` with a scrubbed env, no tools/MCP/settings, in an empty temp dir. Reuse it for new prompts.
+- **Every model call goes through `llm::Backend`** (`complete` or `stream`); never call a CLI or an API directly. The Claude Code CLI stays the default and needs no key. CLIs (`claude -p`, `codex exec`) run with a scrubbed env, tools/MCP/user config off (`codex` in a read-only sandbox), in an empty temp dir. API keys live only in `keys.json` in the app data dir (owner-only on macOS), are never sent to the webview (only their last 4 characters), and only travel over https or to localhost. New prompts must work on every backend: keep replies in plain JSON or text, with the same validation.
 - **Never show model-invented papers.** The AI finder (`recommend.rs`) lets Claude plan queries, fetches real arXiv results, and keeps only picks whose IDs are in those results. Keep that invariant.
 - **Be polite to arXiv.** Keep at least 1 s between API requests (`ARXIV_GAP`).
 - **UI copy and error messages are short plain English in sentence case**, e.g. `Couldn't start the translation`. No exclamation marks, no emoji. Translation, summary, and chat output use the selected target language (`src-tauri/src/lang.rs` is the single list). The Korean prompts are product data; leave them in Korean.

@@ -28,7 +28,7 @@ curl -fsSL https://raw.githubusercontent.com/sionic-ai/openpaper/main/install.sh
 
 Run it again to update. The app also shows an Update button when a new release is out.
 
-The installer puts `OpenPaper.app` in `/Applications` (or `~/Applications`), installs [Claude Code](https://docs.claude.com/claude-code) if it is missing, and starts the Claude Code login if you are not logged in. Translation uses your Claude Code account, so there is no API key to set. Requires macOS 11 or later and a Claude account.
+The installer puts `OpenPaper.app` in `/Applications` (or `~/Applications`), installs [Claude Code](https://docs.claude.com/claude-code) if it is missing, and starts the Claude Code login if you are not logged in. Translation uses your Claude Code account by default, so there is no API key to set. You can switch to Codex or an API key in the app (see [Models](#models)). Requires macOS 11 or later.
 
 <details>
 <summary>Installer options</summary>
@@ -56,7 +56,7 @@ Download [OpenPaper-windows-x64-setup.exe](https://github.com/sionic-ai/openpape
 
 The setup program is not code-signed, so Windows SmartScreen may warn about it. Choose **More info**, then **Run anyway**.
 
-Translation needs [Claude Code](https://docs.claude.com/claude-code). If it is not installed, run this in PowerShell, then log in:
+By default, translation uses [Claude Code](https://docs.claude.com/claude-code) (or pick Codex or an API key under [Models](#models)). If Claude Code is not installed, run this in PowerShell, then log in:
 
 ```powershell
 irm https://claude.ai/install.ps1 | iex
@@ -77,9 +77,22 @@ Requires Windows 10 or 11 (x64) and a Claude account. The setup program installs
 - **Folders and dark mode.** Drag papers onto each other to group them. Light and dark themes follow the system until you pick one.
 - **In-app update.** An Update button appears when a new release is out.
 
+## Models
+
+Translation, summaries, questions, and the AI finder use one model backend, picked under **Model** at the bottom of the sidebar:
+
+| Backend | What you need | Notes |
+|---|---|---|
+| Claude Code (default) | A logged-in `claude` CLI | No key. Uses your Claude plan |
+| Codex | A logged-in `codex` CLI (or the ChatGPT app, which includes it) | No key. Uses your ChatGPT plan. Answers arrive whole, not streamed |
+| Anthropic API | An Anthropic API key | Default model `claude-sonnet-5-5` |
+| OpenAI-compatible | An API key and a model name | Presets for OpenAI, OpenRouter, DeepSeek, Google Gemini, and a local Ollama (no key), or any custom `https://` address. **Load models** lists what the endpoint offers |
+
+Keys are saved in `keys.json` next to your papers (readable only by you on macOS), never shown again in the app, and only sent over https or to your own computer. **Test** makes one tiny call to check the setup. API calls are billed to your API account; a long paper takes dozens of calls.
+
 ## How it works
 
-- **Claude Code CLI, isolated.** Every model call runs `claude -p` with tools, MCP servers, and settings turned off, in an empty temporary folder. The app sends paper text and reads JSON or text back. No API key, no direct HTTP calls to Anthropic.
+- **Your model, isolated.** By default every model call runs `claude -p` with tools, MCP servers, and settings turned off, in an empty temporary folder. Codex runs the same way in a read-only sandbox. The app sends paper text and reads JSON or text back.
 - **No invented papers.** The AI finder lets Claude plan queries, fetches real results from the arXiv API, and keeps only picks whose IDs are in those results.
 - **Your files stay local.** Papers, translations, summaries, and folders are plain JSON files in `~/Library/Application Support/dev.rlaope.openpaper/papers/` on macOS and `%APPDATA%\dev.rlaope.openpaper\papers\` on Windows.
 
