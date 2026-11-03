@@ -226,12 +226,39 @@ if (still || !('IntersectionObserver' in window)) {
   revealed.forEach(el => seen.observe(el))
 }
 
+// The background drifts through soft mint, pale sky and sage as the page scrolls. Each stop is the
+// colors of the four fields (--a to --d) and the page (--base) at that point of the page.
+const AMBIENT = [
+  ['#bfe6e0', '#d9e2e1', '#cdeee9', '#e4ebef', '#ffffff'],
+  ['#cde2ee', '#c4e8e1', '#e2e7ec', '#d6ece6', '#fbfdfd'],
+  ['#dbe5df', '#cbe2ee', '#c3e5de', '#e9e6dc', '#f9fbfa'],
+  ['#b4dfd8', '#d2dfe9', '#a9d8cf', '#dbe9e4', '#f5faf9'],
+]
+const ambient = document.querySelector('.ambient')
+const root = document.documentElement.style
+const rgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16))
+const AMBIENT_RGB = AMBIENT.map(stop => stop.map(rgb))
+function paintAmbient(s) {
+  const x = s * (AMBIENT_RGB.length - 1)
+  const i = Math.min(AMBIENT_RGB.length - 2, Math.floor(x))
+  const t = x - i
+  const from = AMBIENT_RGB[i]
+  const to = AMBIENT_RGB[i + 1]
+  ;['--a', '--b', '--c', '--d', '--base'].forEach((name, k) => {
+    const c = from[k].map((v, j) => Math.round(v + (to[k][j] - v) * t))
+    root.setProperty(name, `rgb(${c.join(' ')})`)
+  })
+  if (!still) ambient.style.setProperty('--s', s.toFixed(3))
+}
+
 const nav = document.querySelector('.nav')
 const shot = document.querySelector('.hero-shot')
 let frame = 0
 function onScroll() {
   frame = 0
   nav.classList.toggle('scrolled', scrollY > 8)
+  const room = document.documentElement.scrollHeight - innerHeight
+  paintAmbient(room > 0 ? Math.min(1, Math.max(0, scrollY / room)) : 0)
   if (still || !shot) return
   // 0 while the screenshot's top sits at the bottom of the screen, 1 once it reaches 25% from the top.
   const top = shot.parentElement.getBoundingClientRect().top

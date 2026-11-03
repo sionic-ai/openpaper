@@ -24,7 +24,7 @@
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+body { margin: 0; background: var(--base, var(--bg)); transition: background-color 1.2s linear; color: var(--text); font: 16px/1.6 var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
 img { display: block; max-width: 100%; height: auto; }
 a { color: inherit; text-decoration: none; }
 button { font: inherit; color: inherit; cursor: pointer; }
@@ -54,11 +54,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 /* Hero */
 .hero { position: relative; text-align: center; padding: 96px 0 40px; }
-.blobs { position: absolute; inset: -60px 0 auto; height: 900px; z-index: -1; overflow: hidden; pointer-events: none; }
-.blob { position: absolute; border-radius: 50%; filter: blur(70px); opacity: .55; animation: drift 22s ease-in-out infinite alternate; }
-.blob.a { width: 520px; height: 520px; left: 8%; top: 40px; background: radial-gradient(circle, #bfe6e0, transparent 70%); }
-.blob.b { width: 460px; height: 460px; right: 6%; top: 120px; background: radial-gradient(circle, #d9e2e1, transparent 70%); animation-duration: 26s; animation-delay: -8s; }
-.blob.c { width: 600px; height: 600px; left: 32%; top: 420px; background: radial-gradient(circle, #cdeee9, transparent 70%); animation-duration: 30s; animation-delay: -14s; }
+/* The page background: soft color fields behind everything. main.js moves their colors through
+   mint, pale sky and sage as the page scrolls (--a to --d, --s from 0 to 1). */
+.ambient { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; --s: 0; }
+.blob { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .6; animation: drift 22s ease-in-out infinite alternate; transition: background-color 1.2s linear; }
+.blob.a { width: 46vw; height: 46vw; min-width: 420px; min-height: 420px; left: -6vw; top: -8vh; background-color: var(--a, #bfe6e0); translate: 0 calc(var(--s) * 18vh); }
+.blob.b { width: 40vw; height: 40vw; min-width: 380px; min-height: 380px; right: -8vw; top: 6vh; background-color: var(--b, #d9e2e1); translate: 0 calc(var(--s) * -14vh); animation-duration: 26s; animation-delay: -8s; }
+.blob.c { width: 50vw; height: 50vw; min-width: 460px; min-height: 460px; left: 26vw; bottom: -30vh; background-color: var(--c, #cdeee9); translate: calc(var(--s) * -10vw) calc(var(--s) * -20vh); animation-duration: 30s; animation-delay: -14s; }
+.blob.d { width: 30vw; height: 30vw; min-width: 300px; min-height: 300px; right: 10vw; bottom: -12vh; background-color: var(--d, #e4ebef); translate: calc(var(--s) * 8vw) calc(var(--s) * -10vh); animation-duration: 34s; animation-delay: -20s; opacity: .5; }
 @keyframes drift {
   0% { transform: translate(0, 0) scale(1); }
   50% { transform: translate(40px, -30px) scale(1.08); }
@@ -103,7 +106,7 @@ section h2 { font-size: clamp(28px, 4vw, 42px); line-height: 1.28; margin: 0 0 4
 .features .kicker, .cta .kicker { text-align: center; }
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
 .card {
-  min-width: 0; padding: 34px 34px 0; border: 1px solid var(--line); border-radius: 18px; background: #fff; overflow: hidden;
+  min-width: 0; padding: 34px 34px 0; border: 1px solid var(--line); border-radius: 18px; background: rgba(255, 255, 255, .8); overflow: hidden;
   display: flex; flex-direction: column; box-shadow: var(--shadow-sm);
 }
 /* The reveal transition is on the same element; hover only changes shadow and border. */
@@ -117,7 +120,7 @@ section h2 { font-size: clamp(28px, 4vw, 42px); line-height: 1.28; margin: 0 0 4
 .card.wide .card-shot { height: auto; }
 .card.wide .card-shot img { height: auto; }
 /* The languages card: text and chips on the left, points on the right. */
-.card.split { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 0 48px; align-items: center; padding-bottom: 8px; background: linear-gradient(135deg, #fff 40%, var(--bg-soft)); }
+.card.split { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 0 48px; align-items: center; padding-bottom: 8px; background: linear-gradient(135deg, rgba(255, 255, 255, .85) 40%, rgba(244, 249, 248, .7)); }
 .card.split .points { margin: 0 0 28px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 24px; padding: 0; list-style: none; }
 .chips li { padding: 5px 12px; border: 1px solid var(--line); border-radius: 999px; font-size: 14px; color: var(--text); background: #fff; transition: border-color .2s, color .2s; }
@@ -135,7 +138,7 @@ section h2 { font-size: clamp(28px, 4vw, 42px); line-height: 1.28; margin: 0 0 4
 .copy:hover { color: var(--teal-strong); border-color: var(--teal); }
 .copy.done { color: var(--teal-strong); border-color: var(--teal); }
 
-.cta { position: relative; margin-top: 120px; padding: 120px 0 130px; text-align: center; overflow: hidden; background: linear-gradient(180deg, #fff, var(--bg-soft)); }
+.cta { position: relative; margin-top: 120px; padding: 120px 0 130px; text-align: center; }
 .cta::before { content: ''; position: absolute; left: 50%; top: 40%; width: min(900px, 100%); height: 500px; transform: translate(-50%, -50%); background: radial-gradient(closest-side, rgba(74, 169, 160, .2), transparent); pointer-events: none; }
 .cta .wrap { position: relative; }
 .cta h2 { margin-bottom: 18px; }
@@ -146,7 +149,7 @@ section h2 { font-size: clamp(28px, 4vw, 42px); line-height: 1.28; margin: 0 0 4
 .btn.solid { background: linear-gradient(135deg, #46a89f, #2c8179); border-color: transparent; color: #fff; }
 .btn.solid:hover { box-shadow: 0 14px 34px -12px rgba(44, 129, 121, .6); }
 
-.foot { border-top: 1px solid var(--line); background: var(--bg-soft); }
+.foot { border-top: 1px solid var(--line); background: rgba(255, 255, 255, .55); }
 .foot-in { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 28px 0 40px; font-size: 13px; color: var(--faint); }
 .foot img { width: 96px; }
 
@@ -175,6 +178,6 @@ section h2 { font-size: clamp(28px, 4vw, 42px); line-height: 1.28; margin: 0 0 4
   html { scroll-behavior: auto; }
   [data-reveal] { opacity: 1; transform: none; transition: none; }
   .hero-shot { transform: none; }
-  .blob { animation: none; }
+  .blob { animation: none; translate: none; }
   .dl, .btn, .card-shot img { transition: none; }
 }
