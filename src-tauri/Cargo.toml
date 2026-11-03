@@ -1,6 +1,6 @@
 [package]
 name = "openpaper"
-version = "0.2.2"
+version = "0.2.3"
 description = "Side-by-side research paper reader with translation"
 edition = "2024"
 rust-version = "1.85"
