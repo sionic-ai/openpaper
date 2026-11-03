@@ -13,7 +13,7 @@ use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc;
+use std::sync::{Arc, Mutex, mpsc};
 use std::time::{Duration, Instant};
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
@@ -117,6 +117,10 @@ pub struct Settings {
     /// Model per slot (see [`Settings::slot`]); a missing entry means the slot's default.
     #[serde(default)]
     pub models: HashMap<String, String>,
+    /// Backup slots, in order. A call goes to the next one when the chosen backend hits a usage
+    /// limit or can't run.
+    #[serde(default)]
+    pub backups: Vec<String>,
 }
 
 fn default_preset() -> String {
@@ -133,6 +137,26 @@ impl Settings {
             Provider::Anthropic => "anthropic".into(),
             Provider::Openai => format!("openai:{}", self.preset),
         }
+    }
+
+    /// These settings with `slot` chosen instead, or `None` for a slot that doesn't exist.
+    pub fn with_slot(&self, slot: &str) -> Option<Settings> {
+        let (provider, preset) = match slot {
+            "claude-code" => (Provider::ClaudeCode, None),
+            "codex" => (Provider::Codex, None),
+            "anthropic" => (Provider::Anthropic, None),
+            _ => {
+                let preset = slot.strip_prefix("openai:")?;
+                PRESETS.iter().find(|p| p.id == preset)?;
+                (Provider::Openai, Some(preset))
+            }
+        };
+        let mut s = self.clone();
+        s.provider = provider;
+        if let Some(p) = preset {
+            s.preset = p.to_string();
+        }
+        Some(s)
     }
 
     pub fn model(&self) -> String {
@@ -220,6 +244,29 @@ const BAD_MODEL: &str = "Model names can only use letters, numbers and . _ : / -
 pub struct Store {
     settings_path: PathBuf,
     keys_path: PathBuf,
+    /// Which backends are resting after a limit, and which one answered last. Memory only.
+    switch: Arc<Mutex<Switch>>,
+}
+
+/// How long a backend that hit a usage limit or couldn't run is skipped before it is tried again.
+const REST: Duration = Duration::from_secs(20 * 60);
+
+#[derive(Default, Debug)]
+pub struct Switch {
+    /// Slot → (try again after, why it stopped).
+    resting: HashMap<String, (Instant, String)>,
+    /// The backup that answered the last call and why the chosen backend didn't, or `None` when
+    /// the chosen backend answered.
+    serving: Option<(String, String)>,
+}
+
+impl Switch {
+    fn resting(&self, slot: &str) -> Option<String> {
+        self.resting
+            .get(slot)
+            .filter(|(until, _)| Instant::now() < *until)
+            .map(|(_, why)| why.clone())
+    }
 }
 
 impl Store {
@@ -227,7 +274,29 @@ impl Store {
         Self {
             settings_path: app_data.join("settings.json"),
             keys_path: app_data.join("keys.json"),
+            switch: Arc::default(),
         }
+    }
+
+    /// Forgets resting backends and the last backup, so new settings start with the chosen one.
+    pub fn reset_switch(&self) {
+        *self.switch.lock().unwrap() = Switch::default();
+    }
+
+    /// The backup that answered the last call, while it is one of the saved backups.
+    pub fn serving(&self, s: &Settings) -> Option<Backup> {
+        let (slot, reason) = self.switch.lock().unwrap().serving.clone()?;
+        if slot == s.slot() || !s.backups.contains(&slot) {
+            return None;
+        }
+        let b = s.with_slot(&slot)?;
+        Some(Backup {
+            provider: b.provider,
+            label: label(&b),
+            model: b.model(),
+            preset: b.preset.clone(),
+            reason,
+        })
     }
 
     pub fn settings(&self) -> Settings {
@@ -329,6 +398,14 @@ pub enum Backend {
         key: Option<String>,
         model: String,
     },
+    /// The chosen backend, then its backups in order. `unready` says why the chosen one couldn't
+    /// even be set up (it is then missing from `links`).
+    Chain {
+        chosen: String,
+        unready: Option<String>,
+        links: Vec<(String, Backend)>,
+        switch: Arc<Mutex<Switch>>,
+    },
 }
 
 impl std::fmt::Debug for Backend {
@@ -340,6 +417,7 @@ impl std::fmt::Debug for Backend {
             Backend::Codex { path, model } => write!(f, "Codex({}, {model})", path.display()),
             Backend::Anthropic { base, model, .. } => write!(f, "Anthropic({base}, {model})"),
             Backend::Openai { base, model, .. } => write!(f, "Openai({base}, {model})"),
+            Backend::Chain { links, .. } => f.debug_list().entries(links).finish(),
         }
     }
 }
@@ -365,6 +443,21 @@ pub struct Status {
     /// OpenAI-compatible preset id, so the app can show that service's mark.
     pub preset: String,
     pub problem: Option<Problem>,
+    /// The backup answering calls for now, if the chosen backend stopped.
+    pub backup: Option<Backup>,
+    /// How many saved backups are set up and could take over.
+    pub backups: usize,
+}
+
+#[derive(Serialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Backup {
+    pub provider: Provider,
+    pub label: String,
+    pub model: String,
+    pub preset: String,
+    /// Why the chosen backend didn't answer.
+    pub reason: String,
 }
 
 const CODEX_MISSING: &str = "Couldn't find the Codex CLI. Install Codex or the ChatGPT app, or pick another model in Model settings";
@@ -381,8 +474,108 @@ pub fn label(s: &Settings) -> String {
     }
 }
 
-/// Builds the backend for `s` without any network or login check.
+/// Builds the backend for `s` without any network or login check. With backups saved, it is a
+/// [`Backend::Chain`] of the chosen backend and every backup that can be set up.
 pub fn backend(s: &Settings, store: &Store) -> Result<Backend, String> {
+    let chosen = s.slot();
+    let first = backend_one(s, store);
+    let backups: Vec<(String, Backend)> = s
+        .backups
+        .iter()
+        .filter(|slot| **slot != chosen)
+        .filter_map(|slot| {
+            let b = backend_one(&s.with_slot(slot)?, store).ok()?;
+            Some((slot.clone(), b))
+        })
+        .collect();
+    if backups.is_empty() {
+        return first;
+    }
+    let (links, unready) = match first {
+        Ok(b) => (vec![(chosen.clone(), b)], None),
+        Err(e) => (Vec::new(), Some(e)),
+    };
+    Ok(Backend::Chain {
+        chosen,
+        unready,
+        links: links.into_iter().chain(backups).collect(),
+        switch: store.switch.clone(),
+    })
+}
+
+/// An error after which the next backup should take over: a usage or rate limit, no credit, or
+/// a backend that isn't installed, logged in or set up. Not a network hiccup or a bad reply.
+pub fn switchable(err: &str) -> bool {
+    let e = err.to_lowercase();
+    [
+        "limit",
+        "out of credit",
+        "key was rejected",
+        "logged in",
+        "couldn't find the",
+        "add an api key",
+        "add the api address",
+        "pick a model",
+    ]
+    .iter()
+    .any(|k| e.contains(k))
+        && !e.contains("length limit")
+}
+
+/// One model call on a backend, sending reply text to the given callback.
+type Call<'a> = dyn FnMut(&Backend, &mut dyn FnMut(&str)) -> Result<String, String> + 'a;
+
+/// Runs a call down the chain: a backend resting after a limit is skipped (except the last), and
+/// one that fails with a [`switchable`] error before sending any text hands over to the next.
+fn run_chain(
+    chosen: &str,
+    unready: &Option<String>,
+    links: &[(String, Backend)],
+    switch: &Mutex<Switch>,
+    cancel: &AtomicBool,
+    call: &mut Call<'_>,
+    on_delta: &mut dyn FnMut(&str),
+) -> Result<String, String> {
+    let mut reason = unready.clone();
+    for (i, (slot, backend)) in links.iter().enumerate() {
+        let last = i + 1 == links.len();
+        if !last {
+            if let Some(why) = switch.lock().unwrap().resting(slot) {
+                reason.get_or_insert(why);
+                continue;
+            }
+        }
+        let mut sent = false;
+        let result = call(backend, &mut |d: &str| {
+            sent = true;
+            on_delta(d);
+        });
+        match result {
+            Ok(text) => {
+                let mut sw = switch.lock().unwrap();
+                sw.resting.remove(slot);
+                sw.serving =
+                    (slot != chosen).then(|| (slot.clone(), reason.clone().unwrap_or_default()));
+                return Ok(text);
+            }
+            Err(e) if !last && !sent && !cancel.load(Ordering::Relaxed) && switchable(&e) => {
+                switch
+                    .lock()
+                    .unwrap()
+                    .resting
+                    .insert(slot.clone(), (Instant::now() + REST, e.clone()));
+                reason.get_or_insert(e);
+            }
+            Err(e) => return Err(e),
+        }
+    }
+    Err(unready
+        .clone()
+        .unwrap_or_else(|| "No model is set up".to_string()))
+}
+
+/// The chosen backend alone, without backups.
+pub fn backend_one(s: &Settings, store: &Store) -> Result<Backend, String> {
     let model = s.model();
     if matches!(s.provider, Provider::ClaudeCode | Provider::Codex) && !model_ok(&model) {
         return Err(BAD_MODEL.into());
@@ -454,6 +647,14 @@ pub fn status(s: &Settings, store: &Store) -> Status {
         model: s.model(),
         preset: s.preset.clone(),
         problem,
+        backup: store.serving(s),
+        backups: s
+            .backups
+            .iter()
+            .filter(|slot| **slot != s.slot())
+            .filter_map(|slot| s.with_slot(slot))
+            .filter(|b| backend_one(b, store).is_ok())
+            .count(),
     }
 }
 
@@ -469,6 +670,20 @@ impl Backend {
             Backend::ClaudeCode { path, model } => {
                 translate::run_claude_with(path, model, system, input, cancel)
             }
+            Backend::Chain {
+                chosen,
+                unready,
+                links,
+                switch,
+            } => run_chain(
+                chosen,
+                unready,
+                links,
+                switch,
+                cancel,
+                &mut |b, _| b.complete(system, input, cancel),
+                &mut |_| {},
+            ),
             _ => self.stream(system, input, cancel, |_| {}),
         }
     }
@@ -480,9 +695,23 @@ impl Backend {
         system: &str,
         input: &str,
         cancel: &AtomicBool,
-        on_delta: impl FnMut(&str),
+        mut on_delta: impl FnMut(&str),
     ) -> Result<String, String> {
         match self {
+            Backend::Chain {
+                chosen,
+                unready,
+                links,
+                switch,
+            } => run_chain(
+                chosen,
+                unready,
+                links,
+                switch,
+                cancel,
+                &mut |b, f| b.stream(system, input, cancel, f),
+                &mut on_delta,
+            ),
             Backend::ClaudeCode { path, model } => {
                 translate::run_claude_stream(path, model, system, input, cancel, on_delta)
             }
@@ -1360,6 +1589,162 @@ mod tests {
             {"id":"plain"}
         ]}"#;
         assert_eq!(model_ids(body), vec!["chat", "plain"]);
+    }
+
+    fn fake(model: &str) -> Backend {
+        Backend::Openai {
+            base: "http://localhost:1/v1".into(),
+            key: None,
+            model: model.into(),
+        }
+    }
+
+    fn model_of(b: &Backend) -> String {
+        match b {
+            Backend::Openai { model, .. } => model.clone(),
+            _ => String::new(),
+        }
+    }
+
+    /// Runs a chain of fake backends; `answer(model)` says what each one does.
+    fn run(
+        links: &[(String, Backend)],
+        switch: &Mutex<Switch>,
+        tried: &mut Vec<String>,
+        answer: impl Fn(&str, &mut dyn FnMut(&str)) -> Result<String, String>,
+    ) -> Result<String, String> {
+        run_chain(
+            "claude-code",
+            &None,
+            links,
+            switch,
+            &AtomicBool::new(false),
+            &mut |b, f| {
+                tried.push(model_of(b));
+                answer(&model_of(b), f)
+            },
+            &mut |_| {},
+        )
+    }
+
+    #[test]
+    fn a_usage_limit_hands_over_to_the_next_backup_and_rests() {
+        let links = vec![
+            ("claude-code".to_string(), fake("a")),
+            ("openai:opengateway".to_string(), fake("b")),
+        ];
+        let switch = Mutex::new(Switch::default());
+        let limited = |m: &str, _: &mut dyn FnMut(&str)| match m {
+            "a" => Err("Claude Code is at its usage limit: resets 5pm".to_string()),
+            m => Ok(format!("from {m}")),
+        };
+        let mut tried = Vec::new();
+        assert_eq!(run(&links, &switch, &mut tried, limited).unwrap(), "from b");
+        assert_eq!(tried, ["a", "b"]);
+        let serving = switch.lock().unwrap().serving.clone().unwrap();
+        assert_eq!(serving.0, "openai:opengateway");
+        assert!(serving.1.contains("usage limit"));
+        // While it rests, the chosen backend isn't tried at all.
+        let mut tried = Vec::new();
+        run(&links, &switch, &mut tried, limited).unwrap();
+        assert_eq!(tried, ["b"]);
+        // Once the rest is over and it answers, it is back in use.
+        switch.lock().unwrap().resting.clear();
+        let mut tried = Vec::new();
+        let ok = |m: &str, _: &mut dyn FnMut(&str)| Ok::<_, String>(format!("from {m}"));
+        assert_eq!(run(&links, &switch, &mut tried, ok).unwrap(), "from a");
+        assert_eq!(switch.lock().unwrap().serving, None);
+    }
+
+    #[test]
+    fn other_failures_and_half_sent_replies_stay_with_the_backend() {
+        let links = vec![
+            ("claude-code".to_string(), fake("a")),
+            ("codex".to_string(), fake("b")),
+        ];
+        let switch = Mutex::new(Switch::default());
+        let mut tried = Vec::new();
+        let bad = |_: &str, _: &mut dyn FnMut(&str)| Err::<String, _>("Couldn't read the reply".into());
+        assert!(run(&links, &switch, &mut tried, bad).is_err());
+        assert_eq!(tried, ["a"]);
+        let mut tried = Vec::new();
+        let half = |_: &str, f: &mut dyn FnMut(&str)| {
+            f("part");
+            Err::<String, _>("The API rate limit was reached".into())
+        };
+        assert!(run(&links, &switch, &mut tried, half).is_err());
+        assert_eq!(tried, ["a"]);
+    }
+
+    #[test]
+    fn the_last_backup_is_tried_even_while_resting() {
+        let links = vec![
+            ("claude-code".to_string(), fake("a")),
+            ("codex".to_string(), fake("b")),
+        ];
+        let switch = Mutex::new(Switch::default());
+        let far = Instant::now() + REST;
+        for slot in ["claude-code", "codex"] {
+            switch
+                .lock()
+                .unwrap()
+                .resting
+                .insert(slot.into(), (far, "limit".into()));
+        }
+        let mut tried = Vec::new();
+        let err = run(&links, &switch, &mut tried, |_, _| {
+            Err("Codex failed: usage limit".to_string())
+        });
+        assert_eq!(tried, ["b"]);
+        assert!(err.unwrap_err().contains("Codex"));
+    }
+
+    #[test]
+    fn switchable_errors() {
+        for e in [
+            "Claude Code is at its usage limit",
+            "Claude Code failed. Check that you are logged in and within your usage limit",
+            "The API rate limit was reached. Wait a moment and try again",
+            "The API account is out of credit",
+            "The API key was rejected. Check it in Model settings",
+            NO_KEY,
+            CODEX_MISSING,
+            translate::NOT_INSTALLED,
+        ] {
+            assert!(switchable(e), "{e}");
+        }
+        for e in [
+            "Couldn't reach the API. Check your connection",
+            "Canceled",
+            "Couldn't read the reply from Claude Code",
+            "the reply was cut off at the model's length limit",
+        ] {
+            assert!(!switchable(e), "{e}");
+        }
+    }
+
+    #[test]
+    fn backups_build_a_chain_even_when_the_chosen_one_cannot_run() {
+        let dir = std::env::temp_dir().join(format!("openpaper-chain-test-{}", std::process::id()));
+        let store = Store::new(&dir);
+        let mut s = Settings {
+            provider: Provider::Anthropic,
+            ..Settings::default()
+        };
+        s.models.insert("openai:ollama".into(), "llama".into());
+        assert_eq!(backend(&s, &store).unwrap_err(), NO_KEY);
+        s.backups = vec!["anthropic".into(), "openai:ollama".into(), "nope".into()];
+        match backend(&s, &store).unwrap() {
+            Backend::Chain { unready, links, .. } => {
+                assert_eq!(unready.as_deref(), Some(NO_KEY));
+                assert_eq!(links.len(), 1);
+                assert_eq!(links[0].0, "openai:ollama");
+            }
+            other => panic!("{other:?}"),
+        }
+        assert_eq!(s.with_slot("openai:nope"), None);
+        assert_eq!(s.with_slot("codex").unwrap().slot(), "codex");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

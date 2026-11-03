@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { api, errorText, slotOf, type LlmConfig, type LlmSettings, type LlmStatus, type ModelOption, type Provider } from './api'
+import { api, errorText, slotOf, type LlmBackup, type LlmConfig, type LlmSettings, type LlmStatus, type ModelOption, type Preset, type Provider } from './api'
 import { Logo, type LogoId } from './logos'
 import { isMac } from './platform'
 
@@ -58,20 +58,27 @@ function effectiveModel(slot: string, saved: string): string {
   return saved || (slot === 'codex' ? '' : KNOWN[slot]?.[0]?.id ?? '')
 }
 
-/** Short name of the current model for the sidebar and the dialog header. */
-function modelName(status: LlmStatus): string {
-  const known = KNOWN[slotKey(status.provider, status.preset)]?.find(m => m.id === status.model)
+/** Short name of a model for the sidebar and the dialog header. */
+function modelName(m: { provider: Provider; preset: string; model: string }): string {
+  const known = KNOWN[slotKey(m.provider, m.preset)]?.find(k => k.id === m.model)
   if (known?.name) return known.name
-  return status.model || (status.provider === 'codex' ? 'Codex default' : 'No model picked')
+  return m.model || (m.provider === 'codex' ? 'Codex default' : 'No model picked')
 }
 
-/** Sidebar footer button showing the current backend's mark and model; opens Model settings. */
+/** Sidebar footer button showing the mark and model answering calls; opens Model settings. */
 export function ModelButton({ status, onOpen }: { status: LlmStatus | null; onOpen: () => void }) {
-  const text = status ? modelName(status) : 'Model'
-  const title = status ? `Model: ${status.label}, ${text}. Click to change` : 'Model settings'
+  const backup = status?.backup
+  const shown = backup ?? status
+  const text = shown ? modelName(shown) : 'Model'
+  const title = !status
+    ? 'Model settings'
+    : backup
+      ? `${backup.reason}. Using the backup ${backup.label}, ${text}, for now. Click to change`
+      : `Model: ${status.label}, ${text}. Click to change`
+  const warn = status?.problem && !backup
   return (
-    <button className={`lang-btn model-btn${status?.problem ? ' warn' : ''}`} onClick={onOpen} title={title}>
-      {status ? <Logo id={logoOf(status.provider, status.preset)} size={14} /> : null}
+    <button className={`lang-btn model-btn${warn ? ' warn' : ''}${backup ? ' on-backup' : ''}`} onClick={onOpen} title={title}>
+      {shown ? <Logo id={logoOf(shown.provider, shown.preset)} size={14} /> : null}
       <span>{text}</span>
     </button>
   )
@@ -253,17 +260,7 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
           </button>
         </div>
         <p className="modal-sub">What runs translation, summaries, questions and the AI finder.</p>
-        {status && (
-          <div className={`now-using${status.problem ? ' warn' : ''}`} aria-live="polite">
-            <Logo id={logoOf(status.provider, status.preset)} size={20} />
-            <span>
-              <small>Now using</small>
-              <b>{status.label}</b>
-              <span className="sep" aria-hidden="true">·</span>
-              <span className="now-model">{modelName(status)}</span>
-            </span>
-          </div>
-        )}
+        {status && <NowUsing status={status} />}
         {s && (
           <>
             <div className="providers" role="radiogroup" aria-label="Model backend">
@@ -381,6 +378,14 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
 
             {isApi && <p className="modal-note">API calls are billed to your API account. Translating a long paper takes dozens of calls.</p>}
 
+            <BackupPicker
+              settings={s}
+              presets={config.presets}
+              hints={config.keyHints}
+              label={status?.label ?? 'The model'}
+              onChange={backups => save({ backups })}
+            />
+
             <div className="test-row">
               <button className="primary" onClick={runTest} disabled={test.state === 'running' || !!status?.problem}>
                 {test.state === 'running' ? 'Testing…' : 'Test'}
@@ -392,6 +397,101 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
           </>
         )}
         {error && <div className="modal-error" role="alert">{error}</div>}
+      </div>
+    </div>
+  )
+}
+
+/** The backend answering calls: the chosen one, or the backup that took over and why. */
+function NowUsing({ status }: { status: LlmStatus }) {
+  const b: LlmBackup | null = status.backup
+  const shown = b ?? status
+  return (
+    <div className={`now-using${status.problem && !b ? ' warn' : ''}${b ? ' on-backup' : ''}`} aria-live="polite">
+      <Logo id={logoOf(shown.provider, shown.preset)} size={20} />
+      <span>
+        <small>Now using</small>
+        <b>{shown.label}</b>
+        <span className="sep" aria-hidden="true">·</span>
+        <span className="now-model">{modelName(shown)}</span>
+        {b && <span className="backup-tag">Backup</span>}
+        {b && (
+          <span className="now-why">
+            {b.reason}. {status.label} is tried again within 20 minutes.
+          </span>
+        )}
+      </span>
+    </div>
+  )
+}
+
+type Candidate = { slot: string; name: string; logo: LogoId }
+
+/**
+ * Backups, in order: when the chosen backend hits a usage limit or can't run, the next one
+ * answers instead. Lists every backend with a login or a saved key, except the chosen one.
+ */
+function BackupPicker({
+  settings: s,
+  presets,
+  hints,
+  label,
+  onChange,
+}: {
+  settings: LlmSettings
+  presets: Preset[]
+  hints: Record<string, string>
+  label: string
+  onChange: (backups: string[]) => void
+}) {
+  const chosen = slotOf(s)
+  const known = (slot: string) => s.backups.includes(slot) || slot in hints || !!s.models[slot]
+  const candidates: Candidate[] = [
+    ...PROVIDERS.filter(p => p.id !== 'openai').map(p => ({ slot: p.id as string, name: p.name, logo: p.logo })),
+    { slot: `openai:${OPENGATEWAY}`, name: 'OpenGateway', logo: 'opengateway' as LogoId },
+    ...presets
+      .filter(p => p.id !== OPENGATEWAY && known(`openai:${p.id}`))
+      .map(p => ({ slot: `openai:${p.id}`, name: p.name, logo: PRESET_LOGO[p.id] ?? ('custom' as LogoId) })),
+  ].filter(c => c.slot !== chosen)
+
+  // What a backup still needs before it can answer, as in Rust's `backend`.
+  const missing = (slot: string): string | null => {
+    if (slot === 'claude-code' || slot === 'codex') return null
+    const preset = presets.find(p => `openai:${p.id}` === slot)
+    const needsKey = slot === 'anthropic' || (preset?.needsKey ?? false)
+    if (needsKey && !(slot in hints)) return 'Needs an API key'
+    if (slot === 'openai:custom' && !s.baseUrl) return 'Needs the API address'
+    if (slot.startsWith('openai:') && !s.models[slot] && !preset?.model) return 'Needs a model'
+    return null
+  }
+  const toggle = (slot: string) => onChange(s.backups.includes(slot) ? s.backups.filter(b => b !== slot) : [...s.backups, slot])
+
+  return (
+    <div className="field backups">
+      <span className="field-label" id="llm-backups">Backups</span>
+      <p className="field-hint top">When {label} hits a usage limit or can't run, the first backup that works takes over.</p>
+      <div className="backup-list" role="group" aria-labelledby="llm-backups">
+        {candidates.map(c => {
+          const at = s.backups.indexOf(c.slot)
+          const on = at >= 0
+          const need = missing(c.slot)
+          const viaApi = c.slot.startsWith('openai:')
+          const model = modelName({
+            provider: viaApi ? 'openai' : (c.slot as Provider),
+            preset: viaApi ? c.slot.slice('openai:'.length) : '',
+            model: effectiveModel(c.slot, s.models[c.slot] ?? ''),
+          })
+          return (
+            <button key={c.slot} role="checkbox" aria-checked={on} className={on ? 'on' : ''} disabled={!on && !!need} onClick={() => toggle(c.slot)}>
+              <span className="backup-order" aria-hidden="true">{on ? at + 1 : ''}</span>
+              <Logo id={c.logo} size={16} />
+              <span className="backup-name">
+                <b>{c.name}</b>
+                <span>{need ?? model}</span>
+              </span>
+            </button>
+          )
+        })}
       </div>
     </div>
   )

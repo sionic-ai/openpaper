@@ -474,6 +474,23 @@ fn stopped(cancel: &AtomicBool) -> String {
 
 const FAILED: &str = "Claude Code failed. Check that you are logged in and within your usage limit";
 
+const LIMIT: &str = "Claude Code is at its usage limit";
+
+/// The error for a failed run, from the CLI's own error text when it names a usage limit.
+fn failed(result: &str) -> String {
+    let r = result.to_lowercase();
+    if r.contains("limit") || r.contains("quota") {
+        let detail: String = result.trim().chars().take(120).collect();
+        if detail.is_empty() {
+            LIMIT.into()
+        } else {
+            format!("{LIMIT}: {detail}")
+        }
+    } else {
+        FAILED.into()
+    }
+}
+
 const NOT_LOGGED_IN: &str =
     "Claude Code failed. Check that you are logged in: run `claude` in a terminal";
 
@@ -533,7 +550,7 @@ pub fn run_claude_with(
             }
         })?;
         if envelope.is_error || !status.success() {
-            return Err(FAILED.into());
+            return Err(failed(&envelope.result));
         }
         Ok(envelope.result)
     })();
@@ -647,7 +664,7 @@ pub fn run_claude_stream(
                 // The envelope is authoritative; deltas are only for display.
                 Ok(if result.is_empty() { text } else { result })
             }
-            Some(_) => Err(FAILED.into()),
+            Some((_, result)) => Err(failed(&result)),
             None => Err(NOT_LOGGED_IN.into()),
         }
     })();

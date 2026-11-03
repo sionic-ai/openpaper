@@ -89,6 +89,8 @@ Translation, summaries, questions, and the AI finder use one model backend, pick
 | [OpenGateway](https://opengateway.ai) | An OpenGateway API key | One key for Claude, GPT, Gemini, DeepSeek and more. Default model `anthropic/claude-sonnet-5-5` |
 | OpenAI-compatible | An API key and a model | Presets for OpenAI, OpenRouter, DeepSeek, Google Gemini, and a local Ollama (no key), or any custom `https://` address. The model list shows what the endpoint offers |
 
+**Backups**: pick one or more other backends under Backups. When the chosen one hits a usage limit, runs out of credit, or isn't logged in, the next backup answers instead, and the sidebar shows which model is answering. The chosen backend is tried again within 20 minutes. A reply that already started streaming never switches midway.
+
 Keys are saved in `keys.json` next to your papers (readable only by you on macOS), never shown again in the app, and only sent over https or to your own computer. **Test** makes one tiny call to check the setup. API calls are billed to your API account; a long paper takes dozens of calls.
 
 ## How it works

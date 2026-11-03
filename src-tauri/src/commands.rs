@@ -202,8 +202,23 @@ pub fn llm_set_settings(
     if host(&state.llm.settings().base_url) != host(&settings.base_url) {
         state.llm.set_key("openai:custom", None)?;
     }
+    // Keep backups that name a real slot, once each.
+    let mut settings = settings;
+    let mut seen = std::collections::HashSet::new();
+    let backups = std::mem::take(&mut settings.backups);
+    settings.backups = backups
+        .into_iter()
+        .filter(|slot| settings.with_slot(slot).is_some() && seen.insert(slot.clone()))
+        .collect();
     state.llm.save_settings(&settings)?;
+    state.llm.reset_switch();
     Ok(llm_settings_now(&state))
+}
+
+/// The backup answering calls for now, if the chosen backend stopped. Cheap: no CLI checks.
+#[tauri::command]
+pub fn llm_backup(state: State<'_, Arc<AppState>>) -> Option<llm::Backup> {
+    state.llm.serving(&state.llm.settings())
 }
 
 /// Saves (or with an empty `key`, removes) the API key of the current choice.
@@ -230,12 +245,12 @@ pub struct LlmTest {
     ms: u128,
 }
 
-/// One tiny call through the chosen backend, to check the whole path works.
+/// One tiny call through the chosen backend (never a backup), to check the whole path works.
 #[tauri::command]
 pub async fn llm_test(state: State<'_, Arc<AppState>>) -> Result<LlmTest, String> {
     let state = state.inner().clone();
     blocking(move || {
-        let backend = state.backend()?;
+        let backend = llm::backend_one(&state.llm.settings(), &state.llm)?;
         let started = std::time::Instant::now();
         let reply = backend.complete(
             "Reply with the single word OK.",
