@@ -21,8 +21,8 @@ pub const MODEL: &str = "sonnet";
 pub const STYLE: u32 = 2;
 const BATCH_SENTENCES: usize = 40;
 const BATCH_CHARS: usize = 7000;
-const TIMEOUT: Duration = Duration::from_secs(300);
-const MAX_OUTPUT: usize = 4 * 1024 * 1024;
+pub(crate) const TIMEOUT: Duration = Duration::from_secs(300);
+pub(crate) const MAX_OUTPUT: usize = 4 * 1024 * 1024;
 
 /// Which text to write: a faithful translation or an easy explanation of each sentence.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
@@ -216,19 +216,19 @@ fn claude_candidates() -> Vec<PathBuf> {
 }
 
 #[cfg(unix)]
-fn is_program(p: &Path) -> bool {
+pub(crate) fn is_program(p: &Path) -> bool {
     use std::os::unix::fs::PermissionsExt;
     std::fs::metadata(p).is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
 }
 
 #[cfg(not(unix))]
-fn is_program(p: &Path) -> bool {
+pub(crate) fn is_program(p: &Path) -> bool {
     std::fs::metadata(p).is_ok_and(|m| m.is_file())
 }
 
 /// Clears the environment of `cmd` and passes back only what the CLI needs to find its login,
 /// so no API key or other setting from the app's environment reaches it. `tmp` becomes its temp dir.
-fn scrub_env(cmd: &mut Command, claude: &Path, tmp: Option<&Path>) {
+pub(crate) fn scrub_env(cmd: &mut Command, claude: &Path, tmp: Option<&Path>) {
     cmd.env_clear()
         .env("PATH", child_path(claude))
         .env("LANG", "en_US.UTF-8");
@@ -377,7 +377,7 @@ pub fn extract_json(text: &str) -> Option<&str> {
     (end > start).then(|| &text[start..=end])
 }
 
-fn private_dir() -> Result<PathBuf, String> {
+pub(crate) fn private_dir() -> Result<PathBuf, String> {
     use std::sync::atomic::AtomicU64;
     static SEQ: AtomicU64 = AtomicU64::new(0);
     let nanos = std::time::SystemTime::now()
@@ -424,11 +424,17 @@ fn child_path(claude: &Path) -> std::ffi::OsString {
 
 /// `claude -p` with every tool, MCP server, setting source and session file disabled, run in
 /// `dir` with a scrubbed environment.
-fn claude_command(claude: &Path, dir: &Path, system_prompt: &str, stream: bool) -> Command {
+fn claude_command(
+    claude: &Path,
+    model: &str,
+    dir: &Path,
+    system_prompt: &str,
+    stream: bool,
+) -> Command {
     let mut cmd = Command::new(claude);
     scrub_env(&mut cmd, claude, Some(dir));
     cmd.current_dir(dir)
-        .args(["-p", "--model", MODEL, "--output-format"]);
+        .args(["-p", "--model", model, "--output-format"]);
     if stream {
         cmd.args(["stream-json", "--verbose", "--include-partial-messages"]);
     } else {
@@ -478,12 +484,13 @@ pub const NOT_INSTALLED: &str =
 /// Runs one isolated Claude call with the given system prompt. Returns the model's text reply.
 pub fn run_claude_with(
     claude: &Path,
+    model: &str,
     system_prompt: &str,
     input: &str,
     cancel: &AtomicBool,
 ) -> Result<String, String> {
     let dir = private_dir()?;
-    let mut cmd = claude_command(claude, &dir, system_prompt, false);
+    let mut cmd = claude_command(claude, model, &dir, system_prompt, false);
     let result = (|| {
         let mut child = cmd
             .spawn()
@@ -573,6 +580,7 @@ fn parse_stream_line(line: &str) -> StreamLine {
 /// writes it. Returns the full reply.
 pub fn run_claude_stream(
     claude: &Path,
+    model: &str,
     system_prompt: &str,
     input: &str,
     cancel: &AtomicBool,
@@ -581,7 +589,7 @@ pub fn run_claude_stream(
     use std::io::BufRead;
     use std::sync::mpsc;
     let dir = private_dir()?;
-    let mut cmd = claude_command(claude, &dir, system_prompt, true);
+    let mut cmd = claude_command(claude, model, &dir, system_prompt, true);
     let result = (|| {
         let mut child = cmd
             .spawn()
@@ -649,7 +657,7 @@ pub fn run_claude_stream(
 
 /// Translates a batch. Units that come back misaligned are retried one at a time.
 pub fn translate_batch(
-    claude: &Path,
+    backend: &crate::llm::Backend,
     title: &str,
     units: &[Unit],
     headings: &HashSet<u32>,
@@ -671,7 +679,7 @@ pub fn translate_batch(
                 .collect(),
         })
         .unwrap();
-        let text = run_claude_with(claude, &prompt, &input, cancel)?;
+        let text = backend.complete(&prompt, &input, cancel)?;
         let reply: Reply = extract_json(&text)
             .and_then(|j| serde_json::from_str(j).ok())
             .ok_or_else(|| "The translation came back in the wrong format".to_string())?;

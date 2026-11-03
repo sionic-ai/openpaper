@@ -7,6 +7,7 @@
 //! openpaper-probe search <query> [start]                 run an arXiv search
 //! openpaper-probe ask <request>                          run the AI paper finder
 //! openpaper-probe claude -                               show Claude Code install/login state
+//! openpaper-probe llm <prompt>                           one streamed reply from the backend below
 //! openpaper-probe update                                 compare with the latest GitHub release
 //! openpaper-probe askpaper <doc-id> <question> [quote]   ask about a paper in the app's library
 //! openpaper-probe summary <doc-id> [dir]               write the summary post (dir: a library copy)
@@ -15,6 +16,9 @@
 //! openpaper-probe selfupdate <path to .app/Contents/MacOS/openpaper>  run the in-app updater
 //!
 //! Set OPENPAPER_MODE=easy to run translate/job/import as the easy explanation instead.
+//! translate/import/ask/llm use the backend in OPENPAPER_PROVIDER (claude-code, codex, anthropic,
+//! openai; default claude-code), with OPENPAPER_MODEL, OPENPAPER_API_KEY and, for openai,
+//! OPENPAPER_BASE (default https://api.openai.com/v1).
 //! Set OPENPAPER_LANG=<code> (ko, ja, zh, es, fr, de, pt; default ko) to pick the target
 //! language for translate/job/import/redo/summary/askpaper/ask.
 
@@ -52,13 +56,52 @@ fn lang() -> Lang {
     }
 }
 
+fn backend() -> openpaper::llm::Backend {
+    use openpaper::llm::Backend;
+    let env = |k: &str| std::env::var(k).ok().filter(|v| !v.is_empty());
+    let provider = env("OPENPAPER_PROVIDER").unwrap_or_else(|| "claude-code".into());
+    let model = env("OPENPAPER_MODEL");
+    match provider.as_str() {
+        "claude-code" => Backend::ClaudeCode {
+            path: openpaper::translate::find_claude().expect("claude cli"),
+            model: model.unwrap_or_else(|| openpaper::translate::MODEL.into()),
+        },
+        "codex" => Backend::Codex {
+            path: openpaper::llm::find_codex().expect("codex cli"),
+            model: model.unwrap_or_default(),
+        },
+        "anthropic" => Backend::Anthropic {
+            base: env("OPENPAPER_BASE").unwrap_or_else(|| "https://api.anthropic.com".into()),
+            key: env("OPENPAPER_API_KEY").expect("OPENPAPER_API_KEY"),
+            model: model.unwrap_or_else(|| {
+                openpaper::llm::Settings {
+                    provider: openpaper::llm::Provider::Anthropic,
+                    ..Default::default()
+                }
+                .model()
+            }),
+        },
+        "openai" => Backend::Openai {
+            base: env("OPENPAPER_BASE").unwrap_or_else(|| "https://api.openai.com/v1".into()),
+            key: env("OPENPAPER_API_KEY"),
+            model: model.expect("OPENPAPER_MODEL"),
+        },
+        other => {
+            eprintln!(
+                "unknown OPENPAPER_PROVIDER {other:?}; use claude-code, codex, anthropic or openai"
+            );
+            std::process::exit(2)
+        }
+    }
+}
+
 /// The installed app's real library.
 fn app_library() -> std::path::PathBuf {
     std::path::Path::new(&std::env::var_os("HOME").expect("HOME"))
         .join("Library/Application Support/dev.rlaope.openpaper/papers")
 }
 
-const USAGE: &str = "usage: openpaper-probe <parse|dump|translate|import|job|search|ask|claude|update|selfupdate|askpaper|summary|redo> <arg> ... (see the header of src/bin/probe.rs)";
+const USAGE: &str = "usage: openpaper-probe <parse|dump|translate|import|job|search|ask|claude|llm|update|selfupdate|askpaper|summary|redo> <arg> ... (see the header of src/bin/probe.rs)";
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -168,13 +211,31 @@ fn main() {
             }
         }
     }
+    if cmd == "llm" {
+        let started = std::time::Instant::now();
+        let reply = backend()
+            .stream(
+                "You are a helpful assistant. Answer briefly.",
+                &args[2],
+                &AtomicBool::new(false),
+                |d| {
+                    use std::io::Write;
+                    print!("{d}");
+                    let _ = std::io::stdout().flush();
+                },
+            )
+            .expect("llm");
+        println!("\n({} chars in {:?})", reply.len(), started.elapsed());
+        return;
+    }
     if cmd == "claude" {
         println!("{:?}", openpaper::translate::claude_status());
         return;
     }
     if cmd == "ask" {
         let started = std::time::Instant::now();
-        let a = openpaper::recommend::recommend(target, &[], lang()).expect("recommend");
+        let a =
+            openpaper::recommend::recommend(&backend(), target, &[], lang()).expect("recommend");
         println!("{:.1}s  {}", started.elapsed().as_secs_f32(), a.reply);
         for p in a.picks {
             println!(
@@ -311,7 +372,7 @@ fn main() {
         let n: usize = args.get(4).and_then(|s| s.parse().ok()).unwrap_or(20);
         let lib = openpaper::library::Library::open(dir).expect("library");
         lib.save(&doc).expect("save");
-        let claude = openpaper::translate::find_claude().expect("claude cli");
+        let claude = backend();
         let pending: Vec<_> = units.into_iter().take(n).cloned().collect();
         for batch in openpaper::translate::batches(&pending) {
             let out = openpaper::translate::translate_batch(
@@ -336,7 +397,7 @@ fn main() {
     }
     if cmd == "translate" {
         let n: usize = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(6);
-        let claude = openpaper::translate::find_claude().expect("claude cli");
+        let claude = backend();
         let batch: Vec<_> = units.into_iter().take(n).cloned().collect();
         let started = std::time::Instant::now();
         let out = openpaper::translate::translate_batch(

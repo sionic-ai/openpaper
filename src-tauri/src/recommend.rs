@@ -144,12 +144,12 @@ fn recent(history: &[Turn]) -> Vec<Turn> {
 }
 
 fn ask<T: for<'de> Deserialize<'de>>(
-    claude: &std::path::Path,
+    backend: &crate::llm::Backend,
     prompt: &str,
     input: &serde_json::Value,
     cancel: &AtomicBool,
 ) -> Result<T, String> {
-    let text = translate::run_claude_with(claude, prompt, &input.to_string(), cancel)?;
+    let text = backend.complete(prompt, &input.to_string(), cancel)?;
     translate::extract_json(&text)
         .and_then(|j| serde_json::from_str(j).ok())
         .ok_or_else(|| "The AI reply came back in the wrong format. Try asking again".to_string())
@@ -184,17 +184,21 @@ fn resolve(picks: Vec<RawPick>, candidates: &[Hit]) -> Vec<Pick> {
 }
 
 /// Recommends real arXiv papers for `request`; `reply` and each `why` are written in `lang`.
-pub fn recommend(request: &str, history: &[Turn], lang: Lang) -> Result<Answer, String> {
+pub fn recommend(
+    backend: &crate::llm::Backend,
+    request: &str,
+    history: &[Turn],
+    lang: Lang,
+) -> Result<Answer, String> {
     let request = request.trim();
     if request.is_empty() {
         return Err("Describe the papers you're looking for".into());
     }
-    let claude = translate::find_claude().ok_or_else(|| translate::NOT_INSTALLED.to_string())?;
     let cancel = AtomicBool::new(false);
     let history = recent(history);
 
     let plan: Plan = ask(
-        &claude,
+        backend,
         &plan_prompt(lang),
         &serde_json::json!({ "request": request, "history": history }),
         &cancel,
@@ -268,7 +272,7 @@ pub fn recommend(request: &str, history: &[Turn], lang: Lang) -> Result<Answer, 
         })
         .collect();
     let picked: PickReply = ask(
-        &claude,
+        backend,
         &pick_prompt(lang),
         &serde_json::json!({ "request": request, "history": history, "candidates": list }),
         &cancel,
