@@ -37,6 +37,36 @@ export type Status = {
   units: Record<string, string[]>
 }
 
+/** Which model backend runs translation, questions, summaries and the AI finder. */
+export type Provider = 'claude-code' | 'codex' | 'anthropic' | 'openai'
+
+export type LlmSettings = {
+  provider: Provider
+  /** OpenAI-compatible preset id, e.g. `openrouter`; `custom` uses `baseUrl`. */
+  preset: string
+  baseUrl: string
+  /** Model per slot (`claude-code`, `codex`, `anthropic`, `openai:<preset>`); missing means the default. */
+  models: Record<string, string>
+}
+
+export type Preset = { id: string; name: string; base: string; needsKey: boolean }
+
+export type LlmConfig = {
+  settings: LlmSettings
+  presets: Preset[]
+  /** Last four characters of each saved key, by slot. */
+  keyHints: Record<string, string>
+}
+
+export type LlmProblem = 'missing' | 'logged-out' | 'no-key' | 'no-model' | 'bad-url'
+
+export type LlmStatus = { provider: Provider; label: string; problem: LlmProblem | null }
+
+/** Key and model slot of the current choice, as in Rust's `Settings::slot`. */
+export function slotOf(s: LlmSettings): string {
+  return s.provider === 'openai' ? `openai:${s.preset}` : s.provider
+}
+
 export type Hit = {
   id: string
   title: string
@@ -57,7 +87,13 @@ export const api = {
   setFolders: (folders: Folder[]) => invoke<Folder[]>('library_set_folders', { folders }),
   openArxiv: (input: string) => invoke<Meta>('open_arxiv', { input }),
   search: (query: string, start: number) => invoke<SearchPage>('arxiv_search', { query, start }),
-  claude: () => invoke<{ installed: boolean; loggedIn: boolean; path: string | null }>('claude_status'),
+  llmStatus: () => invoke<LlmStatus>('llm_status'),
+  llmSettings: () => invoke<LlmConfig>('llm_settings'),
+  llmSetSettings: (settings: LlmSettings) => invoke<LlmConfig>('llm_set_settings', { settings }),
+  /** Saves the API key of the current choice; an empty key removes it. */
+  llmSetKey: (key: string) => invoke<LlmConfig>('llm_set_key', { key }),
+  llmModels: () => invoke<string[]>('llm_models'),
+  llmTest: () => invoke<{ reply: string; ms: number }>('llm_test'),
   recommend: (request: string, history: { role: string; text: string }[], lang: Lang) =>
     invoke<{ reply: string; picks: { hit: Hit; why: string }[] }>('ai_recommend', { request, history, lang }),
   openArxivPage: (id: string) => invoke<void>('open_arxiv_page', { id }),
