@@ -46,7 +46,8 @@ Reply with ONLY this JSON:
 - Prefer papers that help someone understand the seed: the ideas it directly builds on, then the most important follow-ups, then recent work. Leave out loosely related papers.
 - "why": one short {LANG} sentence on why to read it at this point.
 - "focus": one short {LANG} phrase on what to look at in it (an idea, a section, a result).
-- "name": a short {LANG} stage name. "goal": one short {LANG} sentence. "title": a short {LANG} title for the whole roadmap."#;
+- "name": a short {LANG} stage name. "goal": one short {LANG} sentence. "title": a short {LANG} title for the whole roadmap.
+- Write in a friendly but professional tone, the way a helpful senior researcher talks (in Korean, 해요체). Keep paper titles, model names and acronyms in English."#;
 
 fn prompt(lang: Lang) -> Cow<'static, str> {
     Cow::Owned(PROMPT_TEMPLATE.replace("{LANG}", lang.name()))
