@@ -1664,7 +1664,8 @@ mod tests {
         ];
         let switch = Mutex::new(Switch::default());
         let mut tried = Vec::new();
-        let bad = |_: &str, _: &mut dyn FnMut(&str)| Err::<String, _>("Couldn't read the reply".into());
+        let bad =
+            |_: &str, _: &mut dyn FnMut(&str)| Err::<String, _>("Couldn't read the reply".into());
         assert!(run(&links, &switch, &mut tried, bad).is_err());
         assert_eq!(tried, ["a"]);
         let mut tried = Vec::new();
