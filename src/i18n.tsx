@@ -61,14 +61,16 @@ export function tError(message: string): string {
   return message
 }
 
+function subscribe(f: () => void) {
+  listeners.add(f)
+  return () => {
+    listeners.delete(f)
+  }
+}
+const snapshot = () => current
+
 /** Re-renders the calling component when the interface language changes. Returns `t`. */
 export function useT(): typeof t {
-  useSyncExternalStore(
-    f => {
-      listeners.add(f)
-      return () => listeners.delete(f)
-    },
-    () => current
-  )
+  useSyncExternalStore(subscribe, snapshot)
   return t
 }

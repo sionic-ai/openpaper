@@ -76,7 +76,7 @@ export function ModelButton({ status, onOpen }: { status: LlmStatus | null; onOp
     ? t('Model settings')
     : backup
       ? t('{reason}. Using the backup {label}, {model}, for now. Click to change', { reason: tError(backup.reason), label: t(backup.label), model: text })
-      : t('Model: {label}, {model}. Click to change', { label: status.label, model: text })
+      : t('Model: {label}, {model}. Click to change', { label: t(status.label), model: text })
   const warn = status?.problem && !backup
   return (
     <button className={`lang-btn model-btn${warn ? ' warn' : ''}${backup ? ' on-backup' : ''}`} onClick={onOpen} title={title}>
@@ -422,7 +422,7 @@ function NowUsing({ status }: { status: LlmStatus }) {
       <Logo id={logoOf(shown.provider, shown.preset)} size={20} />
       <span>
         <small>{t('Now using')}</small>
-        <b>{shown.label}</b>
+        <b>{t(shown.label)}</b>
         <span className="sep" aria-hidden="true">·</span>
         <span className="now-model">{modelName(shown)}</span>
         {b && <span className="backup-tag">{t('Backup')}</span>}
@@ -546,7 +546,7 @@ function ModelPicker({
   // A name typed earlier that no list has stays visible and picked.
   if (value && !seen.has(value)) options.unshift({ id: value, note: t('Typed name') })
   const q = filter.trim().toLowerCase()
-  const shown = q ? options.filter(m => m.id.toLowerCase().includes(q) || m.name?.toLowerCase().includes(q)) : options
+  const shown = q ? options.filter(m => m.id.toLowerCase().includes(q) || m.name?.toLowerCase().includes(q) || (m.name && t(m.name).toLowerCase().includes(q))) : options
 
   const commit = () => {
     const name = typed.trim()
