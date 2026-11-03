@@ -17,6 +17,9 @@ pub struct Meta {
     pub source: String,
     pub added_at: u64,
     pub units: usize,
+    /// Marked as read in the sidebar.
+    #[serde(default)]
+    pub read: bool,
 }
 
 /// A sidebar folder. Its first paper is the one still shown when the folder is folded.
@@ -127,6 +130,11 @@ pub fn summary_suffix(lang: Lang) -> String {
     }
 }
 
+/// File suffix of the saved reading roadmap: `<lang>.roadmap`.
+pub fn roadmap_suffix(lang: Lang) -> String {
+    format!("{}.roadmap", lang.code())
+}
+
 /// Every suffix a paper can have on disk, for every language.
 fn all_suffixes() -> Vec<String> {
     let mut out: Vec<String> = ["doc", "meta", "style"].map(String::from).to_vec();
@@ -134,13 +142,14 @@ fn all_suffixes() -> Vec<String> {
         out.push(translation_suffix(Mode::Plain, lang));
         out.push(translation_suffix(Mode::Easy, lang));
         out.push(summary_suffix(lang));
+        out.push(roadmap_suffix(lang));
     }
     out
 }
 
 /// Last dot-segments a paper id may not end with, besides language codes: they are file
 /// suffixes, so `X.ja` with suffix `easy` would name the same file as `X` with `ja.easy`.
-const RESERVED_SEGMENTS: [&str; 5] = ["doc", "meta", "style", "easy", "summary"];
+const RESERVED_SEGMENTS: [&str; 6] = ["doc", "meta", "style", "easy", "summary", "roadmap"];
 
 fn valid_id(id: &str) -> bool {
     let last = id
@@ -185,22 +194,25 @@ impl Library {
 
     pub fn save(&self, doc: &Doc) -> Result<Meta, String> {
         let meta_path = self.path(&doc.id, "meta")?;
-        let added_at = std::fs::read(&meta_path)
+        // Read and write the meta under the lock so a read check set meanwhile isn't lost.
+        let _guard = self.write.lock().unwrap();
+        let old = std::fs::read(&meta_path)
             .ok()
-            .and_then(|b| serde_json::from_slice::<Meta>(&b).ok())
-            .map(|m| m.added_at)
-            .unwrap_or_else(|| {
-                SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .map(|d| d.as_secs())
-                    .unwrap_or_default()
-            });
+            .and_then(|b| serde_json::from_slice::<Meta>(&b).ok());
+        let read = old.as_ref().is_some_and(|m| m.read);
+        let added_at = old.map(|m| m.added_at).unwrap_or_else(|| {
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map(|d| d.as_secs())
+                .unwrap_or_default()
+        });
         let meta = Meta {
             id: doc.id.clone(),
             title: doc.title.clone(),
             source: doc.source.clone(),
             added_at,
             units: doc.units().len(),
+            read,
         };
         write_atomic(
             &self.path(&doc.id, "doc")?,
@@ -287,6 +299,42 @@ impl Library {
         write_atomic(
             &self.path(id, &summary_suffix(lang))?,
             &serde_json::to_vec(text).unwrap(),
+        )
+    }
+
+    /// Marks a paper read or not. Returns its updated info.
+    pub fn set_read(&self, id: &str, read: bool) -> Result<Meta, String> {
+        let _guard = self.write.lock().unwrap();
+        let path = self.path(id, "meta")?;
+        let mut meta: Meta = std::fs::read(&path)
+            .ok()
+            .and_then(|b| serde_json::from_slice(&b).ok())
+            .ok_or_else(|| "Couldn't find the paper".to_string())?;
+        meta.read = read;
+        write_atomic(&path, &serde_json::to_vec(&meta).unwrap())?;
+        Ok(meta)
+    }
+
+    /// The saved roadmap of a paper in `lang`, if any. An unreadable file counts as none.
+    pub fn roadmap(&self, id: &str, lang: Lang) -> Option<crate::roadmap::Roadmap> {
+        let bytes = std::fs::read(self.path(id, &roadmap_suffix(lang)).ok()?).ok()?;
+        serde_json::from_slice(&bytes).ok()
+    }
+
+    pub fn set_roadmap(
+        &self,
+        id: &str,
+        lang: Lang,
+        roadmap: &crate::roadmap::Roadmap,
+    ) -> Result<(), String> {
+        let _guard = self.write.lock().unwrap();
+        // A roadmap that finishes after the paper was removed must not leave a file behind.
+        if !self.path(id, "doc")?.exists() {
+            return Ok(());
+        }
+        write_atomic(
+            &self.path(id, &roadmap_suffix(lang))?,
+            &serde_json::to_vec(roadmap).unwrap(),
         )
     }
 

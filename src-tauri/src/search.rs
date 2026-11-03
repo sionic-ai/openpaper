@@ -70,7 +70,7 @@ fn text(node: roxmltree::Node, ns: &str, name: &str) -> String {
         .unwrap_or_default()
 }
 
-fn strip_version(id: &str) -> &str {
+pub(crate) fn strip_version(id: &str) -> &str {
     match id.rfind('v') {
         Some(i) if i > 0 && id[i + 1..].chars().all(|c| c.is_ascii_digit()) && i + 1 < id.len() => {
             &id[..i]

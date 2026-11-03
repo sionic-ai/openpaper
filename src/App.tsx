@@ -4,6 +4,7 @@ import { Reader } from './Reader'
 import { PaperList } from './Papers'
 import { SearchResults, type SearchState } from './Search'
 import { AiChat, type ChatState } from './Ai'
+import { RoadmapView, type RoadmapState } from './Roadmap'
 import { FloatingAssistant, SelectionAsk, useAsk } from './Assistant'
 import { ModelButton, ModelDialog, ProblemNotice } from './Model'
 import { PatchNotes } from './PatchNotes'
@@ -295,7 +296,8 @@ export function App() {
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState<SearchState | null>(null)
-  const [view, setView] = useState<'doc' | 'search' | 'ai'>('doc')
+  const [view, setView] = useState<'doc' | 'search' | 'ai' | 'roadmap'>('doc')
+  const [roadmap, setRoadmap] = useState<RoadmapState | null>(null)
   const [chat, setChat] = useState<ChatState>({ messages: [], loading: false })
   const [fetchingId, setFetchingId] = useState<string | null>(null)
   const [langs, setLangs] = useState<Language[]>([])
@@ -512,8 +514,9 @@ export function App() {
 
   /** Opens a search or AI pick side by side; a paper not in the library is fetched and translation starts. */
   const openHit = async (hit: Hit, onError: (msg: string) => void) => {
-    const docId = arxivDocId(hit.id)
-    if (papers.some(p => p.id === docId)) return void open(docId, false)
+    // A saved copy may carry a version (arxiv-2005.14165v4); match on the bare ID.
+    const have = papers.find(p => arxivIdOf(p.id) === hit.id)
+    if (have) return void open(have.id, false)
     if (fetchingId) return
     setFetchingId(hit.id)
     setError(null)
@@ -524,6 +527,42 @@ export function App() {
     } finally {
       setFetchingId(null)
     }
+  }
+
+  /** Shows the reading roadmap of a saved paper: the saved one, or a new one built now. */
+  const roadmapSeq = useRef(0)
+  const showRoadmap = (docId: string, seedTitle: string, fresh = false, onMade?: () => void) => {
+    const asked = lang
+    const seq = ++roadmapSeq.current
+    setView('roadmap')
+    setRoadmap({ docId, seedTitle, data: null, step: null, error: null })
+    // Only the latest request may update the view (another paper, language or a newer build).
+    const mine = (r: RoadmapState | null) => seq === roadmapSeq.current && r?.docId === docId
+    api
+      .roadmap(docId, asked, fresh, step => setRoadmap(r => (mine(r) ? { ...r!, step } : r)))
+      .then(data => {
+        setRoadmap(r => (mine(r) ? { ...r!, data, step: null } : r))
+        onMade?.()
+      })
+      .catch(err => setRoadmap(r => (mine(r) ? { ...r!, step: null, error: errorText(err) } : r)))
+  }
+
+  /** The AI finder asked for a roadmap: from the paper it named (fetched if needed) or the open one. */
+  const roadmapFromChat = async (seed: string) => {
+    const say = (text: string) => setChat(c => ({ messages: [...c.messages, { role: 'assistant', text, picks: [], lang }], loading: false }))
+    // A saved copy may carry a version (arxiv-2005.14165v4); match on the bare ID.
+    const saved = seed && seed !== 'this' ? papers.find(p => arxivIdOf(p.id) === seed) : undefined
+    let docId = seed === 'this' ? doc?.id ?? null : saved?.id ?? (seed ? arxivDocId(seed) : null)
+    if (!docId) return say(t('Which paper should the roadmap start from? Open one or give its arXiv ID'))
+    let title = saved?.title ?? (doc?.id === docId ? doc.title : '')
+    if (seed !== 'this' && !saved) {
+      const meta = await api.openArxiv(seed)
+      await refreshList()
+      docId = meta.id
+      title = meta.title
+    }
+    setChat(c => ({ ...c, loading: false }))
+    showRoadmap(docId, title, false, () => say(t('Made a reading roadmap from {title}', { title })))
   }
 
   const ask = async (text: string) => {
@@ -537,6 +576,7 @@ export function App() {
     const asked = lang
     try {
       const a = await api.recommend(text, history, asked)
+      if (a.roadmap !== undefined) return await roadmapFromChat(a.roadmap)
       setChat(c => ({ messages: [...c.messages, { role: 'assistant', text: a.reply, picks: a.picks, lang: asked }], loading: false }))
     } catch (err) {
       setChat(c => ({ messages: [...c.messages, { role: 'error', text: errorText(err) }], loading: false }))
@@ -629,7 +669,7 @@ export function App() {
             <PdfIcon /> PDF
           </button>
           <button className={`ai-btn${view === 'ai' ? ' active' : ''}`} onClick={() => setView('ai')} title={t('Find papers with AI')} aria-label={t('Find papers with AI')}>
-            <SearchIcon /> AI
+            <SearchIcon /> {t('AI search')}
             {chat.loading && <span className="ai-dot" aria-label={t('Searching')} />}
           </button>
         </div>
@@ -646,6 +686,13 @@ export function App() {
           activeId={view === 'doc' ? doc?.id ?? null : null}
           onOpen={id => void open(id, false)}
           onRemove={id => void remove(id)}
+          onRead={(id, read) => {
+            setPapers(ps => ps.map(p => (p.id === id ? { ...p, read } : p)))
+            api.setRead(id, read).catch(err => {
+              setPapers(ps => ps.map(p => (p.id === id ? { ...p, read: !read } : p)))
+              setError(errorText(err))
+            })
+          }}
         />
         <div className="side-foot">
           <ThemeButton />
@@ -676,7 +723,7 @@ export function App() {
               <SidebarIcon />
             </button>
           )}
-          <div className="bar-title" data-tauri-drag-region>{view === 'search' ? t('arXiv search') : view === 'ai' ? t('Find papers with AI') : doc?.title ?? ''}</div>
+          <div className="bar-title" data-tauri-drag-region>{view === 'search' ? t('arXiv search') : view === 'ai' ? t('Find papers with AI') : view === 'roadmap' ? t('Reading roadmap') : doc?.title ?? ''}</div>
           {view === 'doc' && doc && (
             <button className="bar-link" onClick={toggleSwap} title={swapped ? t('Put the original on the left') : t('Put the translation on the left')}>
               ⇄ {t('Swap sides')}
@@ -730,9 +777,14 @@ export function App() {
                 />
               ) : null}
               {!status?.running && (
-                <button className="summary-btn" onClick={() => assistant.summarize()} title={t('Summarize this paper')}>
-                  <span className="spark" aria-hidden="true">✦</span> {t('Summarize')}
-                </button>
+                <>
+                  <button className="summary-btn" onClick={() => showRoadmap(doc.id, doc.title)} title={t('What to read before and after this paper')}>
+                    {t('Roadmap')}
+                  </button>
+                  <button className="summary-btn" onClick={() => assistant.summarize()} title={t('Summarize this paper')}>
+                    <span className="spark" aria-hidden="true">✦</span> {t('Summarize')}
+                  </button>
+                </>
               )}
             </div>
           )}
@@ -748,6 +800,16 @@ export function App() {
             onAsk={q => void ask(q)}
             onTranslate={hit => void openHit(hit, chatError)}
             onWeb={hit => openWeb(hit.id)}
+          />
+        ) : view === 'roadmap' && roadmap ? (
+          <RoadmapView
+            state={roadmap}
+            saved={new Set(papers.map(p => arxivIdOf(p.id)).filter((x): x is string => !!x))}
+            busyId={fetchingId}
+            onOpen={item => void openHit({ id: item.id, title: item.title, authors: [], summary: '', published: '', category: '' }, msg => setRoadmap(r => (r ? { ...r, error: msg } : r)))}
+            onWeb={id => openWeb(id)}
+            onRegenerate={() => showRoadmap(roadmap.docId, roadmap.seedTitle, true)}
+            onBack={() => void open(roadmap.docId, false)}
           />
         ) : view === 'search' && search ? (
           <SearchResults

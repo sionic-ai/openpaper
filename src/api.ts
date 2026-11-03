@@ -21,7 +21,8 @@ export type Block =
 
 export type Doc = { id: string; title: string; source: string; blocks: Block[]; math: string[] }
 
-export type Meta = { id: string; title: string; source: string; addedAt: number; units: number }
+/** `read`: checked as read in the sidebar. */
+export type Meta = { id: string; title: string; source: string; addedAt: number; units: number; read?: boolean }
 
 /** A sidebar folder; `papers` are paper ids in order, and the first one stays visible when folded. */
 export type Folder = { id: string; name: string; papers: string[]; open: boolean }
@@ -77,6 +78,29 @@ export type LlmStatus = {
   /** How many saved backups are set up and could take over. */
   backups: number
 }
+export type RoadmapStep = 'references' | 'citing' | 'ordering'
+export type RoadmapRelation = 'key-reference' | 'reference' | 'citing' | 'recent-citing'
+export type RoadmapItem = {
+  id: string
+  title: string
+  year: number | null
+  citations: number | null
+  relation: RoadmapRelation
+  why: string
+  focus: string
+}
+/** `after`: read after the seed paper; otherwise before it. */
+export type RoadmapStage = { after: boolean; name: string; goal: string; items: RoadmapItem[] }
+export type Roadmap = {
+  version: number
+  seed: string
+  lang: Lang
+  createdAt: number
+  title: string
+  stages: RoadmapStage[]
+  openalex: boolean
+}
+
 /** A model to pick. `name` and `note` come from Codex's own list; API lists have ids only. */
 export type ModelOption = { id: string; name?: string; note?: string }
 
@@ -101,6 +125,7 @@ export const api = {
   list: () => invoke<Meta[]>('library_list'),
   get: (id: string) => invoke<Doc>('library_get', { id }),
   remove: (id: string) => invoke<void>('library_remove', { id }),
+  setRead: (id: string, read: boolean) => invoke<Meta>('library_set_read', { id, read }),
   folders: () => invoke<Folder[]>('library_folders'),
   setFolders: (folders: Folder[]) => invoke<Folder[]>('library_set_folders', { folders }),
   openArxiv: (input: string) => invoke<Meta>('open_arxiv', { input }),
@@ -115,7 +140,13 @@ export const api = {
   llmBackup: () => invoke<LlmBackup | null>('llm_backup'),
   llmTest: () => invoke<{ reply: string; ms: number }>('llm_test'),
   recommend: (request: string, history: { role: string; text: string }[], lang: Lang) =>
-    invoke<{ reply: string; picks: { hit: Hit; why: string }[] }>('ai_recommend', { request, history, lang }),
+    invoke<{ reply: string; picks: { hit: Hit; why: string }[]; roadmap?: string }>('ai_recommend', { request, history, lang }),
+  /** The saved roadmap of a paper unless `fresh`, else a new one; `onStep` reports progress. */
+  roadmap: (docId: string, lang: Lang, fresh: boolean, onStep: (step: RoadmapStep) => void) => {
+    const onEvent = new Channel<{ event: 'step'; data: { step: RoadmapStep } }>()
+    onEvent.onmessage = m => onStep(m.data.step)
+    return invoke<Roadmap>('paper_roadmap', { docId, lang, fresh, onEvent })
+  },
   openArxivPage: (id: string) => invoke<void>('open_arxiv_page', { id }),
   openPdf: () => invoke<Meta | null>('open_pdf'),
   translate: (id: string, mode: Mode, lang: Lang) => invoke<void>('translation_start', { id, mode, lang }),
@@ -159,7 +190,7 @@ export function errorText(e: unknown): string {
 export const arxivDocId = (id: string) => `arxiv-${id.replace('/', '_')}`
 
 /** arXiv ID of a library paper, or null for PDFs. */
-export const arxivIdOf = (docId: string) => (docId.startsWith('arxiv-') ? docId.slice(6).replace('_', '/') : null)
+export const arxivIdOf = (docId: string) => (docId.startsWith('arxiv-') ? docId.slice(6).replace('_', '/').replace(/v\d+$/, '') : null)
 
 /** True for inputs the importer accepts directly: an arXiv ID, `arXiv:` reference or arxiv.org URL. */
 export function looksLikeArxivId(input: string): boolean {

@@ -89,6 +89,10 @@ Translation, summaries, questions, and the AI finder use one model backend, pick
 | [OpenGateway](https://opengateway.ai) | An OpenGateway API key | One key for Claude, GPT, Gemini, DeepSeek and more. Default model `anthropic/claude-sonnet-5-5` |
 | OpenAI-compatible | An API key and a model | Presets for OpenAI, OpenRouter, DeepSeek, Google Gemini, and a local Ollama (no key), or any custom `https://` address. The model list shows what the endpoint offers |
 
+**Roadmap**: the Roadmap button next to Summarize lays out what to read before and after the open paper, in stages. Every paper in it is real: candidates come from the paper's own references and from [OpenAlex](https://openalex.org) (papers it cites and papers that cite it, most cited first), each is checked on arXiv, and the model only orders and explains them. In AI search you can also ask "make a roadmap for this paper". The roadmap is saved with the paper.
+
+**Read check**: hover a paper in the sidebar and click the check to mark it read; click again to clear it.
+
 The interface follows the language you translate into (Korean, Japanese, Chinese, Spanish, French, German or Portuguese).
 
 **Backups**: pick one or more other backends under Backups. When the chosen one hits a usage limit, runs out of credit, or isn't logged in, the next backup answers instead, and the sidebar shows which model is answering. The chosen backend is tried again within 20 minutes. A reply that already started streaming never switches midway.

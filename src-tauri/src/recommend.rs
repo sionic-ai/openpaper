@@ -23,11 +23,13 @@ const ARXIV_GAP: Duration = Duration::from_millis(1100);
 const PLAN_PROMPT: &str = r#"You help a Korean researcher find papers on arXiv.
 
 Input on stdin is JSON: {"request": the user's latest message (often Korean), "history": earlier turns}.
-Reply with ONLY this JSON: {"queries": [string, ...], "ids": [string, ...]}
+Reply with ONLY this JSON: {"intent": "search" | "roadmap", "seed": string, "queries": [string, ...], "ids": [string, ...]}
 
 - "queries": 1 to 3 short English keyword queries for the arXiv search API (2 to 5 words each, no boolean operators, no quotes unless a fixed phrase). Cover different angles of the request: the core topic, well-known method names, synonyms.
 - "ids": arXiv IDs (like 1706.03762) of specific papers you are confident match the request, at most 8. Include any arXiv ID or arxiv.org link the user wrote. Leave it empty when unsure; never guess.
-- Use the history only to resolve follow-ups such as "더 최신 걸로" or "그 중에 서베이만"."#;
+- Use the history only to resolve follow-ups such as "더 최신 걸로" or "그 중에 서베이만".
+- "intent": "roadmap" when the user asks for a reading roadmap, a study path or a reading order around one paper (what to read before and after it), such as "이 논문 로드맵 짜줘" or "트랜스포머 논문 기준으로 읽는 순서 알려줘". Otherwise "search".
+- "seed": for a roadmap, the arXiv ID of the paper it starts from when the user named one (an ID, an arxiv.org link, or a well-known paper you are sure of). Use "this" when the user means the paper they have open ("this paper"), and leave it empty when they named a paper you can't identify. For a roadmap, "queries" and "ids" may be empty."#;
 
 const PICK_PROMPT: &str = r#"You recommend arXiv papers to a Korean researcher.
 
@@ -42,11 +44,13 @@ Reply with ONLY this JSON: {"reply": string, "picks": [{"id": string, "why": str
 const PLAN_TEMPLATE: &str = r#"You help a researcher who reads in {LANG} find papers on arXiv.
 
 Input on stdin is JSON: {"request": the user's latest message (often in {LANG}), "history": earlier turns}.
-Reply with ONLY this JSON: {"queries": [string, ...], "ids": [string, ...]}
+Reply with ONLY this JSON: {"intent": "search" | "roadmap", "seed": string, "queries": [string, ...], "ids": [string, ...]}
 
 - "queries": 1 to 3 short English keyword queries for the arXiv search API (2 to 5 words each, no boolean operators, no quotes unless a fixed phrase). Cover different angles of the request: the core topic, well-known method names, synonyms.
 - "ids": arXiv IDs (like 1706.03762) of specific papers you are confident match the request, at most 8. Include any arXiv ID or arxiv.org link the user wrote. Leave it empty when unsure; never guess.
-- Use the history only to resolve follow-ups such as "something more recent" or "only the surveys among those"."#;
+- Use the history only to resolve follow-ups such as "something more recent" or "only the surveys among those".
+- "intent": "roadmap" when the user asks for a reading roadmap, a study path or a reading order around one paper (what to read before and after it), such as "make a roadmap for this paper" or "what should I read around the Transformer paper". Otherwise "search".
+- "seed": for a roadmap, the arXiv ID of the paper it starts from when the user named one (an ID, an arxiv.org link, or a well-known paper you are sure of). Use "this" when the user means the paper they have open ("this paper"), and leave it empty when they named a paper you can't identify. For a roadmap, "queries" and "ids" may be empty."#;
 
 const PICK_TEMPLATE: &str = r#"You recommend arXiv papers to a researcher who reads in {LANG}.
 
@@ -83,6 +87,10 @@ pub struct Turn {
 #[derive(Deserialize, Default)]
 struct Plan {
     #[serde(default)]
+    intent: String,
+    #[serde(default)]
+    seed: String,
+    #[serde(default)]
     queries: Vec<String>,
     #[serde(default)]
     ids: Vec<String>,
@@ -115,6 +123,11 @@ pub struct Pick {
 pub struct Answer {
     pub reply: String,
     pub picks: Vec<Pick>,
+    /// Set when the user asked for a reading roadmap: the arXiv ID it starts from, `this` for
+    /// the paper open in the app, or empty when the paper couldn't be identified. The app
+    /// builds the roadmap itself.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub roadmap: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -203,6 +216,23 @@ pub fn recommend(
         &serde_json::json!({ "request": request, "history": history }),
         &cancel,
     )?;
+    if plan.intent.trim().eq_ignore_ascii_case("roadmap") {
+        let seed = crate::arxiv::parse_id(&plan.seed)
+            .or_else(|| crate::arxiv::parse_id(request))
+            .map(|id| search::strip_version(&id).to_string())
+            .unwrap_or_else(|| {
+                if plan.seed.trim().eq_ignore_ascii_case("this") {
+                    "this".into()
+                } else {
+                    String::new()
+                }
+            });
+        return Ok(Answer {
+            reply: String::new(),
+            picks: Vec::new(),
+            roadmap: Some(seed),
+        });
+    }
 
     // IDs the model knows plus any the user pasted are checked against arXiv before use.
     let mut ids: Vec<String> = plan
@@ -258,6 +288,7 @@ pub fn recommend(
             None => Ok(Answer {
                 reply: lang.no_papers_found().into(),
                 picks: Vec::new(),
+                roadmap: None,
             }),
         };
     }
@@ -283,7 +314,11 @@ pub fn recommend(
         "" => lang.picks_intro().to_string(),
         r => r.to_string(),
     };
-    Ok(Answer { reply, picks })
+    Ok(Answer {
+        reply,
+        picks,
+        roadmap: None,
+    })
 }
 
 #[cfg(test)]
