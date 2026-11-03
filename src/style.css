@@ -9,6 +9,8 @@
   --hl: #fff2b8;
   --pending: #f3f3f1;
   --update: #2f6bff;
+  --og: #0085ff;
+  --og-card: #0072dd;
   --shadow: 0 1px 2px rgba(0, 0, 0, .05), 0 8px 28px rgba(0, 0, 0, .09);
   --text-2: #5f5e59;
   --text-3: #6f6e69;
@@ -35,6 +37,8 @@
   --hl: #4a3d16;
   --pending: #2a2a28;
   --update: #3567d6;
+  --og: #3a9bff;
+  --og-card: #0072dd;
   --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 32px rgba(0, 0, 0, .5);
   --text-2: #b4b3ad;
   --text-3: #9a9993;
@@ -583,6 +587,19 @@ tr:last-child td { border-bottom: 1px solid var(--rule); }
 .provider-name { display: flex; align-items: center; gap: 8px; }
 .providers b { font-size: 13px; font-weight: 600; }
 .provider-sub { font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+/* OpenGateway: a short full-width card in its brand blue under the four backends. */
+.providers .og-card {
+  grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 12px; padding: 8px 14px;
+  border-color: var(--og-card); background: var(--og-card); color: #fff;
+}
+.providers .og-card:hover { border-color: var(--og-card); background: color-mix(in srgb, var(--og-card) 88%, #000); }
+.providers .og-card.on { border-color: var(--og-card); background: var(--og-card); box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--og-card); }
+/* The mark is wide; inline width stays, height follows its 1140x650 shape. */
+.og-card .logo { color: #fff; height: 17px !important; }
+.og-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.og-text span { font-size: 11.5px; line-height: 1.35; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.og-site { font-size: 11.5px; color: #fff; opacity: .85; white-space: nowrap; }
+.logo-opengateway { color: var(--og); }
 .now-using {
   display: flex; align-items: center; gap: 10px; margin: -4px 0 14px; padding: 9px 12px; border-radius: 9px;
   background: color-mix(in srgb, var(--text) 4%, transparent); font-size: 13px; color: var(--text);
@@ -624,7 +641,7 @@ tr:last-child td { border-bottom: 1px solid var(--rule); }
 .model-other { padding: 6px; }
 .model-empty { padding: 10px 12px; font-size: 12.5px; color: var(--muted); border-bottom: 1px solid var(--line); }
 .field { margin-bottom: 14px; }
-.field > label { display: block; margin-bottom: 5px; font-size: 12px; font-weight: 500; color: var(--text-2); }
+.field > label, .field-head > label { display: block; margin-bottom: 5px; font-size: 12px; font-weight: 500; color: var(--text-2); }
 .field input, .field select {
   width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper);
   font: inherit; font-size: 13px; color: var(--text); outline: none;

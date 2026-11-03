@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Instructions for coding agents (Claude Code, Codex, ...) that are asked to **install** OpenPaper for a user or to **work on** this repository. OpenPaper is a Tauri 2 app for macOS and Windows that shows an English research paper side by side with its translation in a language the user picks. Translation, summaries, chat, and the AI paper finder run through the user's logged-in Claude Code CLI by default. In the app's Model settings the user can switch to the Codex CLI, the Anthropic API, or any OpenAI-compatible API (OpenAI, OpenRouter, DeepSeek, Gemini, a local Ollama, or a custom URL).
+Instructions for coding agents (Claude Code, Codex, ...) that are asked to **install** OpenPaper for a user or to **work on** this repository. OpenPaper is a Tauri 2 app for macOS and Windows that shows an English research paper side by side with its translation in a language the user picks. Translation, summaries, chat, and the AI paper finder run through the user's logged-in Claude Code CLI by default. In the app's Model settings the user can switch to the Codex CLI, the Anthropic API, OpenGateway, or any OpenAI-compatible API (OpenAI, OpenRouter, DeepSeek, Gemini, a local Ollama, or a custom URL).
 
 ## Installing for a user
 

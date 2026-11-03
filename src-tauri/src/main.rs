@@ -32,6 +32,7 @@ fn main() {
             openpaper::commands::llm_set_settings,
             openpaper::commands::llm_set_key,
             openpaper::commands::llm_models,
+            openpaper::commands::llm_open_key_page,
             openpaper::commands::llm_test,
             openpaper::commands::open_arxiv_page,
             openpaper::commands::translation_start,
