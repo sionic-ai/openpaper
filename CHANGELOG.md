@@ -2,6 +2,12 @@
 
 The app shows the section for its version once, after an update. Keep each entry short and about what users notice.
 
+## 0.2.5
+
+- Connect through OpenGateway: one API key for Claude, GPT, Gemini, DeepSeek and more. It works as soon as the key is saved.
+- API key fields link to the page where you create a key.
+- Model lists from API services leave out models that can't chat, such as image models.
+
 ## 0.2.4
 
 - Model settings show the model in use and each service's logo. Pick the model from a list instead of typing its name.
