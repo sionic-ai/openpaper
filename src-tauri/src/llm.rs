@@ -323,6 +323,10 @@ pub enum Problem {
 pub struct Status {
     pub provider: Provider,
     pub label: String,
+    /// The model calls use, or empty for the CLI's own default (Codex).
+    pub model: String,
+    /// OpenAI-compatible preset id, so the app can show that service's mark.
+    pub preset: String,
     pub problem: Option<Problem>,
 }
 
@@ -410,6 +414,8 @@ pub fn status(s: &Settings, store: &Store) -> Status {
     Status {
         provider: s.provider,
         label: label(s),
+        model: s.model(),
+        preset: s.preset.clone(),
         problem,
     }
 }
@@ -684,7 +690,32 @@ fn run_sse(
 }
 
 /// Model ids the endpoint lists, sorted. Uses the saved key of the current slot.
-pub fn models(s: &Settings, store: &Store) -> Result<Vec<String>, String> {
+/// One choice in the model picker. `name` and `note` are set when the source has them (Codex).
+#[derive(Serialize, Debug, PartialEq)]
+pub struct ModelOption {
+    pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+}
+
+impl ModelOption {
+    fn id(id: String) -> Self {
+        ModelOption {
+            id,
+            name: None,
+            note: None,
+        }
+    }
+}
+
+/// Models to pick from: the API's model list, or the models Codex lists for this login (read
+/// from its local cache, no network). Claude Code has a fixed list in the app.
+pub fn models(s: &Settings, store: &Store) -> Result<Vec<ModelOption>, String> {
+    if s.provider == Provider::Codex {
+        return Ok(codex_models());
+    }
     let http = http()?;
     let key = store.key(&s.slot());
     let req = match s.provider {
@@ -719,7 +750,7 @@ pub fn models(s: &Settings, store: &Store) -> Result<Vec<String>, String> {
     let mut ids = model_ids(&body);
     ids.sort();
     ids.dedup();
-    Ok(ids)
+    Ok(ids.into_iter().map(ModelOption::id).collect())
 }
 
 /// `{"data": [{"id": ...}]}` (OpenAI, Anthropic, OpenRouter) or `{"models": [{"name": ...}]}`.
@@ -739,6 +770,50 @@ fn model_ids(body: &str) -> Vec<String> {
 }
 
 // ---- Codex CLI ------------------------------------------------------------------------------
+
+fn codex_home() -> Option<PathBuf> {
+    if let Some(v) = std::env::var_os("CODEX_HOME").filter(|v| !v.is_empty()) {
+        return Some(PathBuf::from(v));
+    }
+    let home = if cfg!(windows) { "USERPROFILE" } else { "HOME" };
+    std::env::var_os(home).map(|h| PathBuf::from(h).join(".codex"))
+}
+
+/// Models Codex shows in its own picker, from `models_cache.json` in the Codex home. Empty when
+/// Codex hasn't fetched the list yet; the picker then offers only the default and a typed name.
+fn codex_models() -> Vec<ModelOption> {
+    codex_home()
+        .and_then(|h| std::fs::read_to_string(h.join("models_cache.json")).ok())
+        .map(|body| codex_model_list(&body))
+        .unwrap_or_default()
+}
+
+fn codex_model_list(body: &str) -> Vec<ModelOption> {
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(body) else {
+        return Vec::new();
+    };
+    let Some(items) = v["models"].as_array() else {
+        return Vec::new();
+    };
+    let text = |m: &serde_json::Value, k: &str| {
+        m[k].as_str()
+            .map(str::trim)
+            .filter(|t| !t.is_empty())
+            .map(String::from)
+    };
+    items
+        .iter()
+        .filter(|m| m["visibility"].as_str() == Some("list"))
+        .filter_map(|m| {
+            let id = text(m, "slug")?;
+            model_ok(&id).then(|| ModelOption {
+                name: text(m, "display_name"),
+                note: text(m, "description"),
+                id,
+            })
+        })
+        .collect()
+}
 
 pub fn find_codex() -> Option<PathBuf> {
     codex_candidates()
@@ -1016,6 +1091,23 @@ fn run_codex(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn codex_cache_lists_only_visible_models() {
+        let body = r#"{"models":[
+            {"slug":"gpt-a","display_name":"GPT-A","visibility":"list","description":"Workhorse."},
+            {"slug":"gpt-hidden","display_name":"Hidden","visibility":"hide"},
+            {"slug":"bad name;rm","visibility":"list"},
+            {"slug":"gpt-b","visibility":"list"}
+        ]}"#;
+        let list = super::codex_model_list(body);
+        let ids: Vec<&str> = list.iter().map(|m| m.id.as_str()).collect();
+        assert_eq!(ids, ["gpt-a", "gpt-b"]);
+        assert_eq!(list[0].name.as_deref(), Some("GPT-A"));
+        assert_eq!(list[0].note.as_deref(), Some("Workhorse."));
+        assert_eq!(list[1].name, None);
+        assert!(super::codex_model_list("not json").is_empty());
+    }
+
     use super::*;
 
     #[test]

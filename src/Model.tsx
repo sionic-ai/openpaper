@@ -1,41 +1,64 @@
 import { useEffect, useRef, useState } from 'react'
-import { api, errorText, slotOf, type LlmConfig, type LlmSettings, type LlmStatus, type Provider } from './api'
+import { api, errorText, slotOf, type LlmConfig, type LlmSettings, type LlmStatus, type ModelOption, type Provider } from './api'
+import { Logo, type LogoId } from './logos'
 import { isMac } from './platform'
 
-const PROVIDERS: { id: Provider; name: string; sub: string }[] = [
-  { id: 'claude-code', name: 'Claude Code', sub: 'Your Claude Code login' },
-  { id: 'codex', name: 'Codex', sub: 'Your ChatGPT login in Codex' },
-  { id: 'anthropic', name: 'Anthropic API', sub: 'Your Anthropic API key' },
-  { id: 'openai', name: 'OpenAI-compatible', sub: 'OpenAI, OpenRouter, DeepSeek, Gemini, Ollama, or any URL' },
+const PROVIDERS: { id: Provider; name: string; sub: string; logo: LogoId }[] = [
+  { id: 'claude-code', name: 'Claude Code', sub: 'Your Claude Code login', logo: 'claude' },
+  { id: 'codex', name: 'Codex', sub: 'Your ChatGPT login in Codex', logo: 'codex' },
+  { id: 'anthropic', name: 'Anthropic API', sub: 'Your Anthropic API key', logo: 'anthropic' },
+  { id: 'openai', name: 'OpenAI-compatible', sub: 'OpenAI, OpenRouter, DeepSeek, Gemini, Ollama, or any URL', logo: 'openai' },
 ]
 
-/** Suggestions for the model field; any other name can be typed. */
-const SUGGESTED: Partial<Record<Provider, string[]>> = {
-  'claude-code': ['sonnet', 'opus', 'haiku'],
-  anthropic: ['claude-sonnet-5-5', 'claude-opus-5-5', 'claude-haiku-5-5'],
+const PRESET_LOGO: Record<string, LogoId> = {
+  openai: 'openai',
+  openrouter: 'openrouter',
+  deepseek: 'deepseek',
+  gemini: 'gemini',
+  ollama: 'ollama',
+  custom: 'custom',
 }
 
-const DEFAULT_MODEL: Partial<Record<Provider, string>> = {
-  'claude-code': 'sonnet',
-  anthropic: 'claude-sonnet-5-5',
+function logoOf(provider: Provider, preset: string): LogoId {
+  if (provider === 'openai') return PRESET_LOGO[preset] ?? 'custom'
+  return PROVIDERS.find(p => p.id === provider)?.logo ?? 'custom'
 }
 
-function ChipIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true">
-      <rect x="4" y="4" width="8" height="8" rx="1.5" />
-      <path d="M6.5 1.8V4M9.5 1.8V4M6.5 12v2.2M9.5 12v2.2M1.8 6.5H4M1.8 9.5H4M12 6.5h2.2M12 9.5h2.2" strokeLinecap="round" />
-    </svg>
-  )
+/** Models offered before any list loads. The first one is the default when none is picked. */
+const KNOWN: Partial<Record<Provider, ModelOption[]>> = {
+  'claude-code': [
+    { id: 'sonnet', name: 'Sonnet', note: 'Balanced. Good for most papers' },
+    { id: 'opus', name: 'Opus', note: 'Most capable. Slower and uses more of your plan' },
+    { id: 'haiku', name: 'Haiku', note: 'Fastest and lightest on your plan' },
+  ],
+  codex: [{ id: '', name: 'Codex default', note: 'The model Codex picks for your login' }],
+  anthropic: [
+    { id: 'claude-sonnet-5-5', name: 'Claude Sonnet 5.5', note: 'Balanced. Good for most papers' },
+    { id: 'claude-opus-5-5', name: 'Claude Opus 5.5', note: 'Most capable. Costs more per paper' },
+    { id: 'claude-haiku-5-5', name: 'Claude Haiku 5.5', note: 'Fastest and cheapest' },
+  ],
 }
 
-/** Sidebar footer button naming the current model backend; opens Model settings. */
+/** The model in effect: the saved one, or the default for backends that have one. */
+function effectiveModel(provider: Provider, saved: string): string {
+  return saved || (provider === 'codex' ? '' : KNOWN[provider]?.[0]?.id ?? '')
+}
+
+/** Short name of the current model for the sidebar and the dialog header. */
+function modelName(status: LlmStatus): string {
+  const known = KNOWN[status.provider]?.find(m => m.id === status.model)
+  if (known?.name) return known.name
+  return status.model || (status.provider === 'codex' ? 'Codex default' : 'No model picked')
+}
+
+/** Sidebar footer button showing the current backend's mark and model; opens Model settings. */
 export function ModelButton({ status, onOpen }: { status: LlmStatus | null; onOpen: () => void }) {
-  const label = status?.label ?? 'Model'
+  const text = status ? modelName(status) : 'Model'
+  const title = status ? `Model: ${status.label}, ${text}. Click to change` : 'Model settings'
   return (
-    <button className={`lang-btn model-btn${status?.problem ? ' warn' : ''}`} onClick={onOpen} title={`Model: ${label}. Click to change`}>
-      <ChipIcon />
-      <span>{label}</span>
+    <button className={`lang-btn model-btn${status?.problem ? ' warn' : ''}`} onClick={onOpen} title={title}>
+      {status ? <Logo id={logoOf(status.provider, status.preset)} size={14} /> : null}
+      <span>{text}</span>
     </button>
   )
 }
@@ -82,8 +105,10 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
   const [key, setKey] = useState('')
   const [model, setModel] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
-  const [models, setModels] = useState<string[]>([])
-  const [loadingModels, setLoadingModels] = useState(false)
+  const [listed, setListed] = useState<ModelOption[]>([])
+  const [listing, setListing] = useState(false)
+  const [listError, setListError] = useState<string | null>(null)
+  const [reload, setReload] = useState(0)
   const [test, setTest] = useState<Test>({ state: 'idle' })
   const box = useRef<HTMLDivElement>(null)
   // The latest settings, including saves still in flight, so two quick changes (a field blur and
@@ -113,7 +138,8 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
   const closeRef = useRef<() => void>(() => {})
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !e.isComposing) {
+      // Escape in the model name field only closes that field.
+      if (e.key === 'Escape' && !e.isComposing && !(e.target as Element | null)?.closest?.('.model-other')) {
         e.preventDefault()
         e.stopPropagation()
         closeRef.current()
@@ -131,13 +157,32 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
   const needsKey = s?.provider === 'anthropic' || (s?.provider === 'openai' && (preset?.needsKey ?? true))
   const hint = config?.keyHints[slot]
 
+  // The model list: Codex reads its own list from disk; APIs list theirs once they can be reached.
+  const canList =
+    !!s && (s.provider === 'codex' || (isApi && (!needsKey || !!hint) && !(s.provider === 'openai' && s.preset === 'custom' && !s.baseUrl)))
+  const listKey = s ? `${s.provider}|${s.preset}|${s.baseUrl}|${hint ?? ''}|${reload}` : ''
+  useEffect(() => {
+    setListed([])
+    setListError(null)
+    if (!canList) return
+    let live = true
+    setListing(true)
+    api
+      .llmModels()
+      .then(list => live && setListed(list))
+      .catch(e => live && setListError(errorText(e)))
+      .finally(() => live && setListing(false))
+    return () => {
+      live = false
+    }
+  }, [listKey, canList])
+
   const save = (patch: Partial<LlmSettings>) => {
     const base = latest.current
     if (!base) return
     const next = { ...base, ...patch }
     latest.current = next
     setError(null)
-    setModels([])
     queue.current = queue.current
       .then(() => api.llmSetSettings(next))
       .then(apply)
@@ -156,9 +201,8 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
   const saveBaseUrl = (value: string) => {
     if (latest.current && value.trim() !== latest.current.baseUrl) save({ baseUrl: value.trim() })
   }
-  // Fields save on blur, which doesn't happen when the dialog closes; save what was typed first.
+  // The typed fields save on blur, which doesn't happen when the dialog closes; save them first.
   const close = () => {
-    saveModel(model)
     if (latest.current?.provider === 'openai' && latest.current.preset === 'custom') saveBaseUrl(baseUrl)
     onClose()
   }
@@ -173,18 +217,6 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
       })
       .catch(e => setError(errorText(e)))
   }
-  const loadModels = () => {
-    setLoadingModels(true)
-    setError(null)
-    api
-      .llmModels()
-      .then(list => {
-        setModels(list)
-        if (!list.length) setError('The API listed no models. Type the model name instead')
-      })
-      .catch(e => setError(errorText(e)))
-      .finally(() => setLoadingModels(false))
-  }
   const runTest = () => {
     setTest({ state: 'running' })
     api
@@ -192,9 +224,6 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
       .then(r => setTest({ state: 'ok', text: `Works. Replied in ${(r.ms / 1000).toFixed(1)} s` }))
       .catch(e => setTest({ state: 'error', text: errorText(e) }))
   }
-
-  const suggestions = [...(SUGGESTED[s?.provider ?? 'claude-code'] ?? []), ...models]
-  const placeholder = s?.provider === 'codex' ? 'Account default' : DEFAULT_MODEL[s?.provider ?? 'claude-code'] ?? 'Model name, e.g. from Load models'
 
   return (
     <div className="modal-back" onMouseDown={e => e.target === e.currentTarget && close()}>
@@ -206,6 +235,17 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
           </button>
         </div>
         <p className="modal-sub">What runs translation, summaries, questions and the AI finder.</p>
+        {status && (
+          <div className={`now-using${status.problem ? ' warn' : ''}`} aria-live="polite">
+            <Logo id={logoOf(status.provider, status.preset)} size={20} />
+            <span>
+              <small>Now using</small>
+              <b>{status.label}</b>
+              <span className="sep" aria-hidden="true">·</span>
+              <span className="now-model">{modelName(status)}</span>
+            </span>
+          </div>
+        )}
         {s && (
           <>
             <div className="providers" role="radiogroup" aria-label="Model backend">
@@ -217,20 +257,32 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
                   className={s.provider === p.id ? 'on' : ''}
                   onClick={() => s.provider !== p.id && save({ provider: p.id })}
                 >
-                  <b>{p.name}</b>
-                  <span>{p.sub}</span>
+                  <span className="provider-name">
+                    <Logo id={p.logo} size={18} />
+                    <b>{p.name}</b>
+                  </span>
+                  <span className="provider-sub">{p.sub}</span>
                 </button>
               ))}
             </div>
 
             {s.provider === 'openai' && (
               <div className="field">
-                <label htmlFor="llm-preset">Service</label>
-                <select id="llm-preset" value={s.preset} onChange={e => save({ preset: e.target.value })}>
+                <span className="field-label" id="llm-preset">Service</span>
+                <div className="presets" role="radiogroup" aria-labelledby="llm-preset">
                   {config.presets.map(p => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
+                    <button
+                      key={p.id}
+                      role="radio"
+                      aria-checked={s.preset === p.id}
+                      className={s.preset === p.id ? 'on' : ''}
+                      onClick={() => s.preset !== p.id && save({ preset: p.id })}
+                    >
+                      <Logo id={PRESET_LOGO[p.id] ?? 'custom'} size={16} />
+                      <span>{p.name}</span>
+                    </button>
                   ))}
-                </select>
+                </div>
               </div>
             )}
             {s.provider === 'openai' && s.preset === 'custom' && (
@@ -271,29 +323,20 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
               </div>
             )}
 
-            <div className="field">
-              <label htmlFor="llm-model">Model</label>
-              <div className="key-row">
-                <input
-                  id="llm-model"
-                  list="llm-models"
-                  value={model}
-                  placeholder={placeholder}
-                  spellCheck={false}
-                  onChange={e => setModel(e.target.value)}
-                  onBlur={() => saveModel(model)}
-                  onKeyDown={e => e.key === 'Enter' && !e.nativeEvent.isComposing && (e.target as HTMLInputElement).blur()}
-                />
-                {isApi && (
-                  <button type="button" onClick={loadModels} disabled={loadingModels || (needsKey && !hint)}>
-                    {loadingModels ? 'Loading…' : 'Load models'}
-                  </button>
-                )}
-              </div>
-              <datalist id="llm-models">
-                {[...new Set(suggestions)].map(m => <option key={m} value={m} />)}
-              </datalist>
-            </div>
+            <ModelPicker
+              key={slot}
+              provider={s.provider}
+              value={effectiveModel(s.provider, model)}
+              listed={listed}
+              listing={listing}
+              listError={listError}
+              waiting={isApi && !canList ? (needsKey && !hint ? 'Add your API key to see the models' : 'Add the API address to see the models') : null}
+              onReload={isApi && canList ? () => setReload(n => n + 1) : null}
+              onPick={id => {
+                setModel(id)
+                saveModel(id)
+              }}
+            />
 
             {isApi && <p className="modal-note">API calls are billed to your API account. Translating a long paper takes dozens of calls.</p>}
 
@@ -309,6 +352,115 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
         )}
         {error && <div className="modal-error" role="alert">{error}</div>}
       </div>
+    </div>
+  )
+}
+
+const FILTER_FROM = 8
+
+/** The models to pick from as a list. "Other model" takes any name the list doesn't have. */
+function ModelPicker({
+  provider,
+  value,
+  listed,
+  listing,
+  listError,
+  waiting,
+  onReload,
+  onPick,
+}: {
+  provider: Provider
+  value: string
+  listed: ModelOption[]
+  listing: boolean
+  listError: string | null
+  waiting: string | null
+  onReload: (() => void) | null
+  onPick: (id: string) => void
+}) {
+  const [filter, setFilter] = useState('')
+  const [typing, setTyping] = useState(false)
+  const [typed, setTyped] = useState('')
+
+  const seen = new Set<string>()
+  const options: ModelOption[] = []
+  for (const m of [...(KNOWN[provider] ?? []), ...listed]) {
+    if (seen.has(m.id)) continue
+    seen.add(m.id)
+    options.push(m)
+  }
+  // A name typed earlier that no list has stays visible and picked.
+  if (value && !seen.has(value)) options.unshift({ id: value, note: 'Typed name' })
+  const q = filter.trim().toLowerCase()
+  const shown = q ? options.filter(m => m.id.toLowerCase().includes(q) || m.name?.toLowerCase().includes(q)) : options
+
+  const commit = () => {
+    const name = typed.trim()
+    setTyping(false)
+    if (name) onPick(name)
+  }
+
+  return (
+    <div className="field">
+      <div className="field-head">
+        <span className="field-label" id="llm-model">Model</span>
+        {listing ? <span className="field-aside">Loading models…</span> : onReload ? <button className="link" onClick={onReload}>Refresh list</button> : null}
+      </div>
+      {options.length > FILTER_FROM && (
+        <input className="model-filter" value={filter} placeholder={`Filter ${options.length} models`} spellCheck={false} onChange={e => setFilter(e.target.value)} aria-label="Filter models" />
+      )}
+      <div className="model-list" role="radiogroup" aria-labelledby="llm-model">
+        {shown.map(m => {
+          const on = !typing && m.id === value
+          return (
+            <button key={m.id || 'default'} role="radio" aria-checked={on} className={on ? 'on' : ''} onClick={() => !on && onPick(m.id)}>
+              <span className="model-main">
+                <b>{m.name ?? m.id}</b>
+                {m.name && m.id && <code>{m.id}</code>}
+              </span>
+              {m.note && <span className="model-note">{m.note}</span>}
+              {on && (
+                <svg className="model-check" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              )}
+            </button>
+          )
+        })}
+        {q && !shown.length && <div className="model-empty">No model matches “{filter.trim()}”</div>}
+        {typing ? (
+          <form
+            className="model-other key-row"
+            onSubmit={e => {
+              e.preventDefault()
+              commit()
+            }}
+          >
+            <input
+              autoFocus
+              value={typed}
+              placeholder="Model name"
+              spellCheck={false}
+              onChange={e => setTyped(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Escape') {
+                  e.stopPropagation()
+                  setTyping(false)
+                }
+              }}
+              aria-label="Model name"
+            />
+            <button type="submit" disabled={!typed.trim()}>Use</button>
+          </form>
+        ) : (
+          <button className="model-add" onClick={() => {
+            setTyped(filter.trim())
+            setTyping(true)
+          }}>
+            Other model…
+          </button>
+        )}
+      </div>
+      {waiting && <p className="field-hint">{waiting}</p>}
+      {listError && <p className="field-hint error">{listError}</p>}
     </div>
   )
 }
