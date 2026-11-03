@@ -2,6 +2,11 @@
 
 The app shows the section for its version once, after an update. Keep each entry short and about what users notice.
 
+## 0.2.6
+
+- Backups in Model settings: when your model hits a usage limit or can't run, the next backup you picked takes over by itself.
+- The sidebar shows which model is answering, and Model settings says why a backup took over. The usual model is tried again within 20 minutes.
+
 ## 0.2.5
 
 - Connect through OpenGateway: one API key for Claude, GPT, Gemini, DeepSeek and more. It works as soon as the key is saved.
