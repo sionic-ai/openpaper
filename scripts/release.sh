@@ -35,9 +35,11 @@ ditto -c -k --sequesterRsrc --keepParent "$APP" "$OUT"
 (cd "$(dirname "$OUT")" && shasum -a 256 "$ASSET" > "$ASSET.sha256")
 cat "$OUT.sha256"
 
-NOTES="OpenPaper $VERSION (macOS universal, ad-hoc signed).
+# The CHANGELOG.md section for this version, the same text the app shows after an update.
+CHANGES="$(awk -v v="## $VERSION" '$0 == v { on = 1; next } /^## / { on = 0 } on' CHANGELOG.md | sed '/./,$!d')"
+NOTES="${CHANGES:+$CHANGES
 
-Install or update: \`curl -fsSL https://raw.githubusercontent.com/$REPO/main/install.sh | bash\`"
+}Install or update on macOS: \`curl -fsSL https://raw.githubusercontent.com/$REPO/main/install.sh | bash\`. On Windows, run \`OpenPaper-windows-x64-setup.exe\`."
 
 if gh release view "$TAG" -R "$REPO" >/dev/null 2>&1; then
   # Replacing assets of a published release needs an explicit opt-in.

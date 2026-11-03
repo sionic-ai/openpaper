@@ -24,6 +24,10 @@ if [ "$fail" = 1 ]; then
   echo "The app version differs between these files. Set the same version in all of them." >&2
   exit 1
 fi
+if ! grep -qx "## $pkg" CHANGELOG.md; then
+  echo "CHANGELOG.md has no \"## $pkg\" section. Add what changed; the app shows it after an update." >&2
+  exit 1
+fi
 if [ $# -gt 0 ] && [ "$1" != "v$pkg" ]; then
   echo "Tag $1 does not match the app version $pkg (expected v$pkg)." >&2
   exit 1
