@@ -1,3 +1,4 @@
+import { tError } from './i18n'
 import { Channel, invoke } from '@tauri-apps/api/core'
 
 export type Unit = { id: number; sentences: string[] }
@@ -149,8 +150,9 @@ export const api = {
   }
 }
 
+/** An error for display, in the interface language when it is one of the app's own messages. */
 export function errorText(e: unknown): string {
-  return typeof e === 'string' ? e : e instanceof Error ? e.message : 'Something went wrong'
+  return tError(typeof e === 'string' ? e : e instanceof Error ? e.message : 'Something went wrong')
 }
 
 /** Library id of an arXiv paper, mirroring `arxiv::fetch`. */

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { api, errorText, slotOf, type LlmBackup, type LlmConfig, type LlmSettings, type LlmStatus, type ModelOption, type Preset, type Provider } from './api'
 import { Logo, type LogoId } from './logos'
 import { isMac } from './platform'
+import { tError, t, tx, useT } from './i18n'
 
 const PROVIDERS: { id: Provider; name: string; sub: string; logo: LogoId }[] = [
   { id: 'claude-code', name: 'Claude Code', sub: 'Your Claude Code login', logo: 'claude' },
@@ -61,20 +62,21 @@ function effectiveModel(slot: string, saved: string): string {
 /** Short name of a model for the sidebar and the dialog header. */
 function modelName(m: { provider: Provider; preset: string; model: string }): string {
   const known = KNOWN[slotKey(m.provider, m.preset)]?.find(k => k.id === m.model)
-  if (known?.name) return known.name
-  return m.model || (m.provider === 'codex' ? 'Codex default' : 'No model picked')
+  if (known?.name) return t(known.name)
+  return m.model || (m.provider === 'codex' ? t('Codex default') : t('No model picked'))
 }
 
 /** Sidebar footer button showing the mark and model answering calls; opens Model settings. */
 export function ModelButton({ status, onOpen }: { status: LlmStatus | null; onOpen: () => void }) {
+  useT()
   const backup = status?.backup
   const shown = backup ?? status
-  const text = shown ? modelName(shown) : 'Model'
+  const text = shown ? modelName(shown) : t('Model')
   const title = !status
-    ? 'Model settings'
+    ? t('Model settings')
     : backup
-      ? `${backup.reason}. Using the backup ${backup.label}, ${text}, for now. Click to change`
-      : `Model: ${status.label}, ${text}. Click to change`
+      ? t('{reason}. Using the backup {label}, {model}, for now. Click to change', { reason: tError(backup.reason), label: t(backup.label), model: text })
+      : t('Model: {label}, {model}. Click to change', { label: status.label, model: text })
   const warn = status?.problem && !backup
   return (
     <button className={`lang-btn model-btn${warn ? ' warn' : ''}${backup ? ' on-backup' : ''}`} onClick={onOpen} title={title}>
@@ -86,32 +88,39 @@ export function ModelButton({ status, onOpen }: { status: LlmStatus | null; onOp
 
 /** One line for the notice above the reader when the chosen backend can't run. */
 export function ProblemNotice({ status, onOpen }: { status: LlmStatus; onOpen: () => void }) {
+  useT()
   const shell = isMac ? 'Terminal' : 'PowerShell'
   const open = (
     <button className="notice-link" onClick={onOpen}>
-      Model settings
+      {t('Model settings')}
     </button>
   )
   const { provider, problem, label } = status
   let text: React.ReactNode = null
   if (provider === 'claude-code' && problem === 'missing') {
-    text = isMac ? (
-      <>Claude Code isn't installed, so translation and AI search are off. In Terminal, run <code>curl -fsSL https://claude.ai/install.sh | bash</code>, then <code>claude auth login</code>. Or pick another model in {open}.</>
-    ) : (
-      <>Claude Code isn't installed, so translation and AI search are off. In PowerShell, run <code>irm https://claude.ai/install.ps1 | iex</code>, then <code>claude auth login</code>. Or pick another model in {open}.</>
-    )
+    text = isMac
+      ? tx("Claude Code isn't installed, so translation and AI search are off. In Terminal, run {install}, then {login}. Or pick another model in {open}.", {
+          install: <code>curl -fsSL https://claude.ai/install.sh | bash</code>,
+          login: <code>claude auth login</code>,
+          open,
+        })
+      : tx("Claude Code isn't installed, so translation and AI search are off. In PowerShell, run {install}, then {login}. Or pick another model in {open}.", {
+          install: <code>irm https://claude.ai/install.ps1 | iex</code>,
+          login: <code>claude auth login</code>,
+          open,
+        })
   } else if (provider === 'claude-code' && problem === 'logged-out') {
-    text = <>Claude Code isn't logged in. Run <code>claude auth login</code> in {shell}. The app checks again when you come back to this window.</>
+    text = tx("Claude Code isn't logged in. Run {login} in {shell}. The app checks again when you come back to this window.", { login: <code>claude auth login</code>, shell })
   } else if (provider === 'codex' && problem === 'missing') {
-    text = <>Codex isn't installed, so translation and AI search are off. Install the Codex CLI or the ChatGPT app, or pick another model in {open}.</>
+    text = tx("Codex isn't installed, so translation and AI search are off. Install the Codex CLI or the ChatGPT app, or pick another model in {open}.", { open })
   } else if (provider === 'codex' && problem === 'logged-out') {
-    text = <>Codex isn't logged in. Run <code>codex login</code> in {shell}. The app checks again when you come back to this window.</>
+    text = tx("Codex isn't logged in. Run {login} in {shell}. The app checks again when you come back to this window.", { login: <code>codex login</code>, shell })
   } else if (problem === 'no-key') {
-    text = <>{label} needs an API key. Add it in {open}.</>
+    text = tx('{label} needs an API key. Add it in {open}.', { label, open })
   } else if (problem === 'no-model') {
-    text = <>Pick a {label} model in {open}.</>
+    text = tx('Pick a {label} model in {open}.', { label, open })
   } else if (problem === 'bad-url') {
-    text = <>Add the API address in {open}. It must start with https://.</>
+    text = tx('Add the API address in {open}. It must start with https://.', { open })
   }
   return text ? <div className="notice claude-notice" role="status">{text}</div> : null
 }
@@ -120,6 +129,7 @@ type Test = { state: 'idle' } | { state: 'running' } | { state: 'ok'; text: stri
 
 /** Model settings: which backend, its key and model, and a test call. Every change saves at once. */
 export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onChanged: () => void }) {
+  useT()
   const [config, setConfig] = useState<LlmConfig | null>(null)
   const [status, setStatus] = useState<LlmStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -246,7 +256,7 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
     setTest({ state: 'running' })
     api
       .llmTest()
-      .then(r => setTest({ state: 'ok', text: `Works. Replied in ${(r.ms / 1000).toFixed(1)} s` }))
+      .then(r => setTest({ state: 'ok', text: t('Works. Replied in {s} s', { s: (r.ms / 1000).toFixed(1) }) }))
       .catch(e => setTest({ state: 'error', text: errorText(e) }))
   }
 
@@ -254,16 +264,16 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
     <div className="modal-back" onMouseDown={e => e.target === e.currentTarget && close()}>
       <div className="modal model-dialog" role="dialog" aria-modal="true" aria-labelledby="model-title" ref={box} tabIndex={-1}>
         <div className="modal-head">
-          <h2 id="model-title">Model</h2>
-          <button className="modal-close" onClick={close} aria-label="Close">
+          <h2 id="model-title">{t('Model')}</h2>
+          <button className="modal-close" onClick={close} aria-label={t('Close')}>
             <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
           </button>
         </div>
-        <p className="modal-sub">What runs translation, summaries, questions and the AI finder.</p>
+        <p className="modal-sub">{t('What runs translation, summaries, questions and the AI finder.')}</p>
         {status && <NowUsing status={status} />}
         {s && (
           <>
-            <div className="providers" role="radiogroup" aria-label="Model backend">
+            <div className="providers" role="radiogroup" aria-label={t('Model backend')}>
               {PROVIDERS.map(p => (
                 <button
                   key={p.id}
@@ -277,9 +287,9 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
                 >
                   <span className="provider-name">
                     <Logo id={p.logo} size={18} />
-                    <b>{p.name}</b>
+                    <b>{t(p.name)}</b>
                   </span>
-                  <span className="provider-sub">{p.sub}</span>
+                  <span className="provider-sub">{t(p.sub)}</span>
                 </button>
               ))}
               <button
@@ -291,7 +301,7 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
                 <Logo id="opengateway" size={30} />
                 <span className="og-text">
                   <b>OpenGateway</b>
-                  <span>One key for Claude, GPT, Gemini and more</span>
+                  <span>{t('One key for Claude, GPT, Gemini and more')}</span>
                 </span>
                 <span className="og-site">opengateway.ai</span>
               </button>
@@ -299,7 +309,7 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
 
             {s.provider === 'openai' && !gateway && (
               <div className="field">
-                <span className="field-label" id="llm-preset">Service</span>
+                <span className="field-label" id="llm-preset">{t('Service')}</span>
                 <div className="presets" role="radiogroup" aria-labelledby="llm-preset">
                   {config.presets.filter(p => p.id !== OPENGATEWAY).map(p => (
                     <button
@@ -310,7 +320,7 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
                       onClick={() => s.preset !== p.id && save({ preset: p.id })}
                     >
                       <Logo id={PRESET_LOGO[p.id] ?? 'custom'} size={16} />
-                      <span>{p.name}</span>
+                      <span>{t(p.name)}</span>
                     </button>
                   ))}
                 </div>
@@ -318,7 +328,7 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
             )}
             {s.provider === 'openai' && s.preset === 'custom' && (
               <div className="field">
-                <label htmlFor="llm-base">API address</label>
+                <label htmlFor="llm-base">{t('API address')}</label>
                 <input
                   id="llm-base"
                   value={baseUrl}
@@ -334,17 +344,17 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
             {isApi && needsKey && (
               <div className="field">
                 <div className="field-head">
-                  <label htmlFor="llm-key">API key</label>
+                  <label htmlFor="llm-key">{t('API key')}</label>
                   {!hint && keyPage && (
                     <button className="link" onClick={() => void api.llmOpenKeyPage().catch(e => setError(errorText(e)))}>
-                      {gateway ? 'Get a key at opengateway.ai' : 'Get a key'}
+                      {gateway ? t('Get a key at opengateway.ai') : t('Get a key')}
                     </button>
                   )}
                 </div>
                 {hint ? (
                   <div className="key-saved">
-                    <span>Saved key ending in <code>{hint}</code></span>
-                    <button className="link" onClick={() => saveKey('')}>Remove</button>
+                    <span>{tx('Saved key ending in {hint}', { hint: <code>{hint}</code> })}</span>
+                    <button className="link" onClick={() => saveKey('')}>{t('Remove')}</button>
                   </div>
                 ) : (
                   <form
@@ -354,8 +364,8 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
                       if (key.trim()) saveKey(key)
                     }}
                   >
-                    <input id="llm-key" type="password" value={key} placeholder="Paste your API key" autoComplete="off" spellCheck={false} onChange={e => setKey(e.target.value)} />
-                    <button type="submit" disabled={!key.trim()}>Save</button>
+                    <input id="llm-key" type="password" value={key} placeholder={t('Paste your API key')} autoComplete="off" spellCheck={false} onChange={e => setKey(e.target.value)} />
+                    <button type="submit" disabled={!key.trim()}>{t('Save')}</button>
                   </form>
                 )}
               </div>
@@ -368,7 +378,7 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
               listed={listed}
               listing={listing}
               listError={listError}
-              waiting={isApi && !canList ? (needsKey && !hint ? 'Add your API key to see the models' : 'Add the API address to see the models') : null}
+              waiting={isApi && !canList ? (needsKey && !hint ? t('Add your API key to see the models') : t('Add the API address to see the models')) : null}
               onReload={isApi && canList ? () => setReload(n => n + 1) : null}
               onPick={id => {
                 setModel(id)
@@ -376,22 +386,22 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
               }}
             />
 
-            {isApi && <p className="modal-note">API calls are billed to your API account. Translating a long paper takes dozens of calls.</p>}
+            {isApi && <p className="modal-note">{t('API calls are billed to your API account. Translating a long paper takes dozens of calls.')}</p>}
 
             <BackupPicker
               settings={s}
               presets={config.presets}
               hints={config.keyHints}
-              label={status?.label ?? 'The model'}
+              label={status?.label ?? t('The model')}
               onChange={backups => save({ backups })}
             />
 
             <div className="test-row">
               <button className="primary" onClick={runTest} disabled={test.state === 'running' || !!status?.problem}>
-                {test.state === 'running' ? 'Testing…' : 'Test'}
+                {test.state === 'running' ? t('Testing…') : t('Test')}
               </button>
               <span className={`test-result ${test.state}`} aria-live="polite">
-                {test.state === 'ok' || test.state === 'error' ? test.text : status?.problem ? <ProblemLine status={status} /> : 'Ready'}
+                {test.state === 'ok' || test.state === 'error' ? test.text : status?.problem ? <ProblemLine status={status} /> : t('Ready')}
               </span>
             </div>
           </>
@@ -404,20 +414,21 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
 
 /** The backend answering calls: the chosen one, or the backup that took over and why. */
 function NowUsing({ status }: { status: LlmStatus }) {
+  useT()
   const b: LlmBackup | null = status.backup
   const shown = b ?? status
   return (
     <div className={`now-using${status.problem && !b ? ' warn' : ''}${b ? ' on-backup' : ''}`} aria-live="polite">
       <Logo id={logoOf(shown.provider, shown.preset)} size={20} />
       <span>
-        <small>Now using</small>
+        <small>{t('Now using')}</small>
         <b>{shown.label}</b>
         <span className="sep" aria-hidden="true">·</span>
         <span className="now-model">{modelName(shown)}</span>
-        {b && <span className="backup-tag">Backup</span>}
+        {b && <span className="backup-tag">{t('Backup')}</span>}
         {b && (
           <span className="now-why">
-            {b.reason}. {status.label} is tried again within 20 minutes.
+            {t('{reason}. {label} is tried again within 20 minutes.', { reason: tError(b.reason), label: t(status.label) })}
           </span>
         )}
       </span>
@@ -444,6 +455,7 @@ function BackupPicker({
   label: string
   onChange: (backups: string[]) => void
 }) {
+  useT()
   const chosen = slotOf(s)
   const known = (slot: string) => s.backups.includes(slot) || slot in hints || !!s.models[slot]
   const candidates: Candidate[] = [
@@ -459,17 +471,17 @@ function BackupPicker({
     if (slot === 'claude-code' || slot === 'codex') return null
     const preset = presets.find(p => `openai:${p.id}` === slot)
     const needsKey = slot === 'anthropic' || (preset?.needsKey ?? false)
-    if (needsKey && !(slot in hints)) return 'Needs an API key'
-    if (slot === 'openai:custom' && !s.baseUrl) return 'Needs the API address'
-    if (slot.startsWith('openai:') && !s.models[slot] && !preset?.model) return 'Needs a model'
+    if (needsKey && !(slot in hints)) return t('Needs an API key')
+    if (slot === 'openai:custom' && !s.baseUrl) return t('Needs the API address')
+    if (slot.startsWith('openai:') && !s.models[slot] && !preset?.model) return t('Needs a model')
     return null
   }
   const toggle = (slot: string) => onChange(s.backups.includes(slot) ? s.backups.filter(b => b !== slot) : [...s.backups, slot])
 
   return (
     <div className="field backups">
-      <span className="field-label" id="llm-backups">Backups</span>
-      <p className="field-hint top">When {label} hits a usage limit or can't run, the first backup that works takes over.</p>
+      <span className="field-label" id="llm-backups">{t('Backups')}</span>
+      <p className="field-hint top">{t("When {label} hits a usage limit or can't run, the first backup that works takes over.", { label })}</p>
       <div className="backup-list" role="group" aria-labelledby="llm-backups">
         {candidates.map(c => {
           const at = s.backups.indexOf(c.slot)
@@ -519,6 +531,7 @@ function ModelPicker({
   onReload: (() => void) | null
   onPick: (id: string) => void
 }) {
+  useT()
   const [filter, setFilter] = useState('')
   const [typing, setTyping] = useState(false)
   const [typed, setTyped] = useState('')
@@ -531,7 +544,7 @@ function ModelPicker({
     options.push(m)
   }
   // A name typed earlier that no list has stays visible and picked.
-  if (value && !seen.has(value)) options.unshift({ id: value, note: 'Typed name' })
+  if (value && !seen.has(value)) options.unshift({ id: value, note: t('Typed name') })
   const q = filter.trim().toLowerCase()
   const shown = q ? options.filter(m => m.id.toLowerCase().includes(q) || m.name?.toLowerCase().includes(q)) : options
 
@@ -544,11 +557,11 @@ function ModelPicker({
   return (
     <div className="field">
       <div className="field-head">
-        <span className="field-label" id="llm-model">Model</span>
-        {listing ? <span className="field-aside">Loading models…</span> : onReload ? <button className="link" onClick={onReload}>Refresh list</button> : null}
+        <span className="field-label" id="llm-model">{t('Model')}</span>
+        {listing ? <span className="field-aside">{t('Loading models…')}</span> : onReload ? <button className="link" onClick={onReload}>{t('Refresh list')}</button> : null}
       </div>
       {options.length > FILTER_FROM && (
-        <input className="model-filter" value={filter} placeholder={`Filter ${options.length} models`} spellCheck={false} onChange={e => setFilter(e.target.value)} aria-label="Filter models" />
+        <input className="model-filter" value={filter} placeholder={t('Filter {n} models', { n: options.length })} spellCheck={false} onChange={e => setFilter(e.target.value)} aria-label={t('Filter models')} />
       )}
       <div className="model-list" role="radiogroup" aria-labelledby="llm-model">
         {shown.map(m => {
@@ -556,17 +569,17 @@ function ModelPicker({
           return (
             <button key={m.id || 'default'} role="radio" aria-checked={on} className={on ? 'on' : ''} onClick={() => !on && onPick(m.id)}>
               <span className="model-main">
-                <b>{m.name ?? m.id}</b>
+                <b>{m.name ? t(m.name) : m.id}</b>
                 {m.name && m.id && <code>{m.id}</code>}
               </span>
-              {m.note && <span className="model-note">{m.note}</span>}
+              {m.note && <span className="model-note">{t(m.note)}</span>}
               {on && (
                 <svg className="model-check" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
               )}
             </button>
           )
         })}
-        {q && !shown.length && <div className="model-empty">No model matches “{filter.trim()}”</div>}
+        {q && !shown.length && <div className="model-empty">{t('No model matches “{q}”', { q: filter.trim() })}</div>}
         {typing ? (
           <form
             className="model-other key-row"
@@ -578,7 +591,7 @@ function ModelPicker({
             <input
               autoFocus
               value={typed}
-              placeholder="Model name"
+              placeholder={t('Model name')}
               spellCheck={false}
               onChange={e => setTyped(e.target.value)}
               onKeyDown={e => {
@@ -587,16 +600,16 @@ function ModelPicker({
                   setTyping(false)
                 }
               }}
-              aria-label="Model name"
+              aria-label={t('Model name')}
             />
-            <button type="submit" disabled={!typed.trim()}>Use</button>
+            <button type="submit" disabled={!typed.trim()}>{t('Use')}</button>
           </form>
         ) : (
           <button className="model-add" onClick={() => {
             setTyped(filter.trim())
             setTyping(true)
           }}>
-            Other model…
+            {t('Other model…')}
           </button>
         )}
       </div>
@@ -607,17 +620,18 @@ function ModelPicker({
 }
 
 function ProblemLine({ status }: { status: LlmStatus }) {
+  useT()
   switch (status.problem) {
     case 'missing':
-      return <>{status.label} isn't installed</>
+      return <>{t("{label} isn't installed", { label: status.label })}</>
     case 'logged-out':
-      return <>{status.label} isn't logged in</>
+      return <>{t("{label} isn't logged in", { label: status.label })}</>
     case 'no-key':
-      return <>Add an API key</>
+      return <>{t('Add an API key')}</>
     case 'no-model':
-      return <>Pick a model</>
+      return <>{t('Pick a model')}</>
     case 'bad-url':
-      return <>Add the API address (https://)</>
+      return <>{t('Add the API address (https://)')}</>
     default:
       return null
   }
