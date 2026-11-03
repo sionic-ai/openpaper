@@ -7,6 +7,7 @@ pub mod llm;
 pub mod model;
 pub mod pdf;
 pub mod recommend;
+pub mod roadmap;
 pub mod search;
 pub mod sentence;
 pub mod translate;

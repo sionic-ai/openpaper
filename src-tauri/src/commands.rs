@@ -4,7 +4,7 @@ use crate::lang::{self, Lang, LangInfo};
 use crate::library::{Folder, Library, Meta};
 use crate::model::{self, Doc};
 use crate::translate::Mode;
-use crate::{arxiv, ask, llm, pdf, recommend, search, translate, update};
+use crate::{arxiv, ask, llm, pdf, recommend, roadmap, search, translate, update};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -109,6 +109,16 @@ pub fn library_set_folders(
     folders: Vec<Folder>,
 ) -> Result<Vec<Folder>, String> {
     state.library.set_folders(folders)
+}
+
+/// Marks a paper read (the check in the sidebar) or not.
+#[tauri::command]
+pub fn library_set_read(
+    state: State<'_, Arc<AppState>>,
+    id: String,
+    read: bool,
+) -> Result<Meta, String> {
+    state.library.set_read(&id, read)
 }
 
 #[tauri::command]
@@ -369,6 +379,39 @@ pub struct SummaryReply {
     pub reply: String,
     /// True when the summary came from disk instead of a new Claude call.
     pub saved: bool,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase", tag = "event", content = "data")]
+pub enum RoadmapEvent {
+    Step { step: roadmap::Step },
+}
+
+/// The reading roadmap around a saved paper in `lang`: the saved one unless `fresh`, else a new
+/// one built from real citation data, with progress over `on_event`, then saved.
+#[tauri::command]
+pub async fn paper_roadmap(
+    state: State<'_, Arc<AppState>>,
+    doc_id: String,
+    lang: Lang,
+    fresh: bool,
+    on_event: tauri::ipc::Channel<RoadmapEvent>,
+) -> Result<roadmap::Roadmap, String> {
+    let state = state.inner().clone();
+    blocking(move || {
+        if !fresh {
+            if let Some(saved) = state.library.roadmap(&doc_id, lang) {
+                return Ok(saved);
+            }
+        }
+        let doc = state.library.doc(&doc_id)?;
+        let made = roadmap::build(&state.backend()?, &doc, lang, |step| {
+            let _ = on_event.send(RoadmapEvent::Step { step });
+        })?;
+        state.library.set_roadmap(&doc_id, lang, &made)?;
+        Ok(made)
+    })
+    .await
 }
 
 /// An explainer post about a saved paper in `lang`. Returns the saved one unless `fresh`;
