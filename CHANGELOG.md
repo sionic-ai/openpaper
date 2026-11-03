@@ -2,6 +2,12 @@
 
 The app shows the section for its version once, after an update. Keep each entry short and about what users notice.
 
+## 0.2.8
+
+- Roadmap, next to Summarize: what to read before and after a paper, built from its real references and the papers that cite it. In AI search you can also just ask for a roadmap.
+- Hover a paper in the sidebar and click the check to mark it read. Click it again to clear it.
+- Backups in Model settings stay folded until you open them.
+
 ## 0.2.7
 
 - Buttons, menus and messages follow the language you translate into: Korean, Japanese, Chinese, Spanish, French, German or Portuguese.
