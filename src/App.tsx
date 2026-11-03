@@ -394,6 +394,18 @@ export function App() {
     window.addEventListener('focus', checkLlm)
     return () => window.removeEventListener('focus', checkLlm)
   }, [checkLlm])
+  // With backups saved, check now and then which backend answers, so the sidebar shows it.
+  const watchBackup = (llm?.backups ?? 0) > 0
+  useEffect(() => {
+    if (!watchBackup) return
+    const t = window.setInterval(() => {
+      void api
+        .llmBackup()
+        .then(b => setLlm(prev => (prev && JSON.stringify(prev.backup) !== JSON.stringify(b) ? { ...prev, backup: b } : prev)))
+        .catch(() => {})
+    }, 4000)
+    return () => window.clearInterval(t)
+  }, [watchBackup])
 
   /**
    * Opens a paper in `want` mode (default: the one last read for it) in the current language, and optionally starts
@@ -716,7 +728,7 @@ export function App() {
             </div>
           )}
         </header>
-        {llm?.problem && <ProblemNotice status={llm} onOpen={() => setModelOpen(true)} />}
+        {llm?.problem && !llm.backups && <ProblemNotice status={llm} onOpen={() => setModelOpen(true)} />}
         {(error || status?.error) && <div className="error" role="alert">{error ?? status?.error}</div>}
         {busy && <div className="notice">{busy}</div>}
         {view === 'ai' ? (
