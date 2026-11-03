@@ -2,6 +2,11 @@
 
 The app shows the section for its version once, after an update. Keep each entry short and about what users notice.
 
+## 0.2.7
+
+- Buttons, menus and messages follow the language you translate into: Korean, Japanese, Chinese, Spanish, French, German or Portuguese.
+- The translation column shows the language's own name.
+
 ## 0.2.6
 
 - Backups in Model settings: when your model hits a usage limit or can't run, the next backup you picked takes over by itself.
