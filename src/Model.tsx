@@ -456,6 +456,7 @@ function BackupPicker({
   onChange: (backups: string[]) => void
 }) {
   useT()
+  const [open, setOpen] = useState(false)
   const chosen = slotOf(s)
   const known = (slot: string) => s.backups.includes(slot) || slot in hints || !!s.models[slot]
   const candidates: Candidate[] = [
@@ -478,11 +479,18 @@ function BackupPicker({
   }
   const toggle = (slot: string) => onChange(s.backups.includes(slot) ? s.backups.filter(b => b !== slot) : [...s.backups, slot])
 
+  const names = s.backups.map(slot => candidates.find(c => c.slot === slot)?.name).filter(Boolean)
   return (
-    <div className="field backups">
-      <span className="field-label" id="llm-backups">{t('Backups')}</span>
+    <div className={`field backups${open ? ' open' : ''}`}>
+      <button className="backup-toggle" aria-expanded={open} aria-controls="llm-backups" onClick={() => setOpen(o => !o)}>
+        <svg className="chev" width="10" height="10" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5l4.5 4.5L6 12.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        <span className="field-label">{t('Backups')}</span>
+        <span className="backup-summary">{names.length ? names.join(', ') : t('Off')}</span>
+      </button>
+      {open && (
+      <>
       <p className="field-hint top">{t("When {label} hits a usage limit or can't run, the first backup that works takes over.", { label })}</p>
-      <div className="backup-list" role="group" aria-labelledby="llm-backups">
+      <div className="backup-list" role="group" id="llm-backups">
         {candidates.map(c => {
           const at = s.backups.indexOf(c.slot)
           const on = at >= 0
@@ -505,6 +513,8 @@ function BackupPicker({
           )
         })}
       </div>
+      </>
+      )}
     </div>
   )
 }
