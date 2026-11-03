@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Folder, Meta } from './api'
+import { t, useT } from './i18n'
 
 /**
  * The sidebar paper list with folders. Drag a paper (pointer events, so it does not depend on the
@@ -42,6 +43,7 @@ export function PaperList({
   onOpen: (id: string) => void
   onRemove: (id: string) => void
 }) {
+  useT()
   const byId = new Map(papers.map(p => [p.id, p]))
   const filed = new Set(folders.flatMap(f => f.papers))
   const loose = papers.filter(p => !filed.has(p.id))
@@ -61,7 +63,7 @@ export function PaperList({
   const newFolder = (members: string[] = []) => {
     const id = `f${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
     const next = latest.current.folders.map(f => ({ ...f, papers: f.papers.filter(p => !members.includes(p)) }))
-    next.push({ id, name: 'New folder', papers: members, open: true })
+    next.push({ id, name: t('New folder'), papers: members, open: true })
     latest.current.onFolders(next)
     setEditing(id)
   }
@@ -136,10 +138,10 @@ export function PaperList({
         <span className="t">{p.title}</span>
         <span className="src">
           {p.source.split('/').pop()}
-          {more > 0 && <span className="others"> · +{more} more</span>}
+          {more > 0 && <span className="others"> · {t('+{n} more', { n: more })}</span>}
         </span>
       </button>
-      <button className="x" onClick={() => onRemove(p.id)} aria-label={`Delete ${p.title}`}>×</button>
+      <button className="x" onClick={() => onRemove(p.id)} aria-label={t('Delete {title}', { title: p.title })}>×</button>
     </li>
   )
 
@@ -149,8 +151,8 @@ export function PaperList({
   return (
     <>
       <div className="list-label">
-        <span>My papers</span>
-        <button className="new-folder" onClick={() => newFolder()} title="New folder" aria-label="New folder">
+        <span>{t('My papers')}</span>
+        <button className="new-folder" onClick={() => newFolder()} title={t('New folder')} aria-label={t('New folder')}>
           <FolderIcon plus />
         </button>
       </div>
@@ -176,7 +178,7 @@ export function PaperList({
                     onClick={() => setFolder(f.id, { open: !f.open })}
                     onDoubleClick={() => setEditing(f.id)}
                     aria-expanded={f.open}
-                    title={`${f.name} · double-click to rename`}
+                    title={t('{name} · double-click to rename', { name: f.name })}
                   >
                     <span className={`caret${f.open ? ' open' : ''}`} aria-hidden="true">›</span>
                     <FolderIcon />
@@ -187,8 +189,8 @@ export function PaperList({
                 <button
                   className="x"
                   onClick={() => onFolders(folders.filter(x => x.id !== f.id))}
-                  aria-label={`Delete folder ${f.name}`}
-                  title="Delete folder (papers stay)"
+                  aria-label={t('Delete folder {name}', { name: f.name })}
+                  title={t('Delete folder (papers stay)')}
                 >
                   ×
                 </button>
@@ -198,17 +200,17 @@ export function PaperList({
                   // Folded, a drop on the representative joins the folder at the end and keeps it in front.
                   row(p, f.open ? `f:${f.id}:${p.id}` : head, !f.open && i === 0 ? 'rep' : '', !f.open ? members.length - 1 : 0)
                 )}
-                {members.length === 0 && <li className="folder-empty">Drag papers here</li>}
+                {members.length === 0 && <li className="folder-empty">{t('Drag papers here')}</li>}
               </ul>
             </li>
           )
         })}
         {loose.map(p => row(p, `l:${p.id}`))}
-        {papers.length === 0 && <li className="empty">No papers yet</li>}
+        {papers.length === 0 && <li className="empty">{t('No papers yet')}</li>}
         {/* Last, so showing it while dragging does not move the rows under the pointer. */}
         {drag && (
           <li className={`drop-new${over === 'new' ? ' over' : ''}`} data-drop="new">
-            <FolderIcon plus /> New folder
+            <FolderIcon plus /> {t('New folder')}
           </li>
         )}
       </ul>
@@ -222,6 +224,7 @@ export function PaperList({
 }
 
 function FolderName({ name, onDone }: { name: string; onDone: (name: string | null) => void }) {
+  useT()
   const input = useRef<HTMLInputElement>(null)
   const done = useRef(false)
   useEffect(() => {
@@ -239,7 +242,7 @@ function FolderName({ name, onDone }: { name: string; onDone: (name: string | nu
       className="folder-name"
       defaultValue={name}
       maxLength={60}
-      aria-label="Folder name"
+      aria-label={t('Folder name')}
       onKeyDown={e => {
         if (e.key === 'Enter' && !e.nativeEvent.isComposing) finish(e.currentTarget.value)
         if (e.key === 'Escape') finish(null)

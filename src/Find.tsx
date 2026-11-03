@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { modKey, shortcut } from './platform'
 import { BAR_H } from './position'
+import { t, useT } from './i18n'
 
 // Matches are painted with the CSS Highlight API (WebKit 17.2+), so the paper's DOM is never touched.
 type Registry = { set: (name: string, h: unknown) => void; delete: (name: string) => void }
@@ -78,6 +79,7 @@ type Props = {
 
 /** ⌘F (Ctrl+F) bar over the reader: finds text in both columns. Enter for the next match, Shift+Enter for the previous. */
 export function FindBar({ root, content, paper, focus, onClose }: Props) {
+  useT()
   const [query, setQuery] = useState('')
   const [ranges, setRanges] = useState<Range[]>([])
   const [idx, setIdx] = useState(0)
@@ -134,7 +136,7 @@ export function FindBar({ root, content, paper, focus, onClose }: Props) {
     return () => window.removeEventListener('keydown', key)
   }, [])
 
-  const count = !query ? '' : ranges.length === 0 ? 'No matches' : `${idx + 1} of ${ranges.length}${ranges.length >= MAX ? '+' : ''}`
+  const count = !query ? '' : ranges.length === 0 ? t('No matches') : t('{i} of {n}', { i: idx + 1, n: `${ranges.length}${ranges.length >= MAX ? '+' : ''}` })
 
   return (
     <div className="find-dock">
@@ -155,14 +157,14 @@ export function FindBar({ root, content, paper, focus, onClose }: Props) {
               onClose()
             }
           }}
-          placeholder="Find in paper"
-          aria-label="Find in paper"
+          placeholder={t('Find in paper')}
+          aria-label={t('Find in paper')}
           spellCheck={false}
         />
         <span className="count" aria-live="polite">{count}</span>
-        <button onClick={() => step(-1)} disabled={ranges.length === 0} title={`Previous match (${shortcut('G', true)})`} aria-label="Previous match"><Chevron up /></button>
-        <button onClick={() => step(1)} disabled={ranges.length === 0} title={`Next match (${shortcut('G')})`} aria-label="Next match"><Chevron /></button>
-        <button onClick={onClose} title="Close (Esc)" aria-label="Close find">
+        <button onClick={() => step(-1)} disabled={ranges.length === 0} title={t('Previous match ({key})', { key: shortcut('G', true) })} aria-label={t('Previous match')}><Chevron up /></button>
+        <button onClick={() => step(1)} disabled={ranges.length === 0} title={t('Next match ({key})', { key: shortcut('G') })} aria-label={t('Next match')}><Chevron /></button>
+        <button onClick={onClose} title={t('Close (Esc)')} aria-label={t('Close find')}>
           <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
             <path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
           </svg>

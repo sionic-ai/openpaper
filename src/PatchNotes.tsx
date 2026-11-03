@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import changelog from '../CHANGELOG.md?raw'
+import { t, useT } from './i18n'
 
 const SEEN_KEY = 'openpaper.seenVersion'
 const SHOW_FOR = 9000
@@ -71,6 +72,7 @@ const pending = takeNotes()
 
 /** "Updated to vX" card in the corner after an update. Closes by itself, or with the X. */
 export function PatchNotes() {
+  useT()
   const [notes, setNotes] = useState<Notes | null>(pending)
   const [paused, setPaused] = useState(false)
   const [leaving, setLeaving] = useState(false)
@@ -99,14 +101,14 @@ export function PatchNotes() {
       onBlur={() => setPaused(false)}
     >
       <div className="patch-head">
-        <b>Updated to v{notes.version}</b>
-        <button className="modal-close" onClick={close} aria-label="Close">
+        <b>{t('Updated to v{version}', { version: notes.version })}</b>
+        <button className="modal-close" onClick={close} aria-label={t('Close')}>
           <svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
         </button>
       </div>
       <ul>
-        {notes.items.map((t, i) => (
-          <li key={i}>{t}</li>
+        {notes.items.map((item, i) => (
+          <li key={i}>{t(item)}</li>
         ))}
       </ul>
       {/* Restarts with each pause, so the bar always shows a full countdown. */}

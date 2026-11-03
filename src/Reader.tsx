@@ -5,18 +5,20 @@ import { modKey } from './platform'
 import { applyPos, loadPos, posKey, readPos } from './position'
 import { inline, tex } from './render'
 import { dragSplit, stored } from './resize'
+import { t, useT } from './i18n'
 
 /** Translated sentences by unit id. */
 type Tr = Record<string, string[]>
 
 function Sentences({ unit, side, math, tr, heading }: { unit: Unit; side: 'en' | 'tr'; math: string[]; tr: Tr; heading?: boolean }) {
+  useT()
   const translated = tr[String(unit.id)]
   if (side === 'tr' && !translated && heading) {
     // Until a heading is translated, repeat the original so both columns always show it.
     return <span className="untranslated" dangerouslySetInnerHTML={{ __html: inline(unit.sentences.join(' '), math) }} />
   }
   if (side === 'tr' && !translated) {
-    return <span className="pending" aria-label="Not translated yet">{unit.sentences.map((_, i) => <i key={i} />)}</span>
+    return <span className="pending" aria-label={t('Not translated yet')}>{unit.sentences.map((_, i) => <i key={i} />)}</span>
   }
   const list = side === 'en' ? unit.sentences : translated!
   return (
@@ -123,6 +125,7 @@ const SPLIT_MIN = 0.25
 const SPLIT_MAX = 0.75
 
 export function Reader({ doc, tr, lang, swapped, trLabel }: { doc: Doc; tr: Tr; lang: Lang; swapped: boolean; trLabel: string }) {
+  useT()
   const root = useRef<HTMLDivElement>(null)
   const style = useRef<HTMLStyleElement>(null)
   // Share of the width taken by the left column; drag the gap between the columns to change it.
@@ -254,8 +257,8 @@ export function Reader({ doc, tr, lang, swapped, trLabel }: { doc: Doc; tr: Tr; 
         className="col-resize"
         role="separator"
         aria-orientation="vertical"
-        aria-label="Column widths"
-        title="Drag to resize the columns · double-click to split evenly"
+        aria-label={t('Column widths')}
+        title={t('Drag to resize the columns · double-click to split evenly')}
         onPointerDown={resize}
         onDoubleClick={() => {
           localStorage.setItem('openpaper.split', '0.5')
@@ -263,7 +266,7 @@ export function Reader({ doc, tr, lang, swapped, trLabel }: { doc: Doc; tr: Tr; 
         }}
       />
       <div className="cols-head">
-        <span className="en">Original</span>
+        <span className="en">{t('Original')}</span>
         <span className="tr">{trLabel}</span>
       </div>
       {doc.blocks.map((block, i) => (

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { api, arxivDocId, arxivIdOf, errorText, looksLikeArxivId, type Doc, type Folder, type Hit, type Lang, type Language, type LlmStatus, type Meta, type Mode, type Status } from './api'
 import { Reader } from './Reader'
 import { PaperList } from './Papers'
@@ -7,6 +7,7 @@ import { AiChat, type ChatState } from './Ai'
 import { FloatingAssistant, SelectionAsk, useAsk } from './Assistant'
 import { ModelButton, ModelDialog, ProblemNotice } from './Model'
 import { PatchNotes } from './PatchNotes'
+import { setUiLang, t, tx, useT } from './i18n'
 import { modKey, shortcut } from './platform'
 import { posKey } from './position'
 import { dragSplit, stored } from './resize'
@@ -14,9 +15,10 @@ import { applyTheme, initialTheme, type Theme } from './theme'
 import logo from '../src-tauri/icons/128x128.png'
 
 function ThemeButton() {
+  useT()
   const [theme, setTheme] = useState<Theme>(initialTheme)
   const next: Theme = theme === 'dark' ? 'light' : 'dark'
-  const label = next === 'dark' ? 'Switch to dark mode' : 'Switch to light mode'
+  const label = next === 'dark' ? t('Switch to dark mode') : t('Switch to light mode')
   return (
     <button
       className="theme-btn"
@@ -84,13 +86,14 @@ function GlobeIcon() {
 
 /** Translation language: shows the native name; a transparent native select on top does the picking. */
 function LangPicker({ langs, lang, onChange }: { langs: Language[]; lang: Lang; onChange: (lang: Lang) => void }) {
+  useT()
   if (!langs.length) return null
   const current = langs.find(l => l.code === lang)
   return (
-    <label className="lang-btn" title="Translation language">
+    <label className="lang-btn" title={t('Translation language')}>
       <GlobeIcon />
       <span>{current?.native ?? lang}</span>
-      <select value={lang} onChange={e => onChange(e.target.value)} aria-label="Translation language">
+      <select value={lang} onChange={e => onChange(e.target.value)} aria-label={t('Translation language')}>
         {langs.map(l => (
           <option key={l.code} value={l.code}>
             {l.native} · {l.name}
@@ -118,6 +121,7 @@ const UPDATE_EVERY = 3 * 60 * 60 * 1000
 
 /** Shown at the bottom of the sidebar only when a newer release exists. */
 function UpdateButton() {
+  useT()
   const [latest, setLatest] = useState<string | null>(null)
   const [installing, setInstalling] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -149,14 +153,14 @@ function UpdateButton() {
     }
   }
 
-  const label = installing ? 'Updating…' : error ? `Update failed: ${error}` : `Update to ${v || 'the latest version'}`
+  const label = installing ? t('Updating…') : error ? t('Update failed: {error}', { error }) : v ? t('Update to {version}', { version: v }) : t('Update to the latest version')
   return (
     <>
       <button
         className={`update-btn${error ? ' failed' : ''}`}
         onClick={() => setAsking(true)}
         disabled={installing}
-        title={installing ? label : error ? `${label}. Click to try again` : `${label}. Click to install it and reopen`}
+        title={installing ? label : error ? t('{label}. Click to try again', { label }) : t('{label}. Click to install it and reopen', { label })}
         aria-label={label}
       >
         {installing ? <span className="update-spin" aria-hidden="true" /> : <UpdateIcon />}
@@ -168,6 +172,7 @@ function UpdateButton() {
 
 /** Asks before the update closes the app. Enter updates, Escape or a click outside cancels. */
 function ConfirmUpdate({ version, onCancel, onConfirm }: { version: string; onCancel: () => void; onConfirm: () => void }) {
+  useT()
   const ok = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     ok.current?.focus()
@@ -184,11 +189,11 @@ function ConfirmUpdate({ version, onCancel, onConfirm }: { version: string; onCa
   return (
     <div className="modal-back" onMouseDown={e => e.target === e.currentTarget && onCancel()}>
       <div className="modal confirm-update" role="alertdialog" aria-modal="true" aria-labelledby="update-title" aria-describedby="update-text">
-        <h2 id="update-title">Update to {version || 'the latest version'}?</h2>
-        <p id="update-text">OpenPaper closes, installs the update and opens again. A translation that is running stops.</p>
+        <h2 id="update-title">{version ? t('Update to {version}?', { version }) : t('Update to the latest version?')}</h2>
+        <p id="update-text">{t('OpenPaper closes, installs the update and opens again. A translation that is running stops.')}</p>
         <div className="confirm-actions">
-          <button onClick={onCancel}>Not now</button>
-          <button ref={ok} className="primary" onClick={onConfirm}>Update and restart</button>
+          <button onClick={onCancel}>{t('Not now')}</button>
+          <button ref={ok} className="primary" onClick={onConfirm}>{t('Update and restart')}</button>
         </div>
       </div>
     </div>
@@ -235,6 +240,7 @@ const modeKey = (id: string) => `openpaper.mode.${id}`
 
 /** Translate (or Retranslate in the new style) → pick a faithful translation or an easy explanation. */
 function StartMenu({ label, title, onPick }: { label: string; title?: string; onPick: (mode: Mode) => void }) {
+  useT()
   const [openMenu, setOpenMenu] = useState(false)
   const box = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -262,12 +268,12 @@ function StartMenu({ label, title, onPick }: { label: string; title?: string; on
       {openMenu && (
         <div className="start-menu" role="menu">
           <button role="menuitem" onClick={() => pick('plain')}>
-            <b>Translate</b>
-            <span>Faithful, sentence by sentence</span>
+            <b>{t('Translate')}</b>
+            <span>{t('Faithful, sentence by sentence')}</span>
           </button>
           <button role="menuitem" onClick={() => pick('easy')}>
-            <b>Make easy version</b>
-            <span>Hard terms in plain words</span>
+            <b>{t('Make easy version')}</b>
+            <span>{t('Hard terms in plain words')}</span>
           </button>
         </div>
       )}
@@ -276,6 +282,7 @@ function StartMenu({ label, title, onPick }: { label: string; title?: string; on
 }
 
 export function App() {
+  useT()
   const [papers, setPapers] = useState<Meta[]>([])
   const [folders, setFolders] = useState<Folder[]>([])
   const [doc, setDoc] = useState<Doc | null>(null)
@@ -302,6 +309,8 @@ export function App() {
       })
       .catch(() => {})
   }, [])
+  // The interface follows the translation language.
+  useLayoutEffect(() => setUiLang(lang), [lang])
   // Read inside `open` after its awaits, so a paper that finishes importing opens in the language picked meanwhile.
   const langRef = useRef(lang)
   langRef.current = lang
@@ -398,13 +407,13 @@ export function App() {
   const watchBackup = (llm?.backups ?? 0) > 0
   useEffect(() => {
     if (!watchBackup) return
-    const t = window.setInterval(() => {
+    const timer = window.setInterval(() => {
       void api
         .llmBackup()
         .then(b => setLlm(prev => (prev && JSON.stringify(prev.backup) !== JSON.stringify(b) ? { ...prev, backup: b } : prev)))
         .catch(() => {})
     }, 4000)
-    return () => window.clearInterval(t)
+    return () => window.clearInterval(timer)
   }, [watchBackup])
 
   /**
@@ -542,7 +551,7 @@ export function App() {
     const q = input.trim()
     if (!q || busy) return
     if (!looksLikeArxivId(q)) return void runSearch(q, 0)
-    setBusy('Fetching the paper from arXiv…')
+    setBusy(t('Fetching the paper from arXiv…'))
     setError(null)
     try {
       await imported(await api.openArxiv(input))
@@ -556,7 +565,7 @@ export function App() {
 
   const pickPdf = async () => {
     if (busy) return
-    setBusy('Reading the PDF…')
+    setBusy(t('Reading the PDF…'))
     setError(null)
     try {
       await imported(await api.openPdf())
@@ -590,14 +599,14 @@ export function App() {
   }, [doc])
   const total = unitIds.length
   const translated = unitIds.filter(id => tr[id] !== undefined).length
-  const langName = langs.find(l => l.code === lang)?.name ?? lang
+  const langName = langs.find(l => l.code === lang)?.native ?? lang
   const remaining = total - translated
 
   return (
     <div className={`app${folded ? ' folded' : ''}`} ref={app} style={{ '--side-w': `${sideW}px` } as React.CSSProperties}>
       <aside className="side" aria-hidden={folded || undefined} inert={folded || undefined}>
         <div className="side-top" data-tauri-drag-region>
-          <button className="side-fold" onClick={() => fold(true)} title={`Hide sidebar (${shortcut('B')})`} aria-label="Hide sidebar">
+          <button className="side-fold" onClick={() => fold(true)} title={t('Hide sidebar ({shortcut})', { shortcut: shortcut('B') })} aria-label={t('Hide sidebar')}>
             <SidebarIcon />
           </button>
         </div>
@@ -609,24 +618,24 @@ export function App() {
           <input
             value={input}
             onChange={e => setInput(e.target.value)}
-            placeholder="Search arXiv · ID · URL"
+            placeholder={t('Search arXiv · ID · URL')}
             spellCheck={false}
             disabled={!!busy}
-            aria-label="arXiv search, ID or URL"
+            aria-label={t('arXiv search, ID or URL')}
           />
         </form>
         <div className="side-actions">
-          <button className="pdf-btn" onClick={pickPdf} disabled={!!busy} title="Open a PDF file" aria-label="Open a PDF file">
+          <button className="pdf-btn" onClick={pickPdf} disabled={!!busy} title={t('Open a PDF file')} aria-label={t('Open a PDF file')}>
             <PdfIcon /> PDF
           </button>
-          <button className={`ai-btn${view === 'ai' ? ' active' : ''}`} onClick={() => setView('ai')} title="Find papers with AI" aria-label="Find papers with AI">
+          <button className={`ai-btn${view === 'ai' ? ' active' : ''}`} onClick={() => setView('ai')} title={t('Find papers with AI')} aria-label={t('Find papers with AI')}>
             <SearchIcon /> AI
-            {chat.loading && <span className="ai-dot" aria-label="Searching" />}
+            {chat.loading && <span className="ai-dot" aria-label={t('Searching')} />}
           </button>
         </div>
         {search && (
           <button className={`search-tab${view === 'search' ? ' active' : ''}`} onClick={() => setView('search')}>
-            <span className="t">Search: {search.query}</span>
+            <span className="t">{t('Search: {query}', { query: search.query })}</span>
             <span className="n">{search.loading && !search.hits.length ? '…' : search.total.toLocaleString()}</span>
           </button>
         )}
@@ -650,8 +659,8 @@ export function App() {
           className="side-resize"
           role="separator"
           aria-orientation="vertical"
-          aria-label="Sidebar width"
-          title="Drag to resize · double-click to reset"
+          aria-label={t('Sidebar width')}
+          title={t('Drag to resize · double-click to reset')}
           onPointerDown={resizeSide}
           onDoubleClick={() => {
             localStorage.setItem('openpaper.sideWidth', String(SIDE_W))
@@ -663,34 +672,34 @@ export function App() {
       <main className="main">
         <header className="bar" data-tauri-drag-region>
           {folded && (
-            <button className="side-fold" onClick={() => fold(false)} title={`Show sidebar (${shortcut('B')})`} aria-label="Show sidebar">
+            <button className="side-fold" onClick={() => fold(false)} title={t('Show sidebar ({shortcut})', { shortcut: shortcut('B') })} aria-label={t('Show sidebar')}>
               <SidebarIcon />
             </button>
           )}
-          <div className="bar-title" data-tauri-drag-region>{view === 'search' ? 'arXiv search' : view === 'ai' ? 'Find papers with AI' : doc?.title ?? ''}</div>
+          <div className="bar-title" data-tauri-drag-region>{view === 'search' ? t('arXiv search') : view === 'ai' ? t('Find papers with AI') : doc?.title ?? ''}</div>
           {view === 'doc' && doc && (
-            <button className="bar-link" onClick={toggleSwap} title={swapped ? 'Put the original on the left' : 'Put the translation on the left'}>
-              ⇄ Swap sides
+            <button className="bar-link" onClick={toggleSwap} title={swapped ? t('Put the original on the left') : t('Put the translation on the left')}>
+              ⇄ {t('Swap sides')}
             </button>
           )}
           {view === 'doc' && doc && arxivIdOf(doc.id) && (
-            <button className="bar-link" onClick={() => openWeb(arxivIdOf(doc.id)!)} title="Open arxiv.org in your browser">
+            <button className="bar-link" onClick={() => openWeb(arxivIdOf(doc.id)!)} title={t('Open arxiv.org in your browser')}>
               arxiv.org ↗
             </button>
           )}
           {view === 'doc' && doc && (
             <div className="progress">
               {(translated > 0 || status?.running || otherHas) && (
-                <div className="mode-switch" role="group" aria-label="What the translation column shows">
+                <div className="mode-switch" role="group" aria-label={t('What the translation column shows')}>
                   {(['plain', 'easy'] as const).map(m => (
                     <button
                       key={m}
                       className={mode === m ? 'on' : ''}
                       aria-pressed={mode === m}
                       onClick={() => mode !== m && void open(doc.id, false, m)}
-                      title={m === 'plain' ? 'Faithful translation' : 'Easy explanation with hard terms in plain words'}
+                      title={m === 'plain' ? t('Faithful translation') : t('Easy explanation with hard terms in plain words')}
                     >
-                      {m === 'plain' ? 'Translation' : 'Easy'}
+                      {m === 'plain' ? t('Translation') : t('Easy')}
                     </button>
                   ))}
                 </div>
@@ -698,31 +707,31 @@ export function App() {
               {status?.running && status.redo ? (
                 <>
                   <span className="meter"><span style={{ width: `${status.total ? (status.done / status.total) * 100 : 0}%` }} /></span>
-                  <span>Retranslating {status.done}/{status.total}</span>
-                  <button onClick={() => void api.cancel(doc.id, mode, lang)}>Stop</button>
+                  <span>{t('Retranslating {done}/{total}', { done: status.done, total: status.total })}</span>
+                  <button onClick={() => void api.cancel(doc.id, mode, lang)}>{t('Stop')}</button>
                 </>
               ) : status?.running ? (
                 <>
                   <span className="meter"><span style={{ width: `${total ? (translated / total) * 100 : 0}%` }} /></span>
-                  <span>{mode === 'easy' ? 'Making easy version' : 'Translating'} {translated}/{total}</span>
-                  <button onClick={() => void api.cancel(doc.id, mode, lang)}>Stop</button>
+                  <span>{mode === 'easy' ? t('Making easy version {done}/{total}', { done: translated, total }) : t('Translating {done}/{total}', { done: translated, total })}</span>
+                  <button onClick={() => void api.cancel(doc.id, mode, lang)}>{t('Stop')}</button>
                 </>
               ) : translated === 0 && !otherHas ? (
-                <StartMenu label="Translate" onPick={m => void open(doc.id, true, m)} />
+                <StartMenu label={t('Translate')} onPick={m => void open(doc.id, true, m)} />
               ) : remaining > 0 && !status?.outdated ? (
                 <button className="primary" onClick={() => void open(doc.id, true, mode)}>
-                  {translated > 0 ? `Continue (${remaining} left)` : mode === 'easy' ? 'Make easy version' : 'Translate'}
+                  {translated > 0 ? t('Continue ({n} left)', { n: remaining }) : mode === 'easy' ? t('Make easy version') : t('Translate')}
                 </button>
               ) : status?.outdated ? (
                 <StartMenu
-                  label="Retranslate in the new style"
-                  title="Translates again from the start in a more readable style. The current translation stays until it finishes"
+                  label={t('Retranslate in the new style')}
+                  title={t('Translates again from the start in a more readable style. The current translation stays until it finishes')}
                   onPick={m => void (m === 'plain' ? open(doc.id, 'redo', 'plain') : open(doc.id, true, 'easy'))}
                 />
               ) : null}
               {!status?.running && (
-                <button className="summary-btn" onClick={() => assistant.summarize()} title="Summarize this paper">
-                  <span className="spark" aria-hidden="true">✦</span> Summarize
+                <button className="summary-btn" onClick={() => assistant.summarize()} title={t('Summarize this paper')}>
+                  <span className="spark" aria-hidden="true">✦</span> {t('Summarize')}
                 </button>
               )}
             </div>
@@ -750,16 +759,18 @@ export function App() {
             onMore={() => void runSearch(search.query, search.hits.length)}
           />
         ) : doc ? (
-          <Reader doc={doc} tr={tr} lang={lang} swapped={swapped} trLabel={mode === 'easy' ? `${langName} · easy` : langName} />
+          <Reader doc={doc} tr={tr} lang={lang} swapped={swapped} trLabel={mode === 'easy' ? t('{language} · easy', { language: langName }) : langName} />
         ) : (
           !busy && (
             <div className="welcome">
-              <h1>Read papers side by side with a translation</h1>
+              <h1>{t('Read papers side by side with a translation')}</h1>
               <p>
-                In the sidebar, type <span className="nowrap">a search (e.g. flash attention)</span> or{' '}
-                <span className="nowrap">an arXiv ID (e.g. 1706.03762)</span>, or open a PDF.
+                {tx('In the sidebar, type {search} or {id}, or open a PDF.', {
+                  search: <span className="nowrap">{t('a search (e.g. flash attention)')}</span>,
+                  id: <span className="nowrap">{t('an arXiv ID (e.g. 1706.03762)')}</span>,
+                })}
               </p>
-              <p className="sub">Translation runs on the Claude Code logged in on this computer, and results stay on this computer.</p>
+              <p className="sub">{t('Translation runs on the Claude Code logged in on this computer, and results stay on this computer.')}</p>
             </div>
           )
         )}

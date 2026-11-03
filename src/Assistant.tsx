@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { api, errorText, type Lang } from './api'
+import { t, useT } from './i18n'
 
 export type AskMsg =
   | { role: 'user'; text: string; quote: string | null }
@@ -89,7 +90,7 @@ export function useAsk(docId: string | null, lang: Lang): Ask {
       const key = `${docId}:${inLang}`
       // Already in this chat in this language: just show it again.
       if (!fresh && messages.some(m => m.role === 'assistant' && m.summaryOf === key)) return
-      stream({ role: 'user', text: fresh ? 'Rewrite the summary' : 'Summarize this paper', quote: null }, inLang, key, d =>
+      stream({ role: 'user', text: fresh ? t('Rewrite the summary') : t('Summarize this paper'), quote: null }, inLang, key, d =>
         api.summarize(docId, fresh, inLang, d)
       )
     },
@@ -108,15 +109,18 @@ export function useAsk(docId: string | null, lang: Lang): Ask {
 
 // Like Claude Code's status line: a turning glyph, a playful verb, and the elapsed time.
 const SPIN = ['·', '✢', '✳', '✶', '✻', '✽', '✻', '✶', '✳', '✢']
-const VERBS = ['Thinking', 'Mulling it over', 'Leafing through the paper', 'Pondering', 'Reflecting', 'Looking closely', 'Putting it together', 'Connecting the dots']
-const TIPS = [
-  'Select text in the paper to ask about just that passage',
-  'Follow-up questions remember the conversation so far',
-  'Esc closes the panel; the conversation stays',
-  'New chat starts over from scratch',
+const verbs = () => [t('Thinking'), t('Mulling it over'), t('Leafing through the paper'), t('Pondering'), t('Reflecting'), t('Looking closely'), t('Putting it together'), t('Connecting the dots')]
+const tips = () => [
+  t('Select text in the paper to ask about just that passage'),
+  t('Follow-up questions remember the conversation so far'),
+  t('Esc closes the panel; the conversation stays'),
+  t('New chat starts over from scratch'),
 ]
 
 function Thinking() {
+  useT()
+  const VERBS = verbs()
+  const TIPS = tips()
   const [tick, setTick] = useState(0)
   const [pick] = useState(() => ({ verb: Math.floor(Math.random() * VERBS.length), tip: Math.floor(Math.random() * TIPS.length) }))
   useEffect(() => {
@@ -133,7 +137,7 @@ function Thinking() {
         <span className="thinking-verb">{verb}…</span>
         {secs > 0 && <span className="thinking-time">({secs}s)</span>}
       </div>
-      <div className="thinking-tip"><span aria-hidden="true">└ </span>Tip: {TIPS[pick.tip]}</div>
+      <div className="thinking-tip"><span aria-hidden="true">└ </span>{t('Tip: {tip}', { tip: TIPS[pick.tip]! })}</div>
     </div>
   )
 }
@@ -162,6 +166,7 @@ function storedSize(): Size | null {
 
 /** Round ✦ button at the bottom right; opens a composer that grows into a chat panel once a question is sent. */
 export function FloatingAssistant({ ask, docTitle }: { ask: Ask; docTitle: string | null }) {
+  useT()
   const { messages, loading, open, setOpen, wide, send, summarize, reset } = ask
   // Set by dragging the panel's top or left edge; null keeps the CSS size. The chat size is
   // remembered across launches; the wider summary size lasts until the conversation is cleared.
@@ -258,7 +263,7 @@ export function FloatingAssistant({ ask, docTitle }: { ask: Ask; docTitle: strin
 
   if (!open) {
     return (
-      <button className="asst-fab" onClick={() => setOpen(true)} title="Ask Claude" aria-label="Ask Claude">
+      <button className="asst-fab" onClick={() => setOpen(true)} title={t('Ask Claude')} aria-label={t('Ask Claude')}>
         <span aria-hidden="true">✦</span>
         {loading && <span className="asst-fab-dot" />}
       </button>
@@ -271,7 +276,7 @@ export function FloatingAssistant({ ask, docTitle }: { ask: Ask; docTitle: strin
       className={`asst${expanded ? ' expanded' : ''}${expanded && wide ? ' wide' : ''}`}
       style={expanded && size ? { width: `min(${size.w}px, calc(100vw - 40px))`, height: `min(${size.h}px, calc(100vh - 40px))` } : undefined}
       role="dialog"
-      aria-label="Ask Claude"
+      aria-label={t('Ask Claude')}
     >
       {expanded && (
         <>
@@ -281,15 +286,15 @@ export function FloatingAssistant({ ask, docTitle }: { ask: Ask; docTitle: strin
               className={`asst-edge ${edge}`}
               onPointerDown={resize(edge)}
               onDoubleClick={() => keepSize(null)}
-              title="Drag to resize · double-click for the default size"
+              title={t('Drag to resize · double-click for the default size')}
               aria-hidden="true"
             />
           ))}
           <header className="asst-head">
-            <span className="asst-title"><span className="spark" aria-hidden="true">✦</span> Ask Claude</span>
+            <span className="asst-title"><span className="spark" aria-hidden="true">✦</span> {t('Ask Claude')}</span>
             {docTitle ? <span className="asst-chip" title={docTitle} lang="en">{docTitle}</span> : <span className="asst-gap" />}
-            <button className="asst-new" onClick={reset}>New chat</button>
-            <button className="asst-close" onClick={() => setOpen(false)} aria-label="Close">×</button>
+            <button className="asst-new" onClick={reset}>{t('New chat')}</button>
+            <button className="asst-close" onClick={() => setOpen(false)} aria-label={t('Close')}>×</button>
           </header>
           <div
             className="asst-log"
@@ -316,7 +321,7 @@ export function FloatingAssistant({ ask, docTitle }: { ask: Ask; docTitle: strin
                     {m.role === 'error' ? m.text : <Reply text={m.text} />}
                   </div>
                   {i === lastSummary && m.role === 'assistant' && !m.streaming && !loading && (
-                    <button className="asst-redo" onClick={() => summarize(true, m.lang)}>Rewrite summary</button>
+                    <button className="asst-redo" onClick={() => summarize(true, m.lang)}>{t('Rewrite summary')}</button>
                   )}
                 </div>
               )
@@ -343,11 +348,11 @@ export function FloatingAssistant({ ask, docTitle }: { ask: Ask; docTitle: strin
               submit()
             }
           }}
-          placeholder={docTitle ? 'Ask about this paper' : 'Ask Claude anything'}
-          aria-label="Question for Claude"
+          placeholder={docTitle ? t('Ask about this paper') : t('Ask Claude anything')}
+          aria-label={t('Question for Claude')}
           spellCheck={false}
         />
-        <button type="submit" disabled={loading || !text.trim()} aria-label="Send"><SendIcon /></button>
+        <button type="submit" disabled={loading || !text.trim()} aria-label={t('Send')}><SendIcon /></button>
       </form>
     </div>
   )
@@ -379,6 +384,7 @@ function EnterIcon() {
 
 /** Speech bubble under a drag selection in the reader; asking opens the floating panel with the selection as a quote. */
 export function SelectionAsk({ busy, resetKey, onAsk }: { busy: boolean; resetKey: string | null; onAsk: (question: string, quote: string) => void }) {
+  useT()
   const [spot, setSpot] = useState<Spot | null>(null)
   const [text, setText] = useState('')
   const el = useRef<HTMLDivElement>(null)
@@ -501,12 +507,12 @@ export function SelectionAsk({ busy, resetKey, onAsk }: { busy: boolean; resetKe
         <input
           value={text}
           onChange={e => setText(e.target.value)}
-          placeholder={busy ? 'Waiting for the previous answer' : 'Ask about this passage'}
-          aria-label="Question about the selection"
+          placeholder={busy ? t('Waiting for the previous answer') : t('Ask about this passage')}
+          aria-label={t('Question about the selection')}
           spellCheck={false}
           disabled={busy}
         />
-        <button type="submit" disabled={busy || !text.trim()} aria-label="Send" title="Send (Enter)"><EnterIcon /></button>
+        <button type="submit" disabled={busy || !text.trim()} aria-label={t('Send')} title={t('Send (Enter)')}><EnterIcon /></button>
       </form>
     </div>
   )

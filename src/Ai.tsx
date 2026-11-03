@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Hit, Lang } from './api'
+import { t, tx, useT } from './i18n'
 
 export type Pick = { hit: Hit; why: string }
 
@@ -20,14 +21,15 @@ type Props = {
   onWeb: (hit: Hit) => void
 }
 
-const EXAMPLES = ['Surveys on storing knowledge in LLM parameters', 'The original RAG paper and recent improvements', 'Faster attention for long contexts']
+const examples = () => [t('Surveys on storing knowledge in LLM parameters'), t('The original RAG paper and recent improvements'), t('Faster attention for long contexts')]
 
 function authors(list: string[]): string {
   if (list.length <= 2) return list.join(', ')
-  return `${list[0]} et al.`
+  return t('{name} et al.', { name: list[0]! })
 }
 
 export function AiChat({ state, saved, busyId, onAsk, onTranslate, onWeb }: Props) {
+  useT()
   const [text, setText] = useState('')
   const end = useRef<HTMLDivElement>(null)
   const box = useRef<HTMLTextAreaElement>(null)
@@ -51,10 +53,10 @@ export function AiChat({ state, saved, busyId, onAsk, onTranslate, onWeb }: Prop
       <div className="ai-log">
         {messages.length === 0 && (
           <div className="ai-empty">
-            <h1>What are you looking for?</h1>
-            <p>Describe a topic or question and Claude picks papers from arXiv. Click <b>Translate</b> on a pick to read it side by side.</p>
+            <h1>{t('What are you looking for?')}</h1>
+            <p>{tx('Describe a topic or question and Claude picks papers from arXiv. Click {translate} on a pick to read it side by side.', { translate: <b>{t('Translate')}</b> })}</p>
             <div className="ai-examples">
-              {EXAMPLES.map(e => (
+              {examples().map(e => (
                 <button key={e} onClick={() => send(e)}>{e}</button>
               ))}
             </div>
@@ -80,7 +82,7 @@ export function AiChat({ state, saved, busyId, onAsk, onTranslate, onWeb }: Prop
                     {why && <p className="pick-why" lang={m.lang}>{why}</p>}
                     <div className="pick-actions">
                       <button className="go" onClick={() => onTranslate(hit)} disabled={busyId !== null}>
-                        {busyId === hit.id ? 'Fetching…' : saved.has(hit.id) ? 'Open from library' : 'Translate'}
+                        {busyId === hit.id ? t('Fetching…') : saved.has(hit.id) ? t('Open from library') : t('Translate')}
                       </button>
                       <button className="web" onClick={() => onWeb(hit)} title={`https://arxiv.org/abs/${hit.id}`}>arxiv.org ↗</button>
                     </div>
@@ -91,7 +93,7 @@ export function AiChat({ state, saved, busyId, onAsk, onTranslate, onWeb }: Prop
           )
         )}
         {loading && (
-          <div className="msg bot"><div className="bubble typing">Searching arXiv<span className="dots" /></div></div>
+          <div className="msg bot"><div className="bubble typing">{t('Searching arXiv')}<span className="dots" /></div></div>
         )}
         <div ref={end} />
       </div>
@@ -113,11 +115,11 @@ export function AiChat({ state, saved, busyId, onAsk, onTranslate, onWeb }: Prop
               send(text)
             }
           }}
-          placeholder="e.g. papers on compressing the transformer KV cache"
-          aria-label="Papers to find"
+          placeholder={t('e.g. papers on compressing the transformer KV cache')}
+          aria-label={t('Papers to find')}
           spellCheck={false}
         />
-        <button type="submit" disabled={loading || !text.trim()}>Send</button>
+        <button type="submit" disabled={loading || !text.trim()}>{t('Send')}</button>
       </form>
     </section>
   )
