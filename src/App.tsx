@@ -6,6 +6,7 @@ import { SearchResults, type SearchState } from './Search'
 import { AiChat, type ChatState } from './Ai'
 import { FloatingAssistant, SelectionAsk, useAsk } from './Assistant'
 import { ModelButton, ModelDialog, ProblemNotice } from './Model'
+import { PatchNotes } from './PatchNotes'
 import { modKey, shortcut } from './platform'
 import { posKey } from './position'
 import { dragSplit, stored } from './resize'
@@ -120,6 +121,7 @@ function UpdateButton() {
   const [latest, setLatest] = useState<string | null>(null)
   const [installing, setInstalling] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [asking, setAsking] = useState(false)
 
   useEffect(() => {
     const check = () =>
@@ -136,6 +138,7 @@ function UpdateButton() {
   const v = latest ? `v${latest.replace(/^v/, '')}` : ''
 
   const install = async () => {
+    setAsking(false)
     setInstalling(true)
     setError(null)
     try {
@@ -148,15 +151,47 @@ function UpdateButton() {
 
   const label = installing ? 'Updating…' : error ? `Update failed: ${error}` : `Update to ${v || 'the latest version'}`
   return (
-    <button
-      className={`update-btn${error ? ' failed' : ''}`}
-      onClick={() => void install()}
-      disabled={installing}
-      title={installing ? label : error ? `${label}. Click to try again` : `${label}. Click to install it and reopen`}
-      aria-label={label}
-    >
-      {installing ? <span className="update-spin" aria-hidden="true" /> : <UpdateIcon />}
-    </button>
+    <>
+      <button
+        className={`update-btn${error ? ' failed' : ''}`}
+        onClick={() => setAsking(true)}
+        disabled={installing}
+        title={installing ? label : error ? `${label}. Click to try again` : `${label}. Click to install it and reopen`}
+        aria-label={label}
+      >
+        {installing ? <span className="update-spin" aria-hidden="true" /> : <UpdateIcon />}
+      </button>
+      {asking && <ConfirmUpdate version={v} onCancel={() => setAsking(false)} onConfirm={() => void install()} />}
+    </>
+  )
+}
+
+/** Asks before the update closes the app. Enter updates, Escape or a click outside cancels. */
+function ConfirmUpdate({ version, onCancel, onConfirm }: { version: string; onCancel: () => void; onConfirm: () => void }) {
+  const ok = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    ok.current?.focus()
+    const key = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !e.isComposing) {
+        e.preventDefault()
+        e.stopPropagation()
+        onCancel()
+      }
+    }
+    window.addEventListener('keydown', key, true)
+    return () => window.removeEventListener('keydown', key, true)
+  }, [onCancel])
+  return (
+    <div className="modal-back" onMouseDown={e => e.target === e.currentTarget && onCancel()}>
+      <div className="modal confirm-update" role="alertdialog" aria-modal="true" aria-labelledby="update-title" aria-describedby="update-text">
+        <h2 id="update-title">Update to {version || 'the latest version'}?</h2>
+        <p id="update-text">OpenPaper closes, installs the update and opens again. A translation that is running stops.</p>
+        <div className="confirm-actions">
+          <button onClick={onCancel}>Not now</button>
+          <button ref={ok} className="primary" onClick={onConfirm}>Update and restart</button>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -718,6 +753,7 @@ export function App() {
         )}
       </main>
       {modelOpen && <ModelDialog onClose={closeModel} onChanged={checkLlm} />}
+      <PatchNotes />
       {view !== 'ai' && (
         <>
           <FloatingAssistant ask={assistant} docTitle={shownDoc?.title ?? null} />
