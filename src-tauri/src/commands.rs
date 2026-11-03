@@ -154,6 +154,7 @@ pub struct PresetInfo {
     name: &'static str,
     base: &'static str,
     needs_key: bool,
+    model: &'static str,
 }
 
 #[derive(Serialize)]
@@ -175,6 +176,7 @@ fn llm_settings_now(state: &AppState) -> LlmSettings {
                 name: p.name,
                 base: p.base,
                 needs_key: p.needs_key,
+                model: p.model,
             })
             .collect(),
         key_hints: state.llm.key_hints(),
@@ -434,6 +436,23 @@ pub fn open_arxiv_page(app: tauri::AppHandle, id: String) -> Result<(), String> 
     let id = arxiv::parse_id(&id).ok_or_else(|| "Not an arXiv ID".to_string())?;
     app.opener()
         .open_url(format!("https://arxiv.org/abs/{id}"), None::<&str>)
+        .map_err(|_| "Couldn't open the browser".to_string())
+}
+
+/// Opens the page where the user creates an API key for the chosen backend.
+#[tauri::command]
+pub fn llm_open_key_page(
+    app: tauri::AppHandle,
+    state: State<'_, Arc<AppState>>,
+) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    let page = state
+        .llm
+        .settings()
+        .key_page()
+        .ok_or_else(|| "This service has no key page".to_string())?;
+    app.opener()
+        .open_url(page, None::<&str>)
         .map_err(|_| "Couldn't open the browser".to_string())
 }
 

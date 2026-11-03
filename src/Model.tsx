@@ -10,7 +10,10 @@ const PROVIDERS: { id: Provider; name: string; sub: string; logo: LogoId }[] = [
   { id: 'openai', name: 'OpenAI-compatible', sub: 'OpenAI, OpenRouter, DeepSeek, Gemini, Ollama, or any URL', logo: 'openai' },
 ]
 
+const OPENGATEWAY = 'opengateway'
+
 const PRESET_LOGO: Record<string, LogoId> = {
+  opengateway: 'opengateway',
   openai: 'openai',
   openrouter: 'openrouter',
   deepseek: 'deepseek',
@@ -24,8 +27,13 @@ function logoOf(provider: Provider, preset: string): LogoId {
   return PROVIDERS.find(p => p.id === provider)?.logo ?? 'custom'
 }
 
-/** Models offered before any list loads. The first one is the default when none is picked. */
-const KNOWN: Partial<Record<Provider, ModelOption[]>> = {
+/** Key and model slot, as in Rust: `claude-code`, `codex`, `anthropic` or `openai:<preset>`. */
+function slotKey(provider: Provider, preset: string): string {
+  return provider === 'openai' ? `openai:${preset}` : provider
+}
+
+/** Models offered before any list loads, by slot. The first one is the default when none is picked. */
+const KNOWN: Record<string, ModelOption[]> = {
   'claude-code': [
     { id: 'sonnet', name: 'Sonnet', note: 'Balanced. Good for most papers' },
     { id: 'opus', name: 'Opus', note: 'Most capable. Slower and uses more of your plan' },
@@ -37,16 +45,22 @@ const KNOWN: Partial<Record<Provider, ModelOption[]>> = {
     { id: 'claude-opus-5-5', name: 'Claude Opus 5.5', note: 'Most capable. Costs more per paper' },
     { id: 'claude-haiku-5-5', name: 'Claude Haiku 5.5', note: 'Fastest and cheapest' },
   ],
+  'openai:opengateway': [
+    { id: 'anthropic/claude-sonnet-5-5', name: 'Claude Sonnet 5.5', note: 'Balanced. Good for most papers' },
+    { id: 'openai/gpt-5.5', name: 'GPT-5.5', note: 'OpenAI. Costs more per paper' },
+    { id: 'google/gemini-3.5-flash', name: 'Gemini 3.5 Flash', note: 'Fast and lower cost' },
+    { id: 'deepseek/deepseek-v4.1-flash-ultrafast', name: 'DeepSeek V4.1 Flash Ultrafast', note: 'Fastest and cheapest' },
+  ],
 }
 
 /** The model in effect: the saved one, or the default for backends that have one. */
-function effectiveModel(provider: Provider, saved: string): string {
-  return saved || (provider === 'codex' ? '' : KNOWN[provider]?.[0]?.id ?? '')
+function effectiveModel(slot: string, saved: string): string {
+  return saved || (slot === 'codex' ? '' : KNOWN[slot]?.[0]?.id ?? '')
 }
 
 /** Short name of the current model for the sidebar and the dialog header. */
 function modelName(status: LlmStatus): string {
-  const known = KNOWN[status.provider]?.find(m => m.id === status.model)
+  const known = KNOWN[slotKey(status.provider, status.preset)]?.find(m => m.id === status.model)
   if (known?.name) return known.name
   return status.model || (status.provider === 'codex' ? 'Codex default' : 'No model picked')
 }
@@ -153,9 +167,13 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
   const s = config?.settings
   const slot = s ? slotOf(s) : ''
   const preset = config?.presets.find(p => p.id === s?.preset)
+  // OpenGateway is an OpenAI-compatible service, but the dialog offers it as its own choice.
+  const gateway = s?.provider === 'openai' && s.preset === OPENGATEWAY
   const isApi = s?.provider === 'anthropic' || s?.provider === 'openai'
   const needsKey = s?.provider === 'anthropic' || (s?.provider === 'openai' && (preset?.needsKey ?? true))
   const hint = config?.keyHints[slot]
+  // Every service that takes a key has a page to create one, except a custom address.
+  const keyPage = s?.provider === 'anthropic' || (s?.provider === 'openai' && s.preset !== 'custom')
 
   // The model list: Codex reads its own list from disk; APIs list theirs once they can be reached.
   const canList =
@@ -253,9 +271,12 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
                 <button
                   key={p.id}
                   role="radio"
-                  aria-checked={s.provider === p.id}
-                  className={s.provider === p.id ? 'on' : ''}
-                  onClick={() => s.provider !== p.id && save({ provider: p.id })}
+                  aria-checked={s.provider === p.id && !gateway}
+                  className={s.provider === p.id && !gateway ? 'on' : ''}
+                  onClick={() => {
+                    if (p.id === 'openai' && gateway) save({ preset: 'openai' })
+                    else if (s.provider !== p.id) save({ provider: p.id })
+                  }}
                 >
                   <span className="provider-name">
                     <Logo id={p.logo} size={18} />
@@ -264,13 +285,26 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
                   <span className="provider-sub">{p.sub}</span>
                 </button>
               ))}
+              <button
+                role="radio"
+                aria-checked={gateway}
+                className={`og-card${gateway ? ' on' : ''}`}
+                onClick={() => !gateway && save({ provider: 'openai', preset: OPENGATEWAY })}
+              >
+                <Logo id="opengateway" size={30} />
+                <span className="og-text">
+                  <b>OpenGateway</b>
+                  <span>One key for Claude, GPT, Gemini and more</span>
+                </span>
+                <span className="og-site">opengateway.ai</span>
+              </button>
             </div>
 
-            {s.provider === 'openai' && (
+            {s.provider === 'openai' && !gateway && (
               <div className="field">
                 <span className="field-label" id="llm-preset">Service</span>
                 <div className="presets" role="radiogroup" aria-labelledby="llm-preset">
-                  {config.presets.map(p => (
+                  {config.presets.filter(p => p.id !== OPENGATEWAY).map(p => (
                     <button
                       key={p.id}
                       role="radio"
@@ -302,7 +336,14 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
 
             {isApi && needsKey && (
               <div className="field">
-                <label htmlFor="llm-key">API key</label>
+                <div className="field-head">
+                  <label htmlFor="llm-key">API key</label>
+                  {!hint && keyPage && (
+                    <button className="link" onClick={() => void api.llmOpenKeyPage().catch(e => setError(errorText(e)))}>
+                      {gateway ? 'Get a key at opengateway.ai' : 'Get a key'}
+                    </button>
+                  )}
+                </div>
                 {hint ? (
                   <div className="key-saved">
                     <span>Saved key ending in <code>{hint}</code></span>
@@ -325,8 +366,8 @@ export function ModelDialog({ onClose, onChanged }: { onClose: () => void; onCha
 
             <ModelPicker
               key={slot}
-              provider={s.provider}
-              value={effectiveModel(s.provider, model)}
+              known={KNOWN[slot] ?? []}
+              value={effectiveModel(slot, model)}
               listed={listed}
               listing={listing}
               listError={listError}
@@ -360,7 +401,7 @@ const FILTER_FROM = 8
 
 /** The models to pick from as a list. "Other model" takes any name the list doesn't have. */
 function ModelPicker({
-  provider,
+  known,
   value,
   listed,
   listing,
@@ -369,7 +410,7 @@ function ModelPicker({
   onReload,
   onPick,
 }: {
-  provider: Provider
+  known: ModelOption[]
   value: string
   listed: ModelOption[]
   listing: boolean
@@ -384,7 +425,7 @@ function ModelPicker({
 
   const seen = new Set<string>()
   const options: ModelOption[] = []
-  for (const m of [...(KNOWN[provider] ?? []), ...listed]) {
+  for (const m of [...known, ...listed]) {
     if (seen.has(m.id)) continue
     seen.add(m.id)
     options.push(m)

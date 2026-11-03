@@ -86,7 +86,8 @@ Translation, summaries, questions, and the AI finder use one model backend, pick
 | Claude Code (default) | A logged-in `claude` CLI | No key. Uses your Claude plan |
 | Codex | A logged-in `codex` CLI (or the ChatGPT app, which includes it) | No key. Uses your ChatGPT plan. Answers arrive whole, not streamed |
 | Anthropic API | An Anthropic API key | Default model `claude-sonnet-5-5` |
-| OpenAI-compatible | An API key and a model name | Presets for OpenAI, OpenRouter, DeepSeek, Google Gemini, and a local Ollama (no key), or any custom `https://` address. **Load models** lists what the endpoint offers |
+| [OpenGateway](https://opengateway.ai) | An OpenGateway API key | One key for Claude, GPT, Gemini, DeepSeek and more. Default model `anthropic/claude-sonnet-5-5` |
+| OpenAI-compatible | An API key and a model | Presets for OpenAI, OpenRouter, DeepSeek, Google Gemini, and a local Ollama (no key), or any custom `https://` address. The model list shows what the endpoint offers |
 
 Keys are saved in `keys.json` next to your papers (readable only by you on macOS), never shown again in the app, and only sent over https or to your own computer. **Test** makes one tiny call to check the setup. API calls are billed to your API account; a long paper takes dozens of calls.
 

@@ -1,6 +1,7 @@
 //! Model backends. Every model call (translation, ask, summary, AI finder) goes through a
 //! [`Backend`]: the Claude Code CLI (the default), the Codex CLI, the Anthropic API, or any
-//! OpenAI-compatible API (OpenAI, OpenRouter, DeepSeek, Gemini, a local Ollama, or a custom URL).
+//! OpenAI-compatible API (OpenGateway, OpenAI, OpenRouter, DeepSeek, Gemini, a local Ollama, or a
+//! custom URL).
 //!
 //! The choice lives in `settings.json` in the app data folder. API keys live apart from it in
 //! `keys.json` (owner-only on macOS) and are never sent back to the webview.
@@ -31,6 +32,10 @@ pub struct Preset {
     pub name: &'static str,
     pub base: &'static str,
     pub needs_key: bool,
+    /// Model used until one is picked, or empty when the user must pick one.
+    pub model: &'static str,
+    /// Where to create an API key, or empty.
+    pub keys: &'static str,
 }
 
 pub const PRESETS: &[Preset] = &[
@@ -39,41 +44,62 @@ pub const PRESETS: &[Preset] = &[
         name: "OpenAI",
         base: "https://api.openai.com/v1",
         needs_key: true,
+        model: "",
+        keys: "https://platform.openai.com/api-keys",
     },
     Preset {
         id: "openrouter",
         name: "OpenRouter",
         base: "https://openrouter.ai/api/v1",
         needs_key: true,
+        model: "",
+        keys: "https://openrouter.ai/settings/keys",
     },
     Preset {
         id: "deepseek",
         name: "DeepSeek",
         base: "https://api.deepseek.com/v1",
         needs_key: true,
+        model: "",
+        keys: "https://platform.deepseek.com/api_keys",
     },
     Preset {
         id: "gemini",
         name: "Google Gemini",
         base: "https://generativelanguage.googleapis.com/v1beta/openai",
         needs_key: true,
+        model: "",
+        keys: "https://aistudio.google.com/apikey",
+    },
+    Preset {
+        id: "opengateway",
+        name: "OpenGateway",
+        base: "https://apis.opengateway.ai/v1",
+        needs_key: true,
+        model: "anthropic/claude-sonnet-5-5",
+        keys: "https://opengateway.ai/api-keys",
     },
     Preset {
         id: "ollama",
         name: "Ollama (local)",
         base: "http://localhost:11434/v1",
         needs_key: false,
+        model: "",
+        keys: "",
     },
     Preset {
         id: "custom",
         name: "Custom",
         base: "",
         needs_key: false,
+        model: "",
+        keys: "",
     },
 ];
 
 const ANTHROPIC_BASE: &str = "https://api.anthropic.com";
 const ANTHROPIC_MODEL: &str = "claude-sonnet-5-5";
+const ANTHROPIC_KEYS: &str = "https://console.anthropic.com/settings/keys";
 /// Output budget for one Anthropic reply; a translation batch needs a few thousand tokens.
 const ANTHROPIC_MAX_TOKENS: u32 = 16_000;
 
@@ -121,8 +147,9 @@ impl Settings {
         match self.provider {
             Provider::ClaudeCode => translate::MODEL.into(),
             Provider::Anthropic => ANTHROPIC_MODEL.into(),
-            // Codex uses the account's default model; OpenAI-compatible APIs need a pick.
-            Provider::Codex | Provider::Openai => String::new(),
+            // Codex uses the account's default model; most OpenAI-compatible APIs need a pick.
+            Provider::Codex => String::new(),
+            Provider::Openai => self.preset().model.into(),
         }
     }
 
@@ -142,6 +169,16 @@ impl Settings {
             p.base
         };
         base.trim_end_matches('/').to_string()
+    }
+
+    /// Web page where the user creates a key for the current choice, if it takes one.
+    pub fn key_page(&self) -> Option<&'static str> {
+        let page = match self.provider {
+            Provider::ClaudeCode | Provider::Codex => "",
+            Provider::Anthropic => ANTHROPIC_KEYS,
+            Provider::Openai => self.preset().keys,
+        };
+        (!page.is_empty()).then_some(page)
     }
 
     pub fn needs_key(&self) -> bool {
@@ -754,6 +791,8 @@ pub fn models(s: &Settings, store: &Store) -> Result<Vec<ModelOption>, String> {
 }
 
 /// `{"data": [{"id": ...}]}` (OpenAI, Anthropic, OpenRouter) or `{"models": [{"name": ...}]}`.
+/// Skips entries a gateway marks as not for chat (`endpoints` without `chat_completions`, such as
+/// image or embedding models) or as no longer served (`status` other than `active`).
 fn model_ids(body: &str) -> Vec<String> {
     let Ok(v) = serde_json::from_str::<serde_json::Value>(body) else {
         return Vec::new();
@@ -762,6 +801,12 @@ fn model_ids(body: &str) -> Vec<String> {
     list.map(|items| {
         items
             .iter()
+            .filter(|m| {
+                m["endpoints"]
+                    .as_array()
+                    .is_none_or(|e| e.iter().any(|e| e == "chat_completions"))
+            })
+            .filter(|m| m["status"].as_str().is_none_or(|s| s == "active"))
             .filter_map(|m| m["id"].as_str().or(m["name"].as_str()))
             .map(|id| id.trim_start_matches("models/").to_string())
             .collect()
@@ -1303,6 +1348,39 @@ mod tests {
             vec!["gemini-x"]
         );
         assert!(model_ids("nope").is_empty());
+    }
+
+    #[test]
+    fn model_list_skips_models_a_gateway_cannot_chat_with() {
+        let body = r#"{"data":[
+            {"id":"chat","endpoints":["chat_completions","responses"],"status":"active"},
+            {"id":"responses-only","endpoints":["responses"],"status":"active"},
+            {"id":"image","endpoints":["images_generations"],"status":"active"},
+            {"id":"retired","endpoints":["chat_completions"],"status":"retired"},
+            {"id":"plain"}
+        ]}"#;
+        assert_eq!(model_ids(body), vec!["chat", "plain"]);
+    }
+
+    #[test]
+    fn opengateway_works_with_a_key_and_no_pick() {
+        let s = Settings {
+            provider: Provider::Openai,
+            preset: "opengateway".into(),
+            ..Settings::default()
+        };
+        assert_eq!(s.slot(), "openai:opengateway");
+        assert_eq!(s.openai_base(), "https://apis.opengateway.ai/v1");
+        assert_eq!(s.model(), "anthropic/claude-sonnet-5-5");
+        assert!(s.needs_key());
+        assert_eq!(s.key_page(), Some("https://opengateway.ai/api-keys"));
+        assert_eq!(label(&s), "OpenGateway");
+        let ollama = Settings {
+            preset: "ollama".into(),
+            ..s.clone()
+        };
+        assert_eq!(ollama.key_page(), None);
+        assert_eq!(Settings::default().key_page(), None);
     }
 
     #[test]

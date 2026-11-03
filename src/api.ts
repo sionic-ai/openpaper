@@ -49,7 +49,8 @@ export type LlmSettings = {
   models: Record<string, string>
 }
 
-export type Preset = { id: string; name: string; base: string; needsKey: boolean }
+/** `model` is used until one is picked; empty means the user must pick one. */
+export type Preset = { id: string; name: string; base: string; needsKey: boolean; model: string }
 
 export type LlmConfig = {
   settings: LlmSettings
@@ -96,6 +97,7 @@ export const api = {
   /** Saves the API key of the current choice; an empty key removes it. */
   llmSetKey: (key: string) => invoke<LlmConfig>('llm_set_key', { key }),
   llmModels: () => invoke<ModelOption[]>('llm_models'),
+  llmOpenKeyPage: () => invoke<void>('llm_open_key_page'),
   llmTest: () => invoke<{ reply: string; ms: number }>('llm_test'),
   recommend: (request: string, history: { role: string; text: string }[], lang: Lang) =>
     invoke<{ reply: string; picks: { hit: Hit; why: string }[] }>('ai_recommend', { request, history, lang }),
