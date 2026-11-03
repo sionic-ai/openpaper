@@ -35,6 +35,7 @@ export function PaperList({
   activeId,
   onOpen,
   onRemove,
+  onRead,
 }: {
   papers: Meta[]
   folders: Folder[]
@@ -42,6 +43,7 @@ export function PaperList({
   activeId: string | null
   onOpen: (id: string) => void
   onRemove: (id: string) => void
+  onRead: (id: string, read: boolean) => void
 }) {
   useT()
   const byId = new Map(papers.map(p => [p.id, p]))
@@ -82,7 +84,7 @@ export function PaperList({
   }
 
   const startDrag = (e: React.PointerEvent, id: string) => {
-    if (e.button !== 0 || (e.target as HTMLElement).closest('.x')) return
+    if (e.button !== 0 || (e.target as HTMLElement).closest('.x, .chk')) return
     const x0 = e.clientX
     const y0 = e.clientY
     let moving = false
@@ -129,7 +131,7 @@ export function PaperList({
     <li
       key={p.id}
       data-drop={drop}
-      className={[activeId === p.id && 'active', drag?.id === p.id && 'dragged', over === drop && drag?.id !== p.id && 'over', extra]
+      className={[activeId === p.id && 'active', p.read && 'read', drag?.id === p.id && 'dragged', over === drop && drag?.id !== p.id && 'over', extra]
         .filter(Boolean)
         .join(' ')}
       onPointerDown={e => startDrag(e, p.id)}
@@ -140,6 +142,15 @@ export function PaperList({
           {p.source.split('/').pop()}
           {more > 0 && <span className="others"> · {t('+{n} more', { n: more })}</span>}
         </span>
+      </button>
+      <button
+        className={`chk${p.read ? ' on' : ''}`}
+        onClick={() => onRead(p.id, !p.read)}
+        aria-pressed={!!p.read}
+        aria-label={p.read ? t('Mark as unread') : t('Mark as read')}
+        title={p.read ? t('Mark as unread') : t('Mark as read')}
+      >
+        <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
       <button className="x" onClick={() => onRemove(p.id)} aria-label={t('Delete {title}', { title: p.title })}>×</button>
     </li>
