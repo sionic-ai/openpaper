@@ -311,5 +311,6 @@
   "e.g. I want to research how LLMs store knowledge": "p. ej., quiero investigar cómo guardan conocimiento los LLM",
   "What to research": "Qué investigar",
   "AI search has two tabs: Find papers, and Roadmap for a reading roadmap from a topic or a paper.": "La búsqueda con IA tiene dos pestañas: Buscar artículos y Hoja de ruta, para una hoja de ruta de lectura a partir de un tema o un artículo.",
-  "A roadmap waits and tries again when arXiv is briefly busy.": "La hoja de ruta espera y vuelve a intentarlo cuando arXiv está ocupado un momento."
+  "A roadmap waits and tries again when arXiv is briefly busy.": "La hoja de ruta espera y vuelve a intentarlo cuando arXiv está ocupado un momento.",
+  "The Find papers and Roadmap tabs stay at the top of AI search while the conversation scrolls.": "Las pestañas Buscar artículos y Hoja de ruta quedan arriba en la búsqueda con IA mientras la conversación se desplaza."
 }
