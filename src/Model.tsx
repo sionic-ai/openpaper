@@ -35,10 +35,11 @@ function slotKey(provider: Provider, preset: string): string {
 
 /** Models offered before any list loads, by slot. The first one is the default when none is picked. */
 const KNOWN: Record<string, ModelOption[]> = {
+  // Claude Code's aliases follow its newest model of each family; names show the current one.
   'claude-code': [
-    { id: 'sonnet', name: 'Sonnet', note: 'Balanced. Good for most papers' },
-    { id: 'opus', name: 'Opus', note: 'Most capable. Slower and uses more of your plan' },
-    { id: 'haiku', name: 'Haiku', note: 'Fastest and lightest on your plan' },
+    { id: 'sonnet', name: 'Sonnet 5.5', note: 'Balanced. Good for most papers' },
+    { id: 'opus', name: 'Opus 5.5', note: 'Most capable. Slower and uses more of your plan' },
+    { id: 'haiku', name: 'Haiku 5.5', note: 'Fastest and lightest on your plan' },
   ],
   codex: [{ id: '', name: 'Codex default', note: 'The model Codex picks for your login' }],
   anthropic: [

@@ -318,5 +318,6 @@
   "Translating…": "翻訳中…",
   "Select a word or a short passage to translate": "翻訳する単語か短い一節を選んでください",
   "No translation came back. Try again": "翻訳が返ってきませんでした。もう一度お試しください",
-  "Select a word or a short passage and click Translate in the bubble to see what it means in that sentence.": "単語や短い一節を選んで吹き出しの「翻訳」を押すと、その文での意味が表示されます。"
+  "Select a word or a short passage and click Translate in the bubble to see what it means in that sentence.": "単語や短い一節を選んで吹き出しの「翻訳」を押すと、その文での意味が表示されます。",
+  "Model names show their version, such as Sonnet 5.5 and Opus 5.5.": "モデル名に Sonnet 5.5、Opus 5.5 のようにバージョンが表示されます。"
 }
