@@ -322,5 +322,6 @@
   "Model names show their version, such as Sonnet 5.5 and Opus 5.5.": "モデル名に Sonnet 5.5、Opus 5.5 のようにバージョンが表示されます。",
   "Copy": "コピー",
   "Copied": "コピーしました",
-  "A copy button under each summary and answer copies the whole reply.": "要約と回答の下のコピーボタンで、回答全体をコピーできます。"
+  "A copy button under each summary and answer copies the whole reply.": "要約と回答の下のコピーボタンで、回答全体をコピーできます。",
+  "Buttons, links and highlights use the same teal as the logo; errors and warnings stay red.": "ボタン、リンク、強調色がロゴと同じ青緑色になりました。エラーと警告は赤のままです。"
 }
