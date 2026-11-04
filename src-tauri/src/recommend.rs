@@ -197,11 +197,14 @@ fn resolve(picks: Vec<RawPick>, candidates: &[Hit]) -> Vec<Pick> {
 }
 
 /// Recommends real arXiv papers for `request`; `reply` and each `why` are written in `lang`.
+/// `roadmap_mode`: the user picked the Roadmap tab, so the request is a roadmap whatever the
+/// plan says; otherwise the plan's `intent` decides.
 pub fn recommend(
     backend: &crate::llm::Backend,
     request: &str,
     history: &[Turn],
     lang: Lang,
+    roadmap_mode: bool,
 ) -> Result<Answer, String> {
     let request = request.trim();
     if request.is_empty() {
@@ -216,7 +219,8 @@ pub fn recommend(
         &serde_json::json!({ "request": request, "history": history }),
         &cancel,
     )?;
-    if plan.intent.trim().eq_ignore_ascii_case("roadmap") {
+    let wants_roadmap = roadmap_mode || plan.intent.trim().eq_ignore_ascii_case("roadmap");
+    if wants_roadmap {
         let seed = crate::arxiv::parse_id(&plan.seed)
             .or_else(|| crate::arxiv::parse_id(request))
             .map(|id| search::strip_version(&id).to_string())
@@ -236,7 +240,7 @@ pub fn recommend(
         }
         // A topic: find papers as usual; the app builds the roadmap from the first pick.
     }
-    let topic_roadmap = plan.intent.trim().eq_ignore_ascii_case("roadmap");
+    let topic_roadmap = wants_roadmap;
 
     // IDs the model knows plus any the user pasted are checked against arXiv before use.
     let mut ids: Vec<String> = plan

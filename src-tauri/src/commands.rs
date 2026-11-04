@@ -283,9 +283,12 @@ pub async fn ai_recommend(
     request: String,
     history: Vec<recommend::Turn>,
     lang: Lang,
+    mode: Option<String>,
 ) -> Result<recommend::Answer, String> {
     let state = state.inner().clone();
-    blocking(move || recommend::recommend(&state.backend()?, &request, &history, lang)).await
+    let roadmap = mode.as_deref() == Some("roadmap");
+    blocking(move || recommend::recommend(&state.backend()?, &request, &history, lang, roadmap))
+        .await
 }
 
 #[derive(Serialize)]

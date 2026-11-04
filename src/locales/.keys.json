@@ -301,5 +301,15 @@
  "Roadmap, next to Summarize: what to read before and after a paper, built from its real references and the papers that cite it. In AI search you can also just ask for a roadmap.": "patch notes item shown after an update (from CHANGELOG.md)",
  "Hover a paper in the sidebar and click the check to mark it read. Click it again to clear it.": "patch notes item shown after an update (from CHANGELOG.md)",
  "Backups in Model settings stay folded until you open them.": "patch notes item shown after an update (from CHANGELOG.md)",
- "In AI search, ask for a roadmap on a topic, like \"I want to research LLM memory\": it picks a starting paper on arXiv and builds the roadmap from it.": "patch notes item shown after an update (from CHANGELOG.md)"
+ "In AI search, ask for a roadmap on a topic, like \"I want to research LLM memory\": it picks a starting paper on arXiv and builds the roadmap from it.": "patch notes item shown after an update (from CHANGELOG.md)",
+ "Find papers": "ui",
+ "What do you want to research?": "ui",
+ "Name a topic or a paper and get papers to read in order. \"This paper\" means the one you have open.": "ui",
+ "I want to research how LLMs store knowledge": "ui",
+ "A reading roadmap for this paper": "ui",
+ "Where to start with diffusion models": "ui",
+ "e.g. I want to research how LLMs store knowledge": "ui",
+ "What to research": "ui",
+ "AI search has two tabs: Find papers, and Roadmap for a reading roadmap from a topic or a paper.": "patch notes item shown after an update (from CHANGELOG.md)",
+ "A roadmap waits and tries again when arXiv is briefly busy.": "patch notes item shown after an update (from CHANGELOG.md)"
 }

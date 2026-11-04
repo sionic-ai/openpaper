@@ -301,5 +301,15 @@
   "{n} results": "결과 {n}개",
   "{reason}. Using the backup {label}, {model}, for now. Click to change": "{reason}. 지금은 백업인 {label} · {model} 모델로 답하고 있어요. 눌러서 변경",
   "{reason}. {label} is tried again within 20 minutes.": "{reason}. 20분 안에 {label} 연결을 다시 시도해요.",
-  "In AI search, ask for a roadmap on a topic, like \"I want to research LLM memory\": it picks a starting paper on arXiv and builds the roadmap from it.": "AI 검색에서 \"LLM 메모리를 연구해보고 싶어\"처럼 주제로 로드맵을 요청할 수 있어요. arXiv에서 시작 논문을 골라 그 논문으로 로드맵을 만들어요."
+  "In AI search, ask for a roadmap on a topic, like \"I want to research LLM memory\": it picks a starting paper on arXiv and builds the roadmap from it.": "AI 검색에서 \"LLM 메모리를 연구해보고 싶어\"처럼 주제로 로드맵을 요청할 수 있어요. arXiv에서 시작 논문을 골라 그 논문으로 로드맵을 만들어요.",
+  "Find papers": "논문 찾기",
+  "What do you want to research?": "어떤 걸 연구하고 싶나요?",
+  "Name a topic or a paper and get papers to read in order. \"This paper\" means the one you have open.": "주제나 논문을 말하면 읽을 순서대로 논문을 골라 줘요. \"이 논문\"이라고 하면 지금 열어 둔 논문을 기준으로 해요.",
+  "I want to research how LLMs store knowledge": "LLM이 지식을 어떻게 저장하는지 연구하고 싶어",
+  "A reading roadmap for this paper": "이 논문 기준 읽기 로드맵",
+  "Where to start with diffusion models": "Diffusion 모델은 어디서부터 읽을까",
+  "e.g. I want to research how LLMs store knowledge": "예: LLM이 지식을 어떻게 저장하는지 연구하고 싶어",
+  "What to research": "연구하고 싶은 주제",
+  "AI search has two tabs: Find papers, and Roadmap for a reading roadmap from a topic or a paper.": "AI 검색에 탭이 두 개 생겼어요. 논문 찾기, 그리고 주제나 논문으로 읽기 로드맵을 만드는 로드맵이에요.",
+  "A roadmap waits and tries again when arXiv is briefly busy.": "arXiv가 잠시 바쁠 때 로드맵이 기다렸다가 다시 시도해요."
 }

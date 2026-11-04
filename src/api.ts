@@ -78,6 +78,9 @@ export type LlmStatus = {
   /** How many saved backups are set up and could take over. */
   backups: number
 }
+/** The two tabs of AI search: find papers, or build a reading roadmap. */
+export type AiMode = 'search' | 'roadmap'
+
 export type RoadmapStep = 'references' | 'citing' | 'ordering'
 export type RoadmapRelation = 'key-reference' | 'reference' | 'citing' | 'recent-citing'
 export type RoadmapItem = {
@@ -139,8 +142,9 @@ export const api = {
   llmOpenKeyPage: () => invoke<void>('llm_open_key_page'),
   llmBackup: () => invoke<LlmBackup | null>('llm_backup'),
   llmTest: () => invoke<{ reply: string; ms: number }>('llm_test'),
-  recommend: (request: string, history: { role: string; text: string }[], lang: Lang) =>
-    invoke<{ reply: string; picks: { hit: Hit; why: string }[]; roadmap?: string }>('ai_recommend', { request, history, lang }),
+  /** `mode`: the AI search tab; `roadmap` always answers with a roadmap. */
+  recommend: (request: string, history: { role: string; text: string }[], lang: Lang, mode: AiMode = 'search') =>
+    invoke<{ reply: string; picks: { hit: Hit; why: string }[]; roadmap?: string }>('ai_recommend', { request, history, lang, mode }),
   /** The saved roadmap of a paper unless `fresh`, else a new one; `onStep` reports progress. */
   roadmap: (docId: string, lang: Lang, fresh: boolean, onStep: (step: RoadmapStep) => void) => {
     const onEvent = new Channel<{ event: 'step'; data: { step: RoadmapStep } }>()

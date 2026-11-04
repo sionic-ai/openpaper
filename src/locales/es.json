@@ -301,5 +301,15 @@
   "{n} results": "{n} resultados",
   "{reason}. Using the backup {label}, {model}, for now. Click to change": "{reason}. Por ahora se usa el respaldo {label}, {model}. Haz clic para cambiarlo",
   "{reason}. {label} is tried again within 20 minutes.": "{reason}. {label} se vuelve a probar en un plazo de 20 minutos.",
-  "In AI search, ask for a roadmap on a topic, like \"I want to research LLM memory\": it picks a starting paper on arXiv and builds the roadmap from it.": "En la búsqueda con IA puedes pedir una hoja de ruta sobre un tema, como \"quiero investigar la memoria de los LLM\": elige un artículo de partida en arXiv y crea la hoja de ruta a partir de él."
+  "In AI search, ask for a roadmap on a topic, like \"I want to research LLM memory\": it picks a starting paper on arXiv and builds the roadmap from it.": "En la búsqueda con IA puedes pedir una hoja de ruta sobre un tema, como \"quiero investigar la memoria de los LLM\": elige un artículo de partida en arXiv y crea la hoja de ruta a partir de él.",
+  "Find papers": "Buscar artículos",
+  "What do you want to research?": "¿Qué quieres investigar?",
+  "Name a topic or a paper and get papers to read in order. \"This paper\" means the one you have open.": "Nombra un tema o un artículo y obtén artículos para leer en orden. \"Este artículo\" es el que tienes abierto.",
+  "I want to research how LLMs store knowledge": "Quiero investigar cómo guardan conocimiento los LLM",
+  "A reading roadmap for this paper": "Una hoja de ruta de lectura para este artículo",
+  "Where to start with diffusion models": "Por dónde empezar con los modelos de difusión",
+  "e.g. I want to research how LLMs store knowledge": "p. ej., quiero investigar cómo guardan conocimiento los LLM",
+  "What to research": "Qué investigar",
+  "AI search has two tabs: Find papers, and Roadmap for a reading roadmap from a topic or a paper.": "La búsqueda con IA tiene dos pestañas: Buscar artículos y Hoja de ruta, para una hoja de ruta de lectura a partir de un tema o un artículo.",
+  "A roadmap waits and tries again when arXiv is briefly busy.": "La hoja de ruta espera y vuelve a intentarlo cuando arXiv está ocupado un momento."
 }

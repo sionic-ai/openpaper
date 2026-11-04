@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Hit, Lang } from './api'
+import type { AiMode, Hit, Lang } from './api'
 import { t, tx, useT } from './i18n'
 
 export type Pick = { hit: Hit; why: string }
@@ -14,6 +14,8 @@ export type ChatState = { messages: ChatMsg[]; loading: boolean }
 
 type Props = {
   state: ChatState
+  mode: AiMode
+  onMode: (mode: AiMode) => void
   saved: Set<string>
   busyId: string | null
   onAsk: (text: string) => void
@@ -21,14 +23,17 @@ type Props = {
   onWeb: (hit: Hit) => void
 }
 
-const examples = () => [t('Surveys on storing knowledge in LLM parameters'), t('The original RAG paper and recent improvements'), t('Faster attention for long contexts')]
+const examples = (mode: AiMode) =>
+  mode === 'roadmap'
+    ? [t('I want to research how LLMs store knowledge'), t('A reading roadmap for this paper'), t('Where to start with diffusion models')]
+    : [t('Surveys on storing knowledge in LLM parameters'), t('The original RAG paper and recent improvements'), t('Faster attention for long contexts')]
 
 function authors(list: string[]): string {
   if (list.length <= 2) return list.join(', ')
   return t('{name} et al.', { name: list[0]! })
 }
 
-export function AiChat({ state, saved, busyId, onAsk, onTranslate, onWeb }: Props) {
+export function AiChat({ state, mode, onMode, saved, busyId, onAsk, onTranslate, onWeb }: Props) {
   useT()
   const [text, setText] = useState('')
   const end = useRef<HTMLDivElement>(null)
@@ -50,13 +55,38 @@ export function AiChat({ state, saved, busyId, onAsk, onTranslate, onWeb }: Prop
 
   return (
     <section className="ai">
+      <div className="ai-modes" role="tablist" aria-label={t('AI search')}>
+        {(['search', 'roadmap'] as const).map(m => (
+          <button
+            key={m}
+            role="tab"
+            aria-selected={mode === m}
+            className={mode === m ? 'on' : ''}
+            onClick={() => {
+              if (mode !== m) onMode(m)
+              box.current?.focus()
+            }}
+          >
+            {m === 'search' ? t('Find papers') : t('Roadmap')}
+          </button>
+        ))}
+      </div>
       <div className="ai-log">
         {messages.length === 0 && (
           <div className="ai-empty">
-            <h1>{t('What are you looking for?')}</h1>
-            <p>{tx('Describe a topic or question and Claude picks papers from arXiv. Click {translate} on a pick to read it side by side.', { translate: <b>{t('Translate')}</b> })}</p>
+            {mode === 'roadmap' ? (
+              <>
+                <h1>{t('What do you want to research?')}</h1>
+                <p>{t('Name a topic or a paper and get papers to read in order. "This paper" means the one you have open.')}</p>
+              </>
+            ) : (
+              <>
+                <h1>{t('What are you looking for?')}</h1>
+                <p>{tx('Describe a topic or question and Claude picks papers from arXiv. Click {translate} on a pick to read it side by side.', { translate: <b>{t('Translate')}</b> })}</p>
+              </>
+            )}
             <div className="ai-examples">
-              {examples().map(e => (
+              {examples(mode).map(e => (
                 <button key={e} onClick={() => send(e)}>{e}</button>
               ))}
             </div>
@@ -115,8 +145,8 @@ export function AiChat({ state, saved, busyId, onAsk, onTranslate, onWeb }: Prop
               send(text)
             }
           }}
-          placeholder={t('e.g. papers on compressing the transformer KV cache')}
-          aria-label={t('Papers to find')}
+          placeholder={mode === 'roadmap' ? t('e.g. I want to research how LLMs store knowledge') : t('e.g. papers on compressing the transformer KV cache')}
+          aria-label={mode === 'roadmap' ? t('What to research') : t('Papers to find')}
           spellCheck={false}
         />
         <button type="submit" disabled={loading || !text.trim()}>{t('Send')}</button>
