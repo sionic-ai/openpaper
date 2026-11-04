@@ -234,8 +234,14 @@ fn main() {
     }
     if cmd == "ask" {
         let started = std::time::Instant::now();
-        let a =
-            openpaper::recommend::recommend(&backend(), target, &[], lang()).expect("recommend");
+        let a = openpaper::recommend::recommend(
+            &backend(),
+            target,
+            &[],
+            lang(),
+            std::env::var("OPENPAPER_AI_MODE").as_deref() == Ok("roadmap"),
+        )
+        .expect("recommend");
         println!("{:.1}s  {}", started.elapsed().as_secs_f32(), a.reply);
         for p in a.picks {
             println!(

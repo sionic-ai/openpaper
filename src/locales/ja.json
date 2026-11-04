@@ -301,5 +301,15 @@
   "{n} results": "{n}件",
   "{reason}. Using the backup {label}, {model}, for now. Click to change": "{reason}。現在はバックアップの{label}、{model}を使用中です。クリックで変更",
   "{reason}. {label} is tried again within 20 minutes.": "{reason}。{label}は20分以内に再試行されます。",
-  "In AI search, ask for a roadmap on a topic, like \"I want to research LLM memory\": it picks a starting paper on arXiv and builds the roadmap from it.": "AI検索で「LLMのメモリを研究したい」のようにテーマでロードマップを頼めます。arXivから出発点の論文を選び、その論文からロードマップを作ります。"
+  "In AI search, ask for a roadmap on a topic, like \"I want to research LLM memory\": it picks a starting paper on arXiv and builds the roadmap from it.": "AI検索で「LLMのメモリを研究したい」のようにテーマでロードマップを頼めます。arXivから出発点の論文を選び、その論文からロードマップを作ります。",
+  "Find papers": "論文を探す",
+  "What do you want to research?": "何を研究したいですか？",
+  "Name a topic or a paper and get papers to read in order. \"This paper\" means the one you have open.": "テーマか論文を伝えると、読む順に論文を選びます。「この論文」と言うと、いま開いている論文が基準になります。",
+  "I want to research how LLMs store knowledge": "LLMが知識をどう保存するかを研究したい",
+  "A reading roadmap for this paper": "この論文の読書ロードマップ",
+  "Where to start with diffusion models": "拡散モデルはどこから読むべき？",
+  "e.g. I want to research how LLMs store knowledge": "例：LLMが知識をどう保存するかを研究したい",
+  "What to research": "研究したいテーマ",
+  "AI search has two tabs: Find papers, and Roadmap for a reading roadmap from a topic or a paper.": "AI検索に「論文を探す」と、テーマや論文から読書ロードマップを作る「ロードマップ」の2つのタブができました。",
+  "A roadmap waits and tries again when arXiv is briefly busy.": "arXivが一時的に混み合っているとき、ロードマップは待ってから再試行します。"
 }

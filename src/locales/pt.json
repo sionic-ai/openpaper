@@ -301,5 +301,15 @@
   "{n} results": "{n} resultados",
   "{reason}. Using the backup {label}, {model}, for now. Click to change": "{reason}. Usando o backup {label}, {model}, por enquanto. Clique para alterar",
   "{reason}. {label} is tried again within 20 minutes.": "{reason}. {label} será tentado de novo em até 20 minutos.",
-  "In AI search, ask for a roadmap on a topic, like \"I want to research LLM memory\": it picks a starting paper on arXiv and builds the roadmap from it.": "Na busca com IA, peça um roteiro sobre um tema, como \"quero pesquisar memória em LLMs\": ela escolhe um artigo de partida no arXiv e monta o roteiro a partir dele."
+  "In AI search, ask for a roadmap on a topic, like \"I want to research LLM memory\": it picks a starting paper on arXiv and builds the roadmap from it.": "Na busca com IA, peça um roteiro sobre um tema, como \"quero pesquisar memória em LLMs\": ela escolhe um artigo de partida no arXiv e monta o roteiro a partir dele.",
+  "Find papers": "Encontrar artigos",
+  "What do you want to research?": "O que você quer pesquisar?",
+  "Name a topic or a paper and get papers to read in order. \"This paper\" means the one you have open.": "Diga um tema ou um artigo e receba artigos para ler em ordem. \"Este artigo\" é o que está aberto.",
+  "I want to research how LLMs store knowledge": "Quero pesquisar como os LLMs armazenam conhecimento",
+  "A reading roadmap for this paper": "Um roteiro de leitura para este artigo",
+  "Where to start with diffusion models": "Por onde começar com modelos de difusão",
+  "e.g. I want to research how LLMs store knowledge": "ex.: quero pesquisar como os LLMs armazenam conhecimento",
+  "What to research": "O que pesquisar",
+  "AI search has two tabs: Find papers, and Roadmap for a reading roadmap from a topic or a paper.": "A busca com IA tem duas abas: Encontrar artigos e Roteiro, para um roteiro de leitura a partir de um tema ou artigo.",
+  "A roadmap waits and tries again when arXiv is briefly busy.": "O roteiro espera e tenta de novo quando o arXiv está ocupado por um momento."
 }

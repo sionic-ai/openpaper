@@ -301,5 +301,15 @@
   "{n} results": "{n} résultats",
   "{reason}. Using the backup {label}, {model}, for now. Click to change": "{reason}. Utilisation du modèle de secours {label}, {model}, pour l’instant. Cliquez pour changer",
   "{reason}. {label} is tried again within 20 minutes.": "{reason}. {label} sera réessayé d’ici 20 minutes.",
-  "In AI search, ask for a roadmap on a topic, like \"I want to research LLM memory\": it picks a starting paper on arXiv and builds the roadmap from it.": "Dans la recherche IA, demandez une feuille de route sur un sujet, par exemple « je veux étudier la mémoire des LLM » : elle choisit un article de départ sur arXiv et construit la feuille de route à partir de lui."
+  "In AI search, ask for a roadmap on a topic, like \"I want to research LLM memory\": it picks a starting paper on arXiv and builds the roadmap from it.": "Dans la recherche IA, demandez une feuille de route sur un sujet, par exemple « je veux étudier la mémoire des LLM » : elle choisit un article de départ sur arXiv et construit la feuille de route à partir de lui.",
+  "Find papers": "Trouver des articles",
+  "What do you want to research?": "Que voulez-vous étudier ?",
+  "Name a topic or a paper and get papers to read in order. \"This paper\" means the one you have open.": "Indiquez un sujet ou un article et obtenez des articles à lire dans l’ordre. « Cet article » désigne celui qui est ouvert.",
+  "I want to research how LLMs store knowledge": "Je veux étudier comment les LLM stockent leurs connaissances",
+  "A reading roadmap for this paper": "Une feuille de route de lecture pour cet article",
+  "Where to start with diffusion models": "Par où commencer avec les modèles de diffusion",
+  "e.g. I want to research how LLMs store knowledge": "p. ex. je veux étudier comment les LLM stockent leurs connaissances",
+  "What to research": "Sujet à étudier",
+  "AI search has two tabs: Find papers, and Roadmap for a reading roadmap from a topic or a paper.": "La recherche IA a deux onglets : Trouver des articles, et Feuille de route pour une feuille de route de lecture à partir d’un sujet ou d’un article.",
+  "A roadmap waits and tries again when arXiv is briefly busy.": "La feuille de route attend et réessaie quand arXiv est momentanément occupé."
 }

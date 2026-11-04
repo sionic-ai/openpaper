@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { api, arxivDocId, arxivIdOf, errorText, looksLikeArxivId, type Doc, type Folder, type Hit, type Lang, type Language, type LlmStatus, type Meta, type Mode, type Status } from './api'
+import { api, arxivDocId, arxivIdOf, errorText, looksLikeArxivId, type Doc, type Folder, type Hit, type AiMode, type Lang, type Language, type LlmStatus, type Meta, type Mode, type Status } from './api'
 import { Reader } from './Reader'
 import { PaperList } from './Papers'
 import { SearchResults, type SearchState } from './Search'
@@ -299,6 +299,7 @@ export function App() {
   const [view, setView] = useState<'doc' | 'search' | 'ai' | 'roadmap'>('doc')
   const [roadmap, setRoadmap] = useState<RoadmapState | null>(null)
   const [chat, setChat] = useState<ChatState>({ messages: [], loading: false })
+  const [aiMode, setAiMode] = useState<AiMode>('search')
   const [fetchingId, setFetchingId] = useState<string | null>(null)
   const [langs, setLangs] = useState<Language[]>([])
   const [lang, setLang] = useState<Lang>(() => localStorage.getItem(LANG_KEY) ?? 'ko')
@@ -575,7 +576,7 @@ export function App() {
     setChat(c => ({ messages: [...c.messages, { role: 'user', text }], loading: true }))
     const asked = lang
     try {
-      const a = await api.recommend(text, history, asked)
+      const a = await api.recommend(text, history, asked, aiMode)
       if (a.roadmap) return await roadmapFromChat(a.roadmap)
       if (a.roadmap === '' && a.picks.length) {
         // A topic: show the papers found, then build the roadmap from the first one.
@@ -800,6 +801,8 @@ export function App() {
         {view === 'ai' ? (
           <AiChat
             state={chat}
+            mode={aiMode}
+            onMode={setAiMode}
             saved={new Set(papers.map(p => arxivIdOf(p.id)).filter((x): x is string => !!x))}
             busyId={fetchingId}
             onAsk={q => void ask(q)}

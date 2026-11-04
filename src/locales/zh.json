@@ -301,5 +301,15 @@
   "{n} results": "{n} 条结果",
   "{reason}. Using the backup {label}, {model}, for now. Click to change": "{reason}。暂时使用备用模型 {label}，{model}。点击更改",
   "{reason}. {label} is tried again within 20 minutes.": "{reason}。将在 20 分钟内重试 {label}。",
-  "In AI search, ask for a roadmap on a topic, like \"I want to research LLM memory\": it picks a starting paper on arXiv and builds the roadmap from it.": "在 AI 搜索中可以按主题请求路线图，例如“我想研究 LLM 记忆”：它会在 arXiv 上选出起点论文，并据此生成路线图。"
+  "In AI search, ask for a roadmap on a topic, like \"I want to research LLM memory\": it picks a starting paper on arXiv and builds the roadmap from it.": "在 AI 搜索中可以按主题请求路线图，例如“我想研究 LLM 记忆”：它会在 arXiv 上选出起点论文，并据此生成路线图。",
+  "Find papers": "找论文",
+  "What do you want to research?": "你想研究什么？",
+  "Name a topic or a paper and get papers to read in order. \"This paper\" means the one you have open.": "说出一个主题或一篇论文，就会按阅读顺序挑选论文。说“这篇论文”时以当前打开的论文为准。",
+  "I want to research how LLMs store knowledge": "我想研究 LLM 如何存储知识",
+  "A reading roadmap for this paper": "这篇论文的阅读路线图",
+  "Where to start with diffusion models": "扩散模型从哪里开始读",
+  "e.g. I want to research how LLMs store knowledge": "例如：我想研究 LLM 如何存储知识",
+  "What to research": "想研究的主题",
+  "AI search has two tabs: Find papers, and Roadmap for a reading roadmap from a topic or a paper.": "AI 搜索有了两个标签：找论文，以及按主题或论文生成阅读路线图的“路线图”。",
+  "A roadmap waits and tries again when arXiv is briefly busy.": "arXiv 暂时繁忙时，路线图会稍等后重试。"
 }
