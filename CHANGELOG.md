@@ -2,6 +2,10 @@
 
 The app shows the section for its version once, after an update. Keep each entry short and about what users notice.
 
+## 0.2.13
+
+- Select a word or a short passage and click Translate in the bubble to see what it means in that sentence.
+
 ## 0.2.12
 
 - A new teal logo that matches the website.
