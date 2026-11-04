@@ -137,6 +137,12 @@ On Windows, remove OpenPaper in **Settings > Apps > Installed apps**. Your paper
 - PDFs use the text layer only. Scanned PDFs do not work, and PDF equations, figures, and tables show as plain text.
 - Speed and quality follow your Claude Code account's model and usage limits.
 
+## Sponsor
+
+<a href="https://opengateway.ai"><img src=".github/assets/opengateway.svg" alt="OpenGateway" height="40"></a>
+
+OpenPaper is sponsored by [OpenGateway](https://opengateway.ai): one API key for Claude, GPT, Gemini, DeepSeek and more. Pick it under **Model** in the app and it works as soon as the key is saved.
+
 ## Contributing
 
 Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). Report security issues privately as described in [SECURITY.md](SECURITY.md).
