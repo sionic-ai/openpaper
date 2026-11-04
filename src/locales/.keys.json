@@ -319,5 +319,8 @@
  "Select a word or a short passage to translate": "error message from the app backend",
  "No translation came back. Try again": "error message from the app backend",
  "Select a word or a short passage and click Translate in the bubble to see what it means in that sentence.": "patch notes item shown after an update (from CHANGELOG.md)",
- "Model names show their version, such as Sonnet 5.5 and Opus 5.5.": "patch notes item shown after an update (from CHANGELOG.md)"
+ "Model names show their version, such as Sonnet 5.5 and Opus 5.5.": "patch notes item shown after an update (from CHANGELOG.md)",
+ "Copy": "ui",
+ "Copied": "ui",
+ "A copy button under each summary and answer copies the whole reply.": "patch notes item shown after an update (from CHANGELOG.md)"
 }

@@ -319,5 +319,8 @@
   "Select a word or a short passage to translate": "请选择要翻译的单词或短句",
   "No translation came back. Try again": "没有返回翻译结果，请重试",
   "Select a word or a short passage and click Translate in the bubble to see what it means in that sentence.": "选中单词或短句后点击气泡中的“翻译”，即可看到它在该句中的意思。",
-  "Model names show their version, such as Sonnet 5.5 and Opus 5.5.": "模型名称会显示版本，例如 Sonnet 5.5、Opus 5.5。"
+  "Model names show their version, such as Sonnet 5.5 and Opus 5.5.": "模型名称会显示版本，例如 Sonnet 5.5、Opus 5.5。",
+  "Copy": "复制",
+  "Copied": "已复制",
+  "A copy button under each summary and answer copies the whole reply.": "总结和回答下方的复制按钮可复制整段回复。"
 }
