@@ -311,5 +311,6 @@
  "e.g. I want to research how LLMs store knowledge": "ui",
  "What to research": "ui",
  "AI search has two tabs: Find papers, and Roadmap for a reading roadmap from a topic or a paper.": "patch notes item shown after an update (from CHANGELOG.md)",
- "A roadmap waits and tries again when arXiv is briefly busy.": "patch notes item shown after an update (from CHANGELOG.md)"
+ "A roadmap waits and tries again when arXiv is briefly busy.": "patch notes item shown after an update (from CHANGELOG.md)",
+ "The Find papers and Roadmap tabs stay at the top of AI search while the conversation scrolls.": "patch notes item shown after an update (from CHANGELOG.md)"
 }

@@ -311,5 +311,6 @@
   "e.g. I want to research how LLMs store knowledge": "z. B. Ich möchte erforschen, wie LLMs Wissen speichern",
   "What to research": "Forschungsthema",
   "AI search has two tabs: Find papers, and Roadmap for a reading roadmap from a topic or a paper.": "Die KI-Suche hat zwei Tabs: Paper finden und Leseplan, für einen Leseplan zu einem Thema oder Paper.",
-  "A roadmap waits and tries again when arXiv is briefly busy.": "Der Leseplan wartet und versucht es erneut, wenn arXiv kurz ausgelastet ist."
+  "A roadmap waits and tries again when arXiv is briefly busy.": "Der Leseplan wartet und versucht es erneut, wenn arXiv kurz ausgelastet ist.",
+  "The Find papers and Roadmap tabs stay at the top of AI search while the conversation scrolls.": "Die Tabs „Paper finden“ und „Leseplan“ bleiben oben in der KI-Suche, während der Verlauf scrollt."
 }
