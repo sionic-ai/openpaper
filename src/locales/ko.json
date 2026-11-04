@@ -322,5 +322,6 @@
   "Model names show their version, such as Sonnet 5.5 and Opus 5.5.": "모델 이름에 Sonnet 5.5, Opus 5.5처럼 버전이 함께 표시돼요.",
   "Copy": "복사",
   "Copied": "복사됨",
-  "A copy button under each summary and answer copies the whole reply.": "요약과 답변 아래의 복사 버튼으로 답변 전체를 복사할 수 있어요."
+  "A copy button under each summary and answer copies the whole reply.": "요약과 답변 아래의 복사 버튼으로 답변 전체를 복사할 수 있어요.",
+  "Buttons, links and highlights use the same teal as the logo; errors and warnings stay red.": "버튼, 링크, 강조색이 로고와 같은 청록색으로 바뀌었어요. 오류와 경고는 계속 빨간색이에요."
 }

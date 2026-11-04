@@ -322,5 +322,6 @@
   "Model names show their version, such as Sonnet 5.5 and Opus 5.5.": "模型名称会显示版本，例如 Sonnet 5.5、Opus 5.5。",
   "Copy": "复制",
   "Copied": "已复制",
-  "A copy button under each summary and answer copies the whole reply.": "总结和回答下方的复制按钮可复制整段回复。"
+  "A copy button under each summary and answer copies the whole reply.": "总结和回答下方的复制按钮可复制整段回复。",
+  "Buttons, links and highlights use the same teal as the logo; errors and warnings stay red.": "按钮、链接和强调色统一为与标志相同的青绿色，错误和警告仍为红色。"
 }

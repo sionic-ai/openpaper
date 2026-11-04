@@ -322,5 +322,6 @@
   "Model names show their version, such as Sonnet 5.5 and Opus 5.5.": "Les noms des modèles indiquent leur version, comme Sonnet 5.5 et Opus 5.5.",
   "Copy": "Copier",
   "Copied": "Copié",
-  "A copy button under each summary and answer copies the whole reply.": "Un bouton Copier sous chaque résumé et réponse copie toute la réponse."
+  "A copy button under each summary and answer copies the whole reply.": "Un bouton Copier sous chaque résumé et réponse copie toute la réponse.",
+  "Buttons, links and highlights use the same teal as the logo; errors and warnings stay red.": "Les boutons, liens et mises en avant utilisent le même bleu-vert que le logo ; erreurs et avertissements restent en rouge."
 }
