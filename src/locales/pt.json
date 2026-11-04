@@ -313,5 +313,10 @@
   "AI search has two tabs: Find papers, and Roadmap for a reading roadmap from a topic or a paper.": "A busca com IA tem duas abas: Encontrar artigos e Roteiro, para um roteiro de leitura a partir de um tema ou artigo.",
   "A roadmap waits and tries again when arXiv is briefly busy.": "O roteiro espera e tenta de novo quando o arXiv está ocupado por um momento.",
   "The Find papers and Roadmap tabs stay at the top of AI search while the conversation scrolls.": "As abas Encontrar artigos e Roteiro ficam no topo da busca com IA enquanto a conversa rola.",
-  "A new teal logo that matches the website.": "Um novo logotipo verde-azulado, combinando com o site."
+  "A new teal logo that matches the website.": "Um novo logotipo verde-azulado, combinando com o site.",
+  "Translate the selection": "Traduzir a seleção",
+  "Translating…": "Traduzindo…",
+  "Select a word or a short passage to translate": "Selecione uma palavra ou um trecho curto para traduzir",
+  "No translation came back. Try again": "Nenhuma tradução voltou. Tente de novo",
+  "Select a word or a short passage and click Translate in the bubble to see what it means in that sentence.": "Selecione uma palavra ou um trecho curto e clique em Traduzir no balão para ver o que significa naquela frase."
 }

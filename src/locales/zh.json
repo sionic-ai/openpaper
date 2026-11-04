@@ -313,5 +313,10 @@
   "AI search has two tabs: Find papers, and Roadmap for a reading roadmap from a topic or a paper.": "AI 搜索有了两个标签：找论文，以及按主题或论文生成阅读路线图的“路线图”。",
   "A roadmap waits and tries again when arXiv is briefly busy.": "arXiv 暂时繁忙时，路线图会稍等后重试。",
   "The Find papers and Roadmap tabs stay at the top of AI search while the conversation scrolls.": "对话变长时，AI 搜索的“找论文”和“路线图”标签会一直显示在顶部。",
-  "A new teal logo that matches the website.": "换上了与网站一致的青绿色新标志。"
+  "A new teal logo that matches the website.": "换上了与网站一致的青绿色新标志。",
+  "Translate the selection": "翻译所选内容",
+  "Translating…": "翻译中…",
+  "Select a word or a short passage to translate": "请选择要翻译的单词或短句",
+  "No translation came back. Try again": "没有返回翻译结果，请重试",
+  "Select a word or a short passage and click Translate in the bubble to see what it means in that sentence.": "选中单词或短句后点击气泡中的“翻译”，即可看到它在该句中的意思。"
 }

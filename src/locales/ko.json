@@ -313,5 +313,10 @@
   "AI search has two tabs: Find papers, and Roadmap for a reading roadmap from a topic or a paper.": "AI 검색에 탭이 두 개 생겼어요. 논문 찾기, 그리고 주제나 논문으로 읽기 로드맵을 만드는 로드맵이에요.",
   "A roadmap waits and tries again when arXiv is briefly busy.": "arXiv가 잠시 바쁠 때 로드맵이 기다렸다가 다시 시도해요.",
   "The Find papers and Roadmap tabs stay at the top of AI search while the conversation scrolls.": "AI 검색에서 대화가 길어져도 논문 찾기와 로드맵 탭이 위에 계속 보여요.",
-  "A new teal logo that matches the website.": "웹사이트와 어울리는 청록색 새 로고로 바뀌었어요."
+  "A new teal logo that matches the website.": "웹사이트와 어울리는 청록색 새 로고로 바뀌었어요.",
+  "Translate the selection": "선택한 부분 번역",
+  "Translating…": "번역 중…",
+  "Select a word or a short passage to translate": "번역할 단어나 짧은 구절을 선택하세요",
+  "No translation came back. Try again": "번역 결과가 오지 않았어요. 다시 시도하세요",
+  "Select a word or a short passage and click Translate in the bubble to see what it means in that sentence.": "단어나 짧은 구절을 선택하고 말풍선의 번역을 누르면 그 문장에서의 뜻을 보여줘요."
 }

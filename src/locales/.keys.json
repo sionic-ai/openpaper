@@ -313,5 +313,10 @@
  "AI search has two tabs: Find papers, and Roadmap for a reading roadmap from a topic or a paper.": "patch notes item shown after an update (from CHANGELOG.md)",
  "A roadmap waits and tries again when arXiv is briefly busy.": "patch notes item shown after an update (from CHANGELOG.md)",
  "The Find papers and Roadmap tabs stay at the top of AI search while the conversation scrolls.": "patch notes item shown after an update (from CHANGELOG.md)",
- "A new teal logo that matches the website.": "patch notes item shown after an update (from CHANGELOG.md)"
+ "A new teal logo that matches the website.": "patch notes item shown after an update (from CHANGELOG.md)",
+ "Translate the selection": "ui",
+ "Translating…": "ui",
+ "Select a word or a short passage to translate": "error message from the app backend",
+ "No translation came back. Try again": "error message from the app backend",
+ "Select a word or a short passage and click Translate in the bubble to see what it means in that sentence.": "patch notes item shown after an update (from CHANGELOG.md)"
 }

@@ -383,10 +383,17 @@ function EnterIcon() {
 }
 
 /** Speech bubble under a drag selection in the reader; asking opens the floating panel with the selection as a quote. */
-export function SelectionAsk({ busy, resetKey, onAsk }: { busy: boolean; resetKey: string | null; onAsk: (question: string, quote: string) => void }) {
+/** Longest selection the quick translation takes (as in Rust `ask::GLOSS_MAX`). */
+const GLOSS_MAX = 300
+/** Quick translations already fetched in this run, by language, text and sentence. */
+const glossCache = new Map<string, { translation: string; note: string }>()
+type GlossState = { state: 'idle' } | { state: 'loading' } | { state: 'done'; translation: string; note: string } | { state: 'error'; text: string }
+
+export function SelectionAsk({ busy, resetKey, lang, onAsk }: { busy: boolean; resetKey: string | null; lang: Lang; onAsk: (question: string, quote: string) => void }) {
   useT()
   const [spot, setSpot] = useState<Spot | null>(null)
   const [text, setText] = useState('')
+  const [gloss, setGloss] = useState<GlossState>({ state: 'idle' })
   const el = useRef<HTMLDivElement>(null)
   const engaged = useRef(false)
 
@@ -395,6 +402,7 @@ export function SelectionAsk({ busy, resetKey, onAsk }: { busy: boolean; resetKe
     paintQuote(null)
     setSpot(null)
     setText('')
+    setGloss({ state: 'idle' })
   }, [])
 
   useEffect(hide, [resetKey, hide])
@@ -415,6 +423,7 @@ export function SelectionAsk({ busy, resetKey, onAsk }: { busy: boolean; resetKe
         if (quote.length < 2 || quote.length > 2000) return
         engaged.current = false
         setText('')
+        setGloss({ state: 'idle' })
         const kept = range.cloneRange()
         paintQuote(kept)
         setSpot({ quote, range: kept })
@@ -477,7 +486,7 @@ export function SelectionAsk({ busy, resetKey, onAsk }: { busy: boolean; resetKe
     b.style.setProperty('--tail', `${Math.min(Math.max(s2.x - left, 16), BUBBLE_W - 16)}px`)
     b.classList.toggle('above', !fitsBelow)
   }
-  useLayoutEffect(() => place.current(), [spot])
+  useLayoutEffect(() => place.current(), [spot, gloss])
 
   if (!spot) return null
 
@@ -487,6 +496,29 @@ export function SelectionAsk({ busy, resetKey, onAsk }: { busy: boolean; resetKe
     onAsk(t, spot.quote)
     hide()
   }
+  // The sentence the selection starts in, so a word is translated in the sense it has there.
+  const context = () => {
+    const node = spot.range.startContainer
+    const el = node instanceof Element ? node : node.parentElement
+    return el?.closest('[data-s]')?.textContent?.trim() ?? spot.quote
+  }
+  const translate = () => {
+    if (gloss.state === 'loading') return
+    const ctx = context()
+    const key = `${lang}|${spot.quote}|${ctx}`
+    const hit = glossCache.get(key)
+    if (hit) return setGloss({ state: 'done', ...hit })
+    setGloss({ state: 'loading' })
+    const quote = spot.quote
+    api
+      .gloss(quote, ctx, lang)
+      .then(g => {
+        glossCache.set(key, g)
+        setGloss(cur => (cur.state === 'loading' ? { state: 'done', ...g } : cur))
+      })
+      .catch(err => setGloss(cur => (cur.state === 'loading' ? { state: 'error', text: errorText(err) } : cur)))
+  }
+  const short = spot.quote.length <= GLOSS_MAX
 
   return (
     <div
@@ -498,6 +530,13 @@ export function SelectionAsk({ busy, resetKey, onAsk }: { busy: boolean; resetKe
         if (!(e.target instanceof HTMLInputElement)) e.preventDefault()
       }}
     >
+      {gloss.state === 'done' && (
+        <div className="sel-gloss" aria-live="polite">
+          <b>{gloss.translation}</b>
+          {gloss.note && <span>{gloss.note}</span>}
+        </div>
+      )}
+      {gloss.state === 'error' && <div className="sel-gloss error" role="alert">{gloss.text}</div>}
       <form
         onSubmit={e => {
           e.preventDefault()
@@ -512,6 +551,11 @@ export function SelectionAsk({ busy, resetKey, onAsk }: { busy: boolean; resetKe
           spellCheck={false}
           disabled={busy}
         />
+        {short && !text.trim() && (
+          <button type="button" className="sel-tr" onClick={translate} disabled={gloss.state === 'loading'} title={t('Translate the selection')}>
+            {gloss.state === 'loading' ? t('Translating…') : t('Translate')}
+          </button>
+        )}
         <button type="submit" disabled={busy || !text.trim()} aria-label={t('Send')} title={t('Send (Enter)')}><EnterIcon /></button>
       </form>
     </div>

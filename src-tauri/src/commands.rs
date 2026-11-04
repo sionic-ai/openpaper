@@ -306,6 +306,18 @@ pub enum AskEvent {
 /// Answers a question about the open paper (`doc_id`), optionally about a selected passage,
 /// in `lang`. Pieces of the answer arrive on `on_event` as they are written; the full answer is
 /// returned.
+/// A quick translation of a word or short passage selected in the reader, read in its sentence.
+#[tauri::command]
+pub async fn gloss_selection(
+    state: State<'_, Arc<AppState>>,
+    text: String,
+    context: String,
+    lang: Lang,
+) -> Result<ask::Gloss, String> {
+    let state = state.inner().clone();
+    blocking(move || ask::gloss(&state.backend()?, &text, &context, lang)).await
+}
+
 #[tauri::command]
 pub async fn ask_claude(
     state: State<'_, Arc<AppState>>,
