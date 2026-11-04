@@ -410,6 +410,21 @@ fn now() -> u64 {
         .unwrap_or(0)
 }
 
+/// arXiv lookup that waits and tries again while arXiv says it is busy: a roadmap often starts
+/// right after the paper itself was fetched, inside arXiv's one-request-per-few-seconds window.
+fn lookup_patiently(ids: &[String]) -> Result<Vec<Hit>, String> {
+    let mut waits = [3, 8, 15].map(Duration::from_secs).into_iter();
+    loop {
+        match search::lookup(ids) {
+            Err(e) if e.starts_with(search::BUSY) => match waits.next() {
+                Some(wait) => std::thread::sleep(wait),
+                None => return Err(e),
+            },
+            other => return other,
+        }
+    }
+}
+
 // ---- Ordering ------------------------------------------------------------------------------
 
 #[derive(Deserialize)]
@@ -511,7 +526,7 @@ pub fn build(
     if ids.len() < MIN_ITEMS {
         return Err(NOT_ENOUGH.into());
     }
-    let hits = search::lookup(&ids)?;
+    let hits = lookup_patiently(&ids)?;
     // A PDF's own arXiv stamp ("arXiv:1706.03762v7 [cs.CL]") would make it a candidate for itself.
     let own = normalized(&doc.title);
     let candidates: Vec<Candidate> = gathered
