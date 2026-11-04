@@ -6,6 +6,8 @@
   --text: #2b2b2a;
   --muted: #8a8984;
   --accent: #d0583f;
+  /* The logo's teal, shared with the website. */
+  --brand: #2c8179;
   --hl: #fff2b8;
   --pending: #f3f3f1;
   --update: #2f6bff;
@@ -34,6 +36,7 @@
   --text: #e7e6e2;
   --muted: #9a9993;
   --accent: #e4735a;
+  --brand: #4fb3a8;
   --hl: #4a3d16;
   --pending: #2a2a28;
   --update: #3567d6;
@@ -106,7 +109,7 @@ button:disabled { cursor: default; opacity: .5; }
   padding: 0 12px 12px;
 }
 .side-top { height: 36px; flex: none; display: flex; align-items: center; justify-content: flex-end; margin-right: -4px; }
-.brand { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 16px; letter-spacing: -.01em; padding: 0 4px 14px; color: var(--accent); user-select: none; }
+.brand { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 16px; letter-spacing: -.01em; padding: 0 4px 14px; color: var(--brand); user-select: none; }
 /* The app icon; it ignores the pointer so the title stays a window drag area. */
 .brand img { flex: none; pointer-events: none; }
 .import input {
