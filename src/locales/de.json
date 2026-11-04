@@ -300,5 +300,6 @@
   "{n} result": "{n} Ergebnis",
   "{n} results": "{n} Ergebnisse",
   "{reason}. Using the backup {label}, {model}, for now. Click to change": "{reason}. Vorerst wird das Ersatzmodell {label}, {model}, verwendet. Zum Ändern klicken",
-  "{reason}. {label} is tried again within 20 minutes.": "{reason}. {label} wird innerhalb von 20 Minuten erneut versucht."
+  "{reason}. {label} is tried again within 20 minutes.": "{reason}. {label} wird innerhalb von 20 Minuten erneut versucht.",
+  "In AI search, ask for a roadmap on a topic, like \"I want to research LLM memory\": it picks a starting paper on arXiv and builds the roadmap from it.": "In der KI-Suche können Sie einen Leseplan zu einem Thema anfordern, etwa „Ich möchte LLM-Gedächtnis erforschen“: Sie wählt ein Ausgangs-Paper auf arXiv und baut den Leseplan darauf auf."
 }

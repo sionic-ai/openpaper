@@ -300,5 +300,6 @@
   "{n} result": "결과 {n}개",
   "{n} results": "결과 {n}개",
   "{reason}. Using the backup {label}, {model}, for now. Click to change": "{reason}. 지금은 백업인 {label} · {model} 모델로 답하고 있어요. 눌러서 변경",
-  "{reason}. {label} is tried again within 20 minutes.": "{reason}. 20분 안에 {label} 연결을 다시 시도해요."
+  "{reason}. {label} is tried again within 20 minutes.": "{reason}. 20분 안에 {label} 연결을 다시 시도해요.",
+  "In AI search, ask for a roadmap on a topic, like \"I want to research LLM memory\": it picks a starting paper on arXiv and builds the roadmap from it.": "AI 검색에서 \"LLM 메모리를 연구해보고 싶어\"처럼 주제로 로드맵을 요청할 수 있어요. arXiv에서 시작 논문을 골라 그 논문으로 로드맵을 만들어요."
 }

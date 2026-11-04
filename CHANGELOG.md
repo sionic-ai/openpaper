@@ -2,6 +2,10 @@
 
 The app shows the section for its version once, after an update. Keep each entry short and about what users notice.
 
+## 0.2.9
+
+- In AI search, ask for a roadmap on a topic, like "I want to research LLM memory": it picks a starting paper on arXiv and builds the roadmap from it.
+
 ## 0.2.8
 
 - Roadmap, next to Summarize: what to read before and after a paper, built from its real references and the papers that cite it. In AI search you can also just ask for a roadmap.

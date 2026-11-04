@@ -300,5 +300,6 @@
   "{n} result": "{n}件",
   "{n} results": "{n}件",
   "{reason}. Using the backup {label}, {model}, for now. Click to change": "{reason}。現在はバックアップの{label}、{model}を使用中です。クリックで変更",
-  "{reason}. {label} is tried again within 20 minutes.": "{reason}。{label}は20分以内に再試行されます。"
+  "{reason}. {label} is tried again within 20 minutes.": "{reason}。{label}は20分以内に再試行されます。",
+  "In AI search, ask for a roadmap on a topic, like \"I want to research LLM memory\": it picks a starting paper on arXiv and builds the roadmap from it.": "AI検索で「LLMのメモリを研究したい」のようにテーマでロードマップを頼めます。arXivから出発点の論文を選び、その論文からロードマップを作ります。"
 }

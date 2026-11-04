@@ -300,5 +300,6 @@
   "{n} result": "{n} 条结果",
   "{n} results": "{n} 条结果",
   "{reason}. Using the backup {label}, {model}, for now. Click to change": "{reason}。暂时使用备用模型 {label}，{model}。点击更改",
-  "{reason}. {label} is tried again within 20 minutes.": "{reason}。将在 20 分钟内重试 {label}。"
+  "{reason}. {label} is tried again within 20 minutes.": "{reason}。将在 20 分钟内重试 {label}。",
+  "In AI search, ask for a roadmap on a topic, like \"I want to research LLM memory\": it picks a starting paper on arXiv and builds the roadmap from it.": "在 AI 搜索中可以按主题请求路线图，例如“我想研究 LLM 记忆”：它会在 arXiv 上选出起点论文，并据此生成路线图。"
 }

@@ -300,5 +300,6 @@
   "{n} result": "{n} resultado",
   "{n} results": "{n} resultados",
   "{reason}. Using the backup {label}, {model}, for now. Click to change": "{reason}. Por ahora se usa el respaldo {label}, {model}. Haz clic para cambiarlo",
-  "{reason}. {label} is tried again within 20 minutes.": "{reason}. {label} se vuelve a probar en un plazo de 20 minutos."
+  "{reason}. {label} is tried again within 20 minutes.": "{reason}. {label} se vuelve a probar en un plazo de 20 minutos.",
+  "In AI search, ask for a roadmap on a topic, like \"I want to research LLM memory\": it picks a starting paper on arXiv and builds the roadmap from it.": "En la búsqueda con IA puedes pedir una hoja de ruta sobre un tema, como \"quiero investigar la memoria de los LLM\": elige un artículo de partida en arXiv y crea la hoja de ruta a partir de él."
 }
