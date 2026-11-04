@@ -318,5 +318,6 @@
   "Translating…": "Traduction…",
   "Select a word or a short passage to translate": "Sélectionnez un mot ou un court passage à traduire",
   "No translation came back. Try again": "Aucune traduction n’est revenue. Réessayez",
-  "Select a word or a short passage and click Translate in the bubble to see what it means in that sentence.": "Sélectionnez un mot ou un court passage et cliquez sur Traduire dans la bulle pour voir son sens dans la phrase."
+  "Select a word or a short passage and click Translate in the bubble to see what it means in that sentence.": "Sélectionnez un mot ou un court passage et cliquez sur Traduire dans la bulle pour voir son sens dans la phrase.",
+  "Model names show their version, such as Sonnet 5.5 and Opus 5.5.": "Les noms des modèles indiquent leur version, comme Sonnet 5.5 et Opus 5.5."
 }

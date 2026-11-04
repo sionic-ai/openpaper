@@ -318,5 +318,6 @@
   "Translating…": "번역 중…",
   "Select a word or a short passage to translate": "번역할 단어나 짧은 구절을 선택하세요",
   "No translation came back. Try again": "번역 결과가 오지 않았어요. 다시 시도하세요",
-  "Select a word or a short passage and click Translate in the bubble to see what it means in that sentence.": "단어나 짧은 구절을 선택하고 말풍선의 번역을 누르면 그 문장에서의 뜻을 보여줘요."
+  "Select a word or a short passage and click Translate in the bubble to see what it means in that sentence.": "단어나 짧은 구절을 선택하고 말풍선의 번역을 누르면 그 문장에서의 뜻을 보여줘요.",
+  "Model names show their version, such as Sonnet 5.5 and Opus 5.5.": "모델 이름에 Sonnet 5.5, Opus 5.5처럼 버전이 함께 표시돼요."
 }
