@@ -2,6 +2,10 @@
 
 The app shows the section for its version once, after an update. Keep each entry short and about what users notice.
 
+## 0.2.12
+
+- A new teal logo that matches the website.
+
 ## 0.2.11
 
 - The Find papers and Roadmap tabs stay at the top of AI search while the conversation scrolls.

@@ -312,5 +312,6 @@
   "What to research": "연구하고 싶은 주제",
   "AI search has two tabs: Find papers, and Roadmap for a reading roadmap from a topic or a paper.": "AI 검색에 탭이 두 개 생겼어요. 논문 찾기, 그리고 주제나 논문으로 읽기 로드맵을 만드는 로드맵이에요.",
   "A roadmap waits and tries again when arXiv is briefly busy.": "arXiv가 잠시 바쁠 때 로드맵이 기다렸다가 다시 시도해요.",
-  "The Find papers and Roadmap tabs stay at the top of AI search while the conversation scrolls.": "AI 검색에서 대화가 길어져도 논문 찾기와 로드맵 탭이 위에 계속 보여요."
+  "The Find papers and Roadmap tabs stay at the top of AI search while the conversation scrolls.": "AI 검색에서 대화가 길어져도 논문 찾기와 로드맵 탭이 위에 계속 보여요.",
+  "A new teal logo that matches the website.": "웹사이트와 어울리는 청록색 새 로고로 바뀌었어요."
 }
