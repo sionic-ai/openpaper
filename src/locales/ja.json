@@ -313,5 +313,10 @@
   "AI search has two tabs: Find papers, and Roadmap for a reading roadmap from a topic or a paper.": "AI検索に「論文を探す」と、テーマや論文から読書ロードマップを作る「ロードマップ」の2つのタブができました。",
   "A roadmap waits and tries again when arXiv is briefly busy.": "arXivが一時的に混み合っているとき、ロードマップは待ってから再試行します。",
   "The Find papers and Roadmap tabs stay at the top of AI search while the conversation scrolls.": "会話が長くなっても、AI検索の「論文を探す」と「ロードマップ」のタブは上に表示されたままです。",
-  "A new teal logo that matches the website.": "ウェブサイトに合わせた青緑色の新しいロゴになりました。"
+  "A new teal logo that matches the website.": "ウェブサイトに合わせた青緑色の新しいロゴになりました。",
+  "Translate the selection": "選択部分を翻訳",
+  "Translating…": "翻訳中…",
+  "Select a word or a short passage to translate": "翻訳する単語か短い一節を選んでください",
+  "No translation came back. Try again": "翻訳が返ってきませんでした。もう一度お試しください",
+  "Select a word or a short passage and click Translate in the bubble to see what it means in that sentence.": "単語や短い一節を選んで吹き出しの「翻訳」を押すと、その文での意味が表示されます。"
 }

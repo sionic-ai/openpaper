@@ -141,6 +141,8 @@ export const api = {
   llmModels: () => invoke<ModelOption[]>('llm_models'),
   llmOpenKeyPage: () => invoke<void>('llm_open_key_page'),
   llmBackup: () => invoke<LlmBackup | null>('llm_backup'),
+  /** Quick translation of a selected word or short passage, read in its sentence. */
+  gloss: (text: string, context: string, lang: Lang) => invoke<{ translation: string; note: string }>('gloss_selection', { text, context, lang }),
   llmTest: () => invoke<{ reply: string; ms: number }>('llm_test'),
   /** `mode`: the AI search tab; `roadmap` always answers with a roadmap. */
   recommend: (request: string, history: { role: string; text: string }[], lang: Lang, mode: AiMode = 'search') =>

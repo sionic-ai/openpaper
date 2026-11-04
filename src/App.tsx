@@ -850,7 +850,7 @@ export function App() {
       {view !== 'ai' && (
         <>
           <FloatingAssistant ask={assistant} docTitle={shownDoc?.title ?? null} />
-          <SelectionAsk busy={assistant.loading} resetKey={`${view}:${doc?.id ?? ''}`} onAsk={(q, quote) => assistant.send(q, quote)} />
+          <SelectionAsk busy={assistant.loading} resetKey={`${view}:${doc?.id ?? ''}`} lang={lang} onAsk={(q, quote) => assistant.send(q, quote)} />
         </>
       )}
     </div>

@@ -36,6 +36,7 @@ fn main() {
             openpaper::commands::llm_open_key_page,
             openpaper::commands::llm_backup,
             openpaper::commands::paper_roadmap,
+            openpaper::commands::gloss_selection,
             openpaper::commands::llm_test,
             openpaper::commands::open_arxiv_page,
             openpaper::commands::translation_start,
