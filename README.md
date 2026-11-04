@@ -16,7 +16,7 @@ Read an English research paper side by side with its translation, sentence by se
 
 </div>
 
-<a href=".github/assets/demo.mp4"><img src=".github/assets/demo.webp" alt="OpenPaper demo: search, translate, linked sentence highlight, summarize, ask, and switch languages" width="100%"></a>
+<a href=".github/assets/demo.mp4"><img src=".github/assets/demo.webp" alt="OpenPaper demo: search arXiv, translate side by side, linked sentence highlight, summarize, ask about a passage, AI search with a reading roadmap, read check, model settings, and the whole app in your language" width="100%"></a>
 
 ## Install
 
