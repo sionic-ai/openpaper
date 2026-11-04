@@ -2,6 +2,11 @@
 
 The app shows the section for its version once, after an update. Keep each entry short and about what users notice.
 
+## 0.2.10
+
+- AI search has two tabs: Find papers, and Roadmap for a reading roadmap from a topic or a paper.
+- A roadmap waits and tries again when arXiv is briefly busy.
+
 ## 0.2.9
 
 - In AI search, ask for a roadmap on a topic, like "I want to research LLM memory": it picks a starting paper on arXiv and builds the roadmap from it.
