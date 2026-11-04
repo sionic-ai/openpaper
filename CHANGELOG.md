@@ -2,6 +2,10 @@
 
 The app shows the section for its version once, after an update. Keep each entry short and about what users notice.
 
+## 0.2.17
+
+- Drag the top of the chat panel to move it; double-click there to put it back.
+
 ## 0.2.16
 
 - Buttons, links and highlights use the same teal as the logo; errors and warnings stay red.
