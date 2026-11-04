@@ -319,5 +319,8 @@
   "Select a word or a short passage to translate": "Sélectionnez un mot ou un court passage à traduire",
   "No translation came back. Try again": "Aucune traduction n’est revenue. Réessayez",
   "Select a word or a short passage and click Translate in the bubble to see what it means in that sentence.": "Sélectionnez un mot ou un court passage et cliquez sur Traduire dans la bulle pour voir son sens dans la phrase.",
-  "Model names show their version, such as Sonnet 5.5 and Opus 5.5.": "Les noms des modèles indiquent leur version, comme Sonnet 5.5 et Opus 5.5."
+  "Model names show their version, such as Sonnet 5.5 and Opus 5.5.": "Les noms des modèles indiquent leur version, comme Sonnet 5.5 et Opus 5.5.",
+  "Copy": "Copier",
+  "Copied": "Copié",
+  "A copy button under each summary and answer copies the whole reply.": "Un bouton Copier sous chaque résumé et réponse copie toute la réponse."
 }

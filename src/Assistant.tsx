@@ -320,8 +320,13 @@ export function FloatingAssistant({ ask, docTitle }: { ask: Ask; docTitle: strin
                   >
                     {m.role === 'error' ? m.text : <Reply text={m.text} />}
                   </div>
-                  {i === lastSummary && m.role === 'assistant' && !m.streaming && !loading && (
-                    <button className="asst-redo" onClick={() => summarize(true, m.lang)}>{t('Rewrite summary')}</button>
+                  {m.role === 'assistant' && !m.streaming && (
+                    <div className="asst-actions">
+                      <CopyButton text={m.text} />
+                      {i === lastSummary && !loading && (
+                        <button className="asst-redo" onClick={() => summarize(true, m.lang)}>{t('Rewrite summary')}</button>
+                      )}
+                    </div>
                   )}
                 </div>
               )
@@ -383,6 +388,42 @@ function EnterIcon() {
 }
 
 /** Speech bubble under a drag selection in the reader; asking opens the floating panel with the selection as a quote. */
+/** Copies a whole answer; the icon turns into a check for a moment. */
+function CopyButton({ text }: { text: string }) {
+  useT()
+  const [copied, setCopied] = useState(false)
+  const timer = useRef(0)
+  useEffect(() => () => window.clearTimeout(timer.current), [])
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      // Older webviews without the async clipboard: copy through a hidden field.
+      const area = document.createElement('textarea')
+      area.value = text
+      area.style.position = 'fixed'
+      area.style.opacity = '0'
+      document.body.appendChild(area)
+      area.select()
+      document.execCommand('copy')
+      area.remove()
+    }
+    setCopied(true)
+    window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => setCopied(false), 1500)
+  }
+  const label = copied ? t('Copied') : t('Copy')
+  return (
+    <button className={`asst-copy${copied ? ' done' : ''}`} onClick={() => void copy()} title={label} aria-label={label}>
+      {copied ? (
+        <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+      ) : (
+        <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"><rect x="5.5" y="5.5" width="8" height="8" rx="1.8" /><path d="M10.5 3.5V3a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 3v5A1.5 1.5 0 0 0 4 9.5h.5" /></svg>
+      )}
+    </button>
+  )
+}
+
 /** Longest selection the quick translation takes (as in Rust `ask::GLOSS_MAX`). */
 const GLOSS_MAX = 300
 /** Quick translations already fetched in this run, by language, text and sentence. */
