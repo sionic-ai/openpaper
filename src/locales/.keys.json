@@ -323,5 +323,6 @@
  "Copy": "ui",
  "Copied": "ui",
  "A copy button under each summary and answer copies the whole reply.": "patch notes item shown after an update (from CHANGELOG.md)",
- "Buttons, links and highlights use the same teal as the logo; errors and warnings stay red.": "patch notes item shown after an update (from CHANGELOG.md)"
+ "Buttons, links and highlights use the same teal as the logo; errors and warnings stay red.": "patch notes item shown after an update (from CHANGELOG.md)",
+ "Drag the top of the chat panel to move it; double-click there to put it back.": "patch notes item shown after an update (from CHANGELOG.md)"
 }

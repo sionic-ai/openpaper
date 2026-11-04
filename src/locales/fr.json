@@ -323,5 +323,6 @@
   "Copy": "Copier",
   "Copied": "Copié",
   "A copy button under each summary and answer copies the whole reply.": "Un bouton Copier sous chaque résumé et réponse copie toute la réponse.",
-  "Buttons, links and highlights use the same teal as the logo; errors and warnings stay red.": "Les boutons, liens et mises en avant utilisent le même bleu-vert que le logo ; erreurs et avertissements restent en rouge."
+  "Buttons, links and highlights use the same teal as the logo; errors and warnings stay red.": "Les boutons, liens et mises en avant utilisent le même bleu-vert que le logo ; erreurs et avertissements restent en rouge.",
+  "Drag the top of the chat panel to move it; double-click there to put it back.": "Faites glisser le haut du panneau de discussion pour le déplacer ; double-cliquez dessus pour le remettre en place."
 }
