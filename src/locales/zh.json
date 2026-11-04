@@ -323,5 +323,6 @@
   "Copy": "复制",
   "Copied": "已复制",
   "A copy button under each summary and answer copies the whole reply.": "总结和回答下方的复制按钮可复制整段回复。",
-  "Buttons, links and highlights use the same teal as the logo; errors and warnings stay red.": "按钮、链接和强调色统一为与标志相同的青绿色，错误和警告仍为红色。"
+  "Buttons, links and highlights use the same teal as the logo; errors and warnings stay red.": "按钮、链接和强调色统一为与标志相同的青绿色，错误和警告仍为红色。",
+  "Drag the top of the chat panel to move it; double-click there to put it back.": "拖动提问面板顶部即可把它移到任意位置，双击顶部可恢复原位。"
 }

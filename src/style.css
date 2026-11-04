@@ -455,8 +455,9 @@ tr:last-child td { border-bottom: 1px solid var(--rule); }
 }
 .asst.expanded { width: 380px; height: min(560px, 70vh); animation: asst-grow .22s ease-out; transition: width .25s ease, height .25s ease; }
 /* A paper summary is a long read, so the panel opens wider for it. */
-.asst.expanded.wide { width: min(580px, calc(100vw - 80px)); height: min(760px, calc(100vh - 110px)); }
-.asst.resizing { transition: none; }
+.asst.expanded.asst-wide { width: min(580px, calc(100vw - 80px)); height: min(760px, calc(100vh - 110px)); }
+.asst.resizing, .asst.moving { transition: none; }
+.panel-moving, .panel-moving * { cursor: grabbing !important; user-select: none !important; }
 /* Top and left edges move; the panel stays pinned to the bottom right. */
 .asst-edge { position: absolute; z-index: 2; }
 .asst-edge.l { left: -4px; top: 12px; bottom: 12px; width: 8px; cursor: col-resize; }
@@ -465,7 +466,8 @@ tr:last-child td { border-bottom: 1px solid var(--rule); }
 @keyframes asst-in { from { opacity: 0; transform: translateY(6px) scale(.97); } }
 @keyframes asst-grow { from { opacity: .6; transform: scale(.94, .3); } }
 
-.asst-head { display: flex; align-items: center; gap: 8px; padding: 10px 8px 10px 14px; border-bottom: 1px solid var(--line); flex: none; }
+.asst-head { display: flex; align-items: center; gap: 8px; padding: 10px 8px 10px 14px; border-bottom: 1px solid var(--line); flex: none; cursor: grab; user-select: none; }
+.asst-head button { cursor: pointer; }
 .asst-title { flex: none; font-size: 12.5px; font-weight: 600; }
 .asst-title .spark { color: var(--accent); font-size: 11px; }
 .asst-chip {

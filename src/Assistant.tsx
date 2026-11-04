@@ -153,7 +153,33 @@ function SendIcon() {
 const MIN_W = 320
 const MIN_H = 260
 const SIZE_KEY = 'openpaper.askSize'
+const POS_KEY = 'openpaper.askPos'
+const EDGE = 8
 type Size = { w: number; h: number }
+/** Distance of the panel from the window's right and bottom edges. */
+type Pos = { r: number; b: number }
+
+function storedPos(): Pos | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(POS_KEY) ?? 'null') as Partial<Pos> | null
+    return v && typeof v.r === 'number' && typeof v.b === 'number' ? { r: v.r, b: v.b } : null
+  } catch {
+    return null
+  }
+}
+
+/** The area a fixed panel lives in: the window without its scrollbars. */
+function view() {
+  return { w: document.documentElement.clientWidth, h: document.documentElement.clientHeight }
+}
+
+/** Keeps a panel of the given size fully inside the window. */
+function clampPos(p: Pos, w: number, h: number): Pos {
+  const v = view()
+  const r = Math.round(Math.min(Math.max(p.r, EDGE), Math.max(EDGE, v.w - w - EDGE)))
+  const b = Math.round(Math.min(Math.max(p.b, EDGE), Math.max(EDGE, v.h - h - EDGE)))
+  return { r, b }
+}
 
 function storedSize(): Size | null {
   try {
@@ -182,11 +208,36 @@ export function FloatingAssistant({ ask, docTitle }: { ask: Ask; docTitle: strin
     if (s) localStorage.setItem(SIZE_KEY, JSON.stringify(s))
     else localStorage.removeItem(SIZE_KEY)
   }
+  // Set by dragging the header; null keeps the panel at the bottom right. Remembered across launches.
+  const [pos, setPos] = useState<Pos | null>(storedPos)
+  const keepPos = (p: Pos | null) => {
+    setPos(p)
+    try {
+      if (p) localStorage.setItem(POS_KEY, JSON.stringify(p))
+      else localStorage.removeItem(POS_KEY)
+    } catch {
+      // The position is a convenience; losing it is fine.
+    }
+  }
   const [text, setText] = useState('')
   const box = useRef<HTMLTextAreaElement>(null)
   const log = useRef<HTMLDivElement>(null)
   const root = useRef<HTMLDivElement>(null)
   const expanded = messages.length > 0 || loading
+
+  // Pull a moved panel back inside the window when the window shrinks or the panel grows.
+  const refit = useCallback(() => {
+    const el = root.current
+    if (!el || !pos) return
+    // Layout size, not the on-screen box, which an open animation scales.
+    const p = clampPos(pos, el.offsetWidth, el.offsetHeight)
+    if (p.r !== pos.r || p.b !== pos.b) setPos(p)
+  }, [pos])
+  useLayoutEffect(refit, [refit, open, expanded, wide, size])
+  useEffect(() => {
+    window.addEventListener('resize', refit)
+    return () => window.removeEventListener('resize', refit)
+  }, [refit])
 
   useEffect(() => {
     if (open) box.current?.focus()
@@ -259,6 +310,39 @@ export function FloatingAssistant({ ask, docTitle }: { ask: Ask; docTitle: strin
     handle.addEventListener('pointerup', up)
     handle.addEventListener('pointercancel', up)
   }
+
+  // Drag the header to move the panel anywhere in the window; double-click puts it back.
+  const move = (e: React.PointerEvent<HTMLElement>) => {
+    const el = root.current
+    if (e.button !== 0 || !el || (e.target as HTMLElement).closest('button')) return
+    e.preventDefault()
+    const handle = e.currentTarget
+    handle.setPointerCapture(e.pointerId)
+    const r = el.getBoundingClientRect()
+    const v = view()
+    const start = { r: v.w - r.right, b: v.h - r.bottom }
+    const x0 = e.clientX
+    const y0 = e.clientY
+    let p = start
+    el.classList.add('moving')
+    document.documentElement.classList.add('panel-moving')
+    const drag = (ev: PointerEvent) => {
+      p = clampPos({ r: start.r - (ev.clientX - x0), b: start.b - (ev.clientY - y0) }, el.offsetWidth, el.offsetHeight)
+      el.style.right = `${p.r}px`
+      el.style.bottom = `${p.b}px`
+    }
+    const up = () => {
+      handle.removeEventListener('pointermove', drag)
+      handle.removeEventListener('pointerup', up)
+      handle.removeEventListener('pointercancel', up)
+      el.classList.remove('moving')
+      document.documentElement.classList.remove('panel-moving')
+      if (p !== start) keepPos(p)
+    }
+    handle.addEventListener('pointermove', drag)
+    handle.addEventListener('pointerup', up)
+    handle.addEventListener('pointercancel', up)
+  }
   const lastSummary = messages.reduce((n, m, i) => (m.role === 'assistant' && m.summaryOf ? i : n), -1)
 
   if (!open) {
@@ -273,8 +357,12 @@ export function FloatingAssistant({ ask, docTitle }: { ask: Ask; docTitle: strin
   return (
     <div
       ref={root}
-      className={`asst${expanded ? ' expanded' : ''}${expanded && wide ? ' wide' : ''}`}
-      style={expanded && size ? { width: `min(${size.w}px, calc(100vw - 40px))`, height: `min(${size.h}px, calc(100vh - 40px))` } : undefined}
+      className={`asst${expanded ? ' expanded' : ''}${expanded && wide ? ' asst-wide' : ''}`}
+      style={{
+        ...(expanded && size ? { width: `min(${size.w}px, calc(100vw - 40px))`, height: `min(${size.h}px, calc(100vh - 40px))` } : {}),
+        ...(pos ? { right: `${pos.r}px`, bottom: `${pos.b}px` } : {}),
+      }}
+      onTransitionEnd={e => e.target === e.currentTarget && refit()}
       role="dialog"
       aria-label={t('Ask Claude')}
     >
@@ -290,7 +378,7 @@ export function FloatingAssistant({ ask, docTitle }: { ask: Ask; docTitle: strin
               aria-hidden="true"
             />
           ))}
-          <header className="asst-head">
+          <header className="asst-head" onPointerDown={move} onDoubleClick={e => !(e.target as HTMLElement).closest('button') && keepPos(null)}>
             <span className="asst-title"><span className="spark" aria-hidden="true">✦</span> {t('Ask Claude')}</span>
             {docTitle ? <span className="asst-chip" title={docTitle} lang="en">{docTitle}</span> : <span className="asst-gap" />}
             <button className="asst-new" onClick={reset}>{t('New chat')}</button>
