@@ -4,6 +4,8 @@ use crate::arxiv;
 use serde::Serialize;
 
 pub const PAGE: usize = 20;
+/// Shown when arXiv answers 429 or 503; callers may wait and try again.
+pub const BUSY: &str = "arXiv is busy. Search again in a few seconds";
 const MAX_FEED: u64 = 4 * 1024 * 1024;
 const ATOM: &str = "http://www.w3.org/2005/Atom";
 const ARXIV: &str = "http://arxiv.org/schemas/atom";
@@ -172,7 +174,7 @@ fn fetch_page(url: url::Url) -> Result<Page, String> {
     if !resp.status().is_success() {
         return Err(
             if resp.status().as_u16() == 429 || resp.status().as_u16() == 503 {
-                "arXiv is busy. Search again in a few seconds".into()
+                BUSY.into()
             } else {
                 format!("arXiv search failed ({})", resp.status().as_u16())
             },
