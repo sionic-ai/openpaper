@@ -576,7 +576,12 @@ export function App() {
     const asked = lang
     try {
       const a = await api.recommend(text, history, asked)
-      if (a.roadmap !== undefined) return await roadmapFromChat(a.roadmap)
+      if (a.roadmap) return await roadmapFromChat(a.roadmap)
+      if (a.roadmap === '' && a.picks.length) {
+        // A topic: show the papers found, then build the roadmap from the first one.
+        setChat(c => ({ messages: [...c.messages, { role: 'assistant', text: a.reply, picks: a.picks, lang: asked }], loading: true }))
+        return await roadmapFromChat(a.picks[0]!.hit.id)
+      }
       setChat(c => ({ messages: [...c.messages, { role: 'assistant', text: a.reply, picks: a.picks, lang: asked }], loading: false }))
     } catch (err) {
       setChat(c => ({ messages: [...c.messages, { role: 'error', text: errorText(err) }], loading: false }))
