@@ -2,6 +2,10 @@
 
 The app shows the section for its version once, after an update. Keep each entry short and about what users notice.
 
+## 0.2.14
+
+- Model names show their version, such as Sonnet 5.5 and Opus 5.5.
+
 ## 0.2.13
 
 - Select a word or a short passage and click Translate in the bubble to see what it means in that sentence.
