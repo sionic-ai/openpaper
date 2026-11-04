@@ -312,5 +312,6 @@
   "What to research": "研究したいテーマ",
   "AI search has two tabs: Find papers, and Roadmap for a reading roadmap from a topic or a paper.": "AI検索に「論文を探す」と、テーマや論文から読書ロードマップを作る「ロードマップ」の2つのタブができました。",
   "A roadmap waits and tries again when arXiv is briefly busy.": "arXivが一時的に混み合っているとき、ロードマップは待ってから再試行します。",
-  "The Find papers and Roadmap tabs stay at the top of AI search while the conversation scrolls.": "会話が長くなっても、AI検索の「論文を探す」と「ロードマップ」のタブは上に表示されたままです。"
+  "The Find papers and Roadmap tabs stay at the top of AI search while the conversation scrolls.": "会話が長くなっても、AI検索の「論文を探す」と「ロードマップ」のタブは上に表示されたままです。",
+  "A new teal logo that matches the website.": "ウェブサイトに合わせた青緑色の新しいロゴになりました。"
 }

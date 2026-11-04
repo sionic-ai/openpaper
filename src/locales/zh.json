@@ -312,5 +312,6 @@
   "What to research": "想研究的主题",
   "AI search has two tabs: Find papers, and Roadmap for a reading roadmap from a topic or a paper.": "AI 搜索有了两个标签：找论文，以及按主题或论文生成阅读路线图的“路线图”。",
   "A roadmap waits and tries again when arXiv is briefly busy.": "arXiv 暂时繁忙时，路线图会稍等后重试。",
-  "The Find papers and Roadmap tabs stay at the top of AI search while the conversation scrolls.": "对话变长时，AI 搜索的“找论文”和“路线图”标签会一直显示在顶部。"
+  "The Find papers and Roadmap tabs stay at the top of AI search while the conversation scrolls.": "对话变长时，AI 搜索的“找论文”和“路线图”标签会一直显示在顶部。",
+  "A new teal logo that matches the website.": "换上了与网站一致的青绿色新标志。"
 }
