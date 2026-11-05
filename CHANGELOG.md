@@ -2,6 +2,12 @@
 
 The app shows the section for its version once, after an update. Keep each entry short and about what users notice.
 
+## 0.2.18
+
+- ⌘T (Ctrl+T on Windows) opens a new tab, so you can keep several papers or searches open. ⌘W closes a tab, ⌃Tab and ⌘1–9 switch tabs, and ⌘-click opens a paper in a new tab.
+- Picking Easy starts the easy version right away; there is no second button to press.
+- Show only the original or only the translation with the switch at the top of the paper. A running translation shows a spinner and its count.
+
 ## 0.2.17
 
 - Drag the top of the chat panel to move it; double-click there to put it back.

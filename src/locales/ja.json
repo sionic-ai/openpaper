@@ -334,5 +334,7 @@
   "Columns": "表示",
   "Show only the original": "原文だけを表示",
   "Show only the translation": "翻訳だけを表示",
-  "Show the original and the translation side by side": "原文と翻訳を並べて表示"
+  "Show the original and the translation side by side": "原文と翻訳を並べて表示",
+  "Picking Easy starts the easy version right away; there is no second button to press.": "「やさしい翻訳」を選ぶとすぐに作成が始まります。もう一度ボタンを押す必要はありません。",
+  "Show only the original or only the translation with the switch at the top of the paper. A running translation shows a spinner and its count.": "論文上部の切り替えで、原文だけ・翻訳だけを表示できます。翻訳中は回転するアイコンと進み具合の数字が出ます。"
 }

@@ -334,5 +334,7 @@
   "Columns": "Spalten",
   "Show only the original": "Nur das Original zeigen",
   "Show only the translation": "Nur die Übersetzung zeigen",
-  "Show the original and the translation side by side": "Original und Übersetzung nebeneinander zeigen"
+  "Show the original and the translation side by side": "Original und Übersetzung nebeneinander zeigen",
+  "Picking Easy starts the easy version right away; there is no second button to press.": "Wenn du Einfach wählst, startet die einfache Version sofort; ein zweiter Knopf ist nicht mehr nötig.",
+  "Show only the original or only the translation with the switch at the top of the paper. A running translation shows a spinner and its count.": "Mit dem Umschalter oben im Paper zeigst du nur das Original oder nur die Übersetzung. Eine laufende Übersetzung zeigt ein drehendes Symbol und ihren Zähler."
 }
