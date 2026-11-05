@@ -132,7 +132,11 @@ function SidebarIcon() {
   )
 }
 
-const UPDATE_EVERY = 3 * 60 * 60 * 1000
+// A new release should show up in an app that stays open for days: check every 15 minutes, and again when
+// the window comes back (after sleep or from another app) if the last check is 5 minutes old. Each check
+// is one request to github.com, not the rate-limited API.
+const UPDATE_EVERY = 15 * 60 * 1000
+const UPDATE_ON_FOCUS_AFTER = 5 * 60 * 1000
 
 /** Shown at the bottom of the sidebar only when a newer release exists. */
 function UpdateButton() {
@@ -143,14 +147,26 @@ function UpdateButton() {
   const [asking, setAsking] = useState(false)
 
   useEffect(() => {
-    const check = () =>
+    let last = 0
+    const check = () => {
+      last = Date.now()
       api
         .updateCheck()
         .then(u => setLatest(u.available ? u.latest ?? '' : null))
         .catch(() => {})
-    void check()
+    }
+    const back = () => {
+      if (document.visibilityState === 'visible' && Date.now() - last >= UPDATE_ON_FOCUS_AFTER) check()
+    }
+    check()
     const timer = setInterval(check, UPDATE_EVERY)
-    return () => clearInterval(timer)
+    window.addEventListener('focus', back)
+    document.addEventListener('visibilitychange', back)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('focus', back)
+      document.removeEventListener('visibilitychange', back)
+    }
   }, [])
 
   if (latest === null) return null
