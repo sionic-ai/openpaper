@@ -330,5 +330,10 @@
   "New tab ({shortcut})": "新しいタブ（{shortcut}）",
   "Close tab": "タブを閉じる",
   "Close tab ({shortcut})": "タブを閉じる（{shortcut}）",
-  "⌘T (Ctrl+T on Windows) opens a new tab, so you can keep several papers or searches open. ⌘W closes a tab, ⌃Tab and ⌘1–9 switch tabs, and ⌘-click opens a paper in a new tab.": "⌘T（WindowsはCtrl+T）で新しいタブが開き、論文や検索をいくつも開いたままにできます。⌘Wでタブを閉じ、⌃Tabと⌘1–9でタブを切り替え、⌘クリックで論文を新しいタブで開けます。"
+  "⌘T (Ctrl+T on Windows) opens a new tab, so you can keep several papers or searches open. ⌘W closes a tab, ⌃Tab and ⌘1–9 switch tabs, and ⌘-click opens a paper in a new tab.": "⌘T（WindowsはCtrl+T）で新しいタブが開き、論文や検索をいくつも開いたままにできます。⌘Wでタブを閉じ、⌃Tabと⌘1–9でタブを切り替え、⌘クリックで論文を新しいタブで開けます。",
+  "Columns": "表示",
+  "Side by side": "並べて",
+  "Show only the original": "原文だけを表示",
+  "Show only the translation": "翻訳だけを表示",
+  "Show the original and the translation side by side": "原文と翻訳を並べて表示"
 }

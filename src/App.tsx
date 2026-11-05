@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { api, arxivDocId, arxivIdOf, errorText, looksLikeArxivId, type Doc, type Folder, type Hit, type AiMode, type Lang, type Language, type LlmStatus, type Meta, type Mode, type Status } from './api'
-import { Reader } from './Reader'
+import { Reader, type Cols } from './Reader'
 import { PaperList } from './Papers'
 import { SearchResults, type SearchState } from './Search'
 import { AiChat, type ChatState } from './Ai'
@@ -375,6 +375,15 @@ export function App() {
   const changeLang = (next: Lang) => {
     localStorage.setItem(LANG_KEY, next)
     setLang(next)
+  }
+  // Which columns the reader shows: both side by side, or only one of them.
+  const [cols, setColsState] = useState<Cols>(() => {
+    const v = localStorage.getItem('openpaper.cols')
+    return v === 'en' || v === 'tr' ? v : 'both'
+  })
+  const setCols = (c: Cols) => {
+    localStorage.setItem('openpaper.cols', c)
+    setColsState(c)
   }
   const [swapped, setSwapped] = useState(() => localStorage.getItem('openpaper.swapped') === '1')
   const toggleSwap = () =>
@@ -900,6 +909,21 @@ export function App() {
           )}
           <div className="bar-title" data-tauri-drag-region>{view === 'search' ? t('arXiv search') : view === 'ai' ? t('Find papers with AI') : view === 'roadmap' ? t('Reading roadmap') : doc?.title ?? tab.title}</div>
           {view === 'doc' && doc && (
+            <div className="cols-switch" role="group" aria-label={t('Columns')}>
+              {(['en', 'both', 'tr'] as const).map(c => (
+                <button
+                  key={c}
+                  className={cols === c ? 'on' : ''}
+                  aria-pressed={cols === c}
+                  onClick={() => setCols(c)}
+                  title={c === 'en' ? t('Show only the original') : c === 'tr' ? t('Show only the translation') : t('Show the original and the translation side by side')}
+                >
+                  {c === 'en' ? t('Original') : c === 'tr' ? langName : t('Side by side')}
+                </button>
+              ))}
+            </div>
+          )}
+          {view === 'doc' && doc && cols === 'both' && (
             <button className="bar-link" onClick={toggleSwap} title={swapped ? t('Put the original on the left') : t('Put the translation on the left')}>
               ⇄ {t('Swap sides')}
             </button>
@@ -1005,7 +1029,7 @@ export function App() {
             onMore={() => void runSearch(search.query, search.hits.length)}
           />
         ) : doc ? (
-          <Reader doc={doc} tr={tr} lang={lang} swapped={swapped} trLabel={mode === 'easy' ? t('{language} · easy', { language: langName }) : langName} />
+          <Reader doc={doc} tr={tr} lang={lang} swapped={swapped} cols={cols} trLabel={mode === 'easy' ? t('{language} · easy', { language: langName }) : langName} />
         ) : (
           // A tab whose paper is still loading stays blank instead of flashing the welcome page.
           !busy && !tab.docId && (
