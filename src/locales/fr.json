@@ -324,5 +324,11 @@
   "Copied": "Copié",
   "A copy button under each summary and answer copies the whole reply.": "Un bouton Copier sous chaque résumé et réponse copie toute la réponse.",
   "Buttons, links and highlights use the same teal as the logo; errors and warnings stay red.": "Les boutons, liens et mises en avant utilisent le même bleu-vert que le logo ; erreurs et avertissements restent en rouge.",
-  "Drag the top of the chat panel to move it; double-click there to put it back.": "Faites glisser le haut du panneau de discussion pour le déplacer ; double-cliquez dessus pour le remettre en place."
+  "Drag the top of the chat panel to move it; double-click there to put it back.": "Faites glisser le haut du panneau de discussion pour le déplacer ; double-cliquez dessus pour le remettre en place.",
+  "Tabs": "Onglets",
+  "New tab": "Nouvel onglet",
+  "New tab ({shortcut})": "Nouvel onglet ({shortcut})",
+  "Close tab": "Fermer l’onglet",
+  "Close tab ({shortcut})": "Fermer l’onglet ({shortcut})",
+  "⌘T (Ctrl+T on Windows) opens a new tab, so you can keep several papers or searches open. ⌘W closes a tab, ⌃Tab and ⌘1–9 switch tabs, and ⌘-click opens a paper in a new tab.": "⌘T (Ctrl+T sous Windows) ouvre un nouvel onglet pour garder plusieurs articles ou recherches ouverts. ⌘W ferme un onglet, ⌃Tab et ⌘1–9 changent d’onglet, et ⌘-clic ouvre un article dans un nouvel onglet."
 }

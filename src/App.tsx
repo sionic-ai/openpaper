@@ -9,10 +9,12 @@ import { FloatingAssistant, SelectionAsk, useAsk } from './Assistant'
 import { ModelButton, ModelDialog, ProblemNotice } from './Model'
 import { PatchNotes } from './PatchNotes'
 import { setUiLang, t, tx, useT } from './i18n'
-import { modKey, shortcut } from './platform'
+import { isLetter, isMac, modClick, modKey, shortcut } from './platform'
 import { posKey } from './position'
 import { dragSplit, stored } from './resize'
 import { applyTheme, initialTheme, type Theme } from './theme'
+import { listen } from '@tauri-apps/api/event'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import logo from '../src-tauri/icons/128x128.png'
 
 function ThemeButton() {
@@ -239,6 +241,40 @@ function onlyHeadingsMissing(doc: Doc, tr: Tr): boolean {
 
 const modeKey = (id: string) => `openpaper.mode.${id}`
 
+type View = 'doc' | 'search' | 'ai' | 'roadmap'
+
+/** A tab: what the main area shows, with its own paper, arXiv search and roadmap. The AI search chat is shared. */
+type Tab = { id: number; view: View; docId: string | null; title: string; search: SearchState | null; roadmap: RoadmapState | null }
+
+let tabSeq = 0
+const blankTab = (docId: string | null = null, title = ''): Tab => ({ id: ++tabSeq, view: 'doc', docId, title, search: null, roadmap: null })
+
+const inTauri = '__TAURI_INTERNALS__' in window
+// On macOS the app menu owns ⌘T and ⌘W (src-tauri/src/main.rs) and sends them as a `menu` event.
+const nativeMenu = isMac && inTauri
+
+/** The tab strip over the main area, shown once there are two or more tabs. Middle-click closes a tab. */
+function TabStrip({ tabs, active, label, onPick, onClose, onNew }: { tabs: Tab[]; active: number; label: (tab: Tab) => string; onPick: (id: number) => void; onClose: (id: number) => void; onNew: () => void }) {
+  useT()
+  return (
+    <div className="tabs" role="tablist" aria-label={t('Tabs')} data-tauri-drag-region>
+      {tabs.map(tab => (
+        <div key={tab.id} className={`tab${tab.id === active ? ' active' : ''}`} onAuxClick={e => e.button === 1 && onClose(tab.id)}>
+          <button className="tab-pick" role="tab" aria-selected={tab.id === active} onClick={() => onPick(tab.id)} title={label(tab)}>
+            {label(tab)}
+          </button>
+          <button className="tab-x" onClick={() => onClose(tab.id)} title={t('Close tab ({shortcut})', { shortcut: shortcut('W') })} aria-label={t('Close tab')}>
+            ×
+          </button>
+        </div>
+      ))}
+      <button className="tab-new" onClick={onNew} title={t('New tab ({shortcut})', { shortcut: shortcut('T') })} aria-label={t('New tab')}>
+        +
+      </button>
+    </div>
+  )
+}
+
 /** Translate (or Retranslate in the new style) → pick a faithful translation or an easy explanation. */
 function StartMenu({ label, title, onPick }: { label: string; title?: string; onPick: (mode: Mode) => void }) {
   useT()
@@ -286,18 +322,37 @@ export function App() {
   useT()
   const [papers, setPapers] = useState<Meta[]>([])
   const [folders, setFolders] = useState<Folder[]>([])
-  const [doc, setDoc] = useState<Doc | null>(null)
+  const [tabState, setTabState] = useState(() => {
+    const first = blankTab()
+    return { tabs: [first], active: first.id }
+  })
+  const tab = tabState.tabs.find(x => x.id === tabState.active) ?? tabState.tabs[0]!
+  const activeTab = useRef(tab.id)
+  activeTab.current = tab.id
+  const tabsRef = useRef(tabState.tabs)
+  tabsRef.current = tabState.tabs
+  const patchTab = useCallback(
+    (id: number, f: (tab: Tab) => Partial<Tab>) => setTabState(s => ({ ...s, tabs: s.tabs.map(x => (x.id === id ? { ...x, ...f(x) } : x)) })),
+    []
+  )
+  const { view, search, roadmap } = tab
+  const setView = (v: View) => patchTab(activeTab.current, () => ({ view: v }))
+  const setSearchIn = (id: number, f: (prev: SearchState | null) => SearchState | null) => patchTab(id, x => ({ search: f(x.search) }))
+  const setRoadmapIn = (id: number, f: (prev: RoadmapState | null) => RoadmapState | null) => patchTab(id, x => ({ roadmap: f(x.roadmap) }))
+  // The paper last loaded; it is on screen only in the tab that holds it.
+  const [loaded, setDoc] = useState<Doc | null>(null)
+  const loadedRef = useRef(loaded)
+  loadedRef.current = loaded
+  const doc = loaded && loaded.id === tab.docId ? loaded : null
   const [tr, setTr] = useState<Tr>({})
-  const [status, setStatus] = useState<Status | null>(null)
+  const [loadedStatus, setStatus] = useState<Status | null>(null)
+  const status = doc ? loadedStatus : null
   const [mode, setMode] = useState<Mode>('plain')
   // Whether the mode not on screen already has text or a running job, so both can be switched between.
   const [otherHas, setOtherHas] = useState(false)
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [search, setSearch] = useState<SearchState | null>(null)
-  const [view, setView] = useState<'doc' | 'search' | 'ai' | 'roadmap'>('doc')
-  const [roadmap, setRoadmap] = useState<RoadmapState | null>(null)
   const [chat, setChat] = useState<ChatState>({ messages: [], loading: false })
   const [aiMode, setAiMode] = useState<AiMode>('search')
   const [fetchingId, setFetchingId] = useState<string | null>(null)
@@ -378,7 +433,8 @@ export function App() {
   const openSeq = useRef(0)
   /** The `open` call still in progress, so a language change can redo it in the new language. */
   const opening = useRef<{ id: string; start: boolean | 'redo'; want?: Mode; stay: boolean } | null>(null)
-  const searchSeq = useRef(0)
+  // Per tab, so a search or roadmap still running in a tab that is not on screen lands there.
+  const searchSeq = useRef(new Map<number, number>())
   // Questions are about the paper on screen; search results and the welcome page ask without one.
   const shownDoc = view === 'doc' ? doc : null
   const assistant = useAsk(shownDoc?.id ?? null, lang)
@@ -425,6 +481,7 @@ export function App() {
    */
   const open = useCallback(async (id: string, startTranslation: boolean | 'redo', want?: Mode, stay = false) => {
     const seq = ++openSeq.current
+    const inTab = activeTab.current
     opening.current = { id, start: startTranslation, want, stay }
     setError(null)
     try {
@@ -434,7 +491,7 @@ export function App() {
       const m: Mode = want ?? (localStorage.getItem(modeKey(id)) === 'easy' ? 'easy' : 'plain')
       localStorage.setItem(modeKey(id), m)
       setDoc(d)
-      if (!stay) setView('doc')
+      patchTab(inTab, x => ({ docId: id, title: d.title, view: stay ? x.view : 'doc' }))
       setMode(m)
       setTr({})
       setStatus(null)
@@ -457,7 +514,7 @@ export function App() {
     } finally {
       if (seq === openSeq.current) opening.current = null
     }
-  }, [])
+  }, [patchTab])
 
   // A new target language reloads the paper in it: the one still opening if any (it would otherwise be
   // dropped or finish in the old language), else the loaded one, in place so search and AI views stay put.
@@ -494,22 +551,25 @@ export function App() {
   }
 
   const runSearch = async (query: string, start: number) => {
-    const seq = ++searchSeq.current
+    const inTab = activeTab.current
+    const seq = (searchSeq.current.get(inTab) ?? 0) + 1
+    searchSeq.current.set(inTab, seq)
+    const current = () => searchSeq.current.get(inTab) === seq
     setView('search')
-    setSearch(prev =>
+    setSearchIn(inTab, prev =>
       start > 0 && prev ? { ...prev, loading: true, error: null } : { query, hits: [], total: 0, loading: true, error: null }
     )
     if (start === 0) document.querySelector('.main')?.scrollTo(0, 0)
     try {
       const page = await api.search(query, start)
-      if (seq !== searchSeq.current) return
-      setSearch(prev => {
+      if (!current()) return
+      setSearchIn(inTab, prev => {
         const kept = start > 0 && prev ? prev.hits : []
         const seen = new Set(kept.map(h => h.id))
         return { query, hits: [...kept, ...page.hits.filter(h => !seen.has(h.id))], total: page.total, loading: false, error: null }
       })
     } catch (err) {
-      if (seq === searchSeq.current) setSearch(prev => (prev ? { ...prev, loading: false, error: errorText(err) } : prev))
+      if (current()) setSearchIn(inTab, prev => (prev ? { ...prev, loading: false, error: errorText(err) } : prev))
     }
   }
 
@@ -531,21 +591,24 @@ export function App() {
   }
 
   /** Shows the reading roadmap of a saved paper: the saved one, or a new one built now. */
-  const roadmapSeq = useRef(0)
+  const roadmapSeq = useRef(new Map<number, number>())
   const showRoadmap = (docId: string, seedTitle: string, fresh = false, onMade?: () => void) => {
     const asked = lang
-    const seq = ++roadmapSeq.current
+    const inTab = activeTab.current
+    const seq = (roadmapSeq.current.get(inTab) ?? 0) + 1
+    roadmapSeq.current.set(inTab, seq)
     setView('roadmap')
-    setRoadmap({ docId, seedTitle, data: null, step: null, error: null })
-    // Only the latest request may update the view (another paper, language or a newer build).
-    const mine = (r: RoadmapState | null) => seq === roadmapSeq.current && r?.docId === docId
+    setRoadmapIn(inTab, () => ({ docId, seedTitle, data: null, step: null, error: null }))
+    // Only the tab's latest request may update it (another paper, language or a newer build).
+    const mine = (r: RoadmapState | null) => seq === roadmapSeq.current.get(inTab) && r?.docId === docId
+    const set = (f: (r: RoadmapState) => RoadmapState) => setRoadmapIn(inTab, r => (mine(r) ? f(r!) : r))
     api
-      .roadmap(docId, asked, fresh, step => setRoadmap(r => (mine(r) ? { ...r!, step } : r)))
+      .roadmap(docId, asked, fresh, step => set(r => ({ ...r, step })))
       .then(data => {
-        setRoadmap(r => (mine(r) ? { ...r!, data, step: null } : r))
+        set(r => ({ ...r, data, step: null }))
         onMade?.()
       })
-      .catch(err => setRoadmap(r => (mine(r) ? { ...r!, step: null, error: errorText(err) } : r)))
+      .catch(err => set(r => ({ ...r, step: null, error: errorText(err) })))
   }
 
   /** The AI finder asked for a roadmap: from the paper it named (fetched if needed) or the open one. */
@@ -626,13 +689,115 @@ export function App() {
     await api.remove(id).catch(() => {})
     localStorage.removeItem(posKey(id))
     if (opening.current?.id === id) opening.current = null
-    if (doc?.id === id) {
+    if (loadedRef.current?.id === id) {
       openSeq.current++
       setDoc(null)
       setStatus(null)
     }
+    // Tabs that showed the paper become empty.
+    setTabState(s => ({ ...s, tabs: s.tabs.map(x => (x.docId === id ? { ...x, docId: null, title: '' } : x)) }))
     await refreshList()
   }
+
+  // Tabs. ⌘T opens an empty one next to the current tab, ⌘W closes the current one (with the last
+  // tab left, ⌘W closes the window on macOS as before), ⌃Tab and ⌘1-9 switch, ⌘-click opens a paper in a new tab.
+  const [focusSide, setFocusSide] = useState(0)
+  const newTab = useCallback((docId: string | null = null, title = '') => {
+    // A dialog (model settings, update) keeps the keyboard; ⌘T waits until it closes.
+    if (!docId && document.querySelector('.modal-back')) return
+    const next = blankTab(docId, title)
+    setTabState(s => {
+      const tabs = [...s.tabs]
+      tabs.splice(tabs.findIndex(x => x.id === s.active) + 1, 0, next)
+      return { tabs, active: next.id }
+    })
+    if (docId) return
+    // Like a browser's address bar: the sidebar search takes the typing.
+    setFolded(f => {
+      if (f) localStorage.setItem('openpaper.sideFolded', '0')
+      return false
+    })
+    setFocusSide(n => n + 1)
+  }, [])
+  useEffect(() => {
+    if (!focusSide) return
+    const box = document.querySelector<HTMLInputElement>('.import input')
+    box?.focus()
+    box?.select()
+  }, [focusSide])
+  const closeTab = useCallback((id: number) => {
+    setTabState(s => {
+      if (s.tabs.length < 2) return s
+      const i = s.tabs.findIndex(x => x.id === id)
+      const tabs = s.tabs.filter(x => x.id !== id)
+      // Closing the current tab moves to the one on its right, or the last one.
+      return { tabs, active: s.active === id ? tabs[Math.min(i, tabs.length - 1)]!.id : s.active }
+    })
+  }, [])
+  const closeCurrentTab = useCallback(() => {
+    if (document.querySelector('.modal-back')) return
+    if (tabsRef.current.length > 1) closeTab(activeTab.current)
+    else if (nativeMenu) void getCurrentWindow().close().catch(() => {})
+  }, [closeTab])
+  const pickTab = useCallback((id: number) => setTabState(s => (s.tabs.some(x => x.id === id) ? { ...s, active: id } : s)), [])
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (e.isComposing || e.altKey) return
+      const tabs = tabsRef.current
+      if (e.ctrlKey && !e.metaKey && e.key === 'Tab') {
+        e.preventDefault()
+        const i = tabs.findIndex(x => x.id === activeTab.current)
+        return pickTab(tabs[(i + (e.shiftKey ? -1 : 1) + tabs.length) % tabs.length]!.id)
+      }
+      if (!modKey(e) || e.shiftKey) return
+      const n = /^Digit([1-9])$/.exec(e.code)?.[1]
+      if (n) {
+        // ⌘9 is the last tab, as in a browser.
+        e.preventDefault()
+        const target = n === '9' ? tabs[tabs.length - 1] : tabs[Number(n) - 1]
+        if (target) pickTab(target.id)
+      } else if (!nativeMenu && isLetter(e, 't')) {
+        e.preventDefault()
+        newTab()
+      } else if (!nativeMenu && isLetter(e, 'w')) {
+        e.preventDefault()
+        closeCurrentTab()
+      }
+    }
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  }, [newTab, closeCurrentTab, pickTab])
+  useEffect(() => {
+    if (!nativeMenu) return
+    let stop: (() => void) | undefined
+    let gone = false
+    void listen<string>('menu', e => {
+      if (e.payload === 'new-tab') newTab()
+      else if (e.payload === 'close-tab') closeCurrentTab()
+    })
+      .then(un => (gone ? un() : (stop = un)))
+      .catch(() => {})
+    return () => {
+      gone = true
+      stop?.()
+    }
+  }, [newTab, closeCurrentTab])
+  // Switching tabs loads that tab's paper, unless it is the one already loaded.
+  useEffect(() => {
+    openSeq.current++
+    opening.current = null
+    setError(null)
+    const id = tabsRef.current.find(x => x.id === tabState.active)?.docId
+    if (id && loadedRef.current?.id !== id) void open(id, false, undefined, true)
+  }, [tabState.active, open])
+  const tabLabel = (x: Tab) =>
+    x.view === 'search' && x.search
+      ? t('Search: {query}', { query: x.search.query })
+      : x.view === 'ai'
+        ? t('AI search')
+        : x.view === 'roadmap'
+          ? t('Reading roadmap')
+          : x.title || t('New tab')
 
   // Same units the Rust job translates: section headings, paragraphs and captions.
   const unitIds = useMemo(() => {
@@ -649,7 +814,7 @@ export function App() {
   const remaining = total - translated
 
   return (
-    <div className={`app${folded ? ' folded' : ''}`} ref={app} style={{ '--side-w': `${sideW}px` } as React.CSSProperties}>
+    <div className={`app${folded ? ' folded' : ''}${tabState.tabs.length > 1 ? ' has-tabs' : ''}`} ref={app} style={{ '--side-w': `${sideW}px` } as React.CSSProperties}>
       <aside className="side" aria-hidden={folded || undefined} inert={folded || undefined}>
         <div className="side-top" data-tauri-drag-region>
           <button className="side-fold" onClick={() => fold(true)} title={t('Hide sidebar ({shortcut})', { shortcut: shortcut('B') })} aria-label={t('Hide sidebar')}>
@@ -690,7 +855,7 @@ export function App() {
           folders={folders}
           onFolders={saveFolders}
           activeId={view === 'doc' ? doc?.id ?? null : null}
-          onOpen={id => void open(id, false)}
+          onOpen={(id, inNewTab) => (inNewTab ? newTab(id, papers.find(p => p.id === id)?.title ?? '') : void open(id, false))}
           onRemove={id => void remove(id)}
           onRead={(id, read) => {
             setPapers(ps => ps.map(p => (p.id === id ? { ...p, read } : p)))
@@ -722,6 +887,10 @@ export function App() {
         />
       )}
 
+      <div className="main-col">
+      {tabState.tabs.length > 1 && (
+        <TabStrip tabs={tabState.tabs} active={tab.id} label={tabLabel} onPick={pickTab} onClose={closeTab} onNew={() => newTab()} />
+      )}
       <main className="main">
         <header className="bar" data-tauri-drag-region>
           {folded && (
@@ -729,7 +898,7 @@ export function App() {
               <SidebarIcon />
             </button>
           )}
-          <div className="bar-title" data-tauri-drag-region>{view === 'search' ? t('arXiv search') : view === 'ai' ? t('Find papers with AI') : view === 'roadmap' ? t('Reading roadmap') : doc?.title ?? ''}</div>
+          <div className="bar-title" data-tauri-drag-region>{view === 'search' ? t('arXiv search') : view === 'ai' ? t('Find papers with AI') : view === 'roadmap' ? t('Reading roadmap') : doc?.title ?? tab.title}</div>
           {view === 'doc' && doc && (
             <button className="bar-link" onClick={toggleSwap} title={swapped ? t('Put the original on the left') : t('Put the translation on the left')}>
               ⇄ {t('Swap sides')}
@@ -814,7 +983,10 @@ export function App() {
             state={roadmap}
             saved={new Set(papers.map(p => arxivIdOf(p.id)).filter((x): x is string => !!x))}
             busyId={fetchingId}
-            onOpen={item => void openHit({ id: item.id, title: item.title, authors: [], summary: '', published: '', category: '' }, msg => setRoadmap(r => (r ? { ...r, error: msg } : r)))}
+            onOpen={item => {
+              const inTab = tab.id
+              void openHit({ id: item.id, title: item.title, authors: [], summary: '', published: '', category: '' }, msg => setRoadmapIn(inTab, r => (r ? { ...r, error: msg } : r)))
+            }}
             onWeb={id => openWeb(id)}
             onRegenerate={() => showRoadmap(roadmap.docId, roadmap.seedTitle, true)}
             onBack={() => void open(roadmap.docId, false)}
@@ -824,14 +996,18 @@ export function App() {
             state={search}
             saved={new Set(papers.map(p => arxivIdOf(p.id)).filter((x): x is string => !!x))}
             busyId={fetchingId}
-            onOpen={hit => void openHit(hit, msg => setSearch(prev => (prev ? { ...prev, error: msg } : prev)))}
+            onOpen={hit => {
+              const inTab = tab.id
+              void openHit(hit, msg => setSearchIn(inTab, prev => (prev ? { ...prev, error: msg } : prev)))
+            }}
             onWeb={hit => openWeb(hit.id)}
             onMore={() => void runSearch(search.query, search.hits.length)}
           />
         ) : doc ? (
           <Reader doc={doc} tr={tr} lang={lang} swapped={swapped} trLabel={mode === 'easy' ? t('{language} · easy', { language: langName }) : langName} />
         ) : (
-          !busy && (
+          // A tab whose paper is still loading stays blank instead of flashing the welcome page.
+          !busy && !tab.docId && (
             <div className="welcome">
               <h1>{t('Read papers side by side with a translation')}</h1>
               <p>
@@ -845,12 +1021,13 @@ export function App() {
           )
         )}
       </main>
+      </div>
       {modelOpen && <ModelDialog onClose={closeModel} onChanged={checkLlm} />}
       <PatchNotes />
       {view !== 'ai' && (
         <>
           <FloatingAssistant ask={assistant} docTitle={shownDoc?.title ?? null} />
-          <SelectionAsk busy={assistant.loading} resetKey={`${view}:${doc?.id ?? ''}`} lang={lang} onAsk={(q, quote) => assistant.send(q, quote)} />
+          <SelectionAsk busy={assistant.loading} resetKey={`${tab.id}:${view}:${doc?.id ?? ''}`} lang={lang} onAsk={(q, quote) => assistant.send(q, quote)} />
         </>
       )}
     </div>

@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Main window: app commands, title-bar dragging and double-click zoom; the PDF picker runs in Rust",
+  "description": "Main window: app commands, title-bar dragging and double-click zoom, closing the window from Close Tab (⌘W) on the last tab; the PDF picker runs in Rust",
   "windows": ["main"],
-  "permissions": ["core:default", "core:window:allow-start-dragging", "core:window:allow-set-theme"]
+  "permissions": ["core:default", "core:window:allow-start-dragging", "core:window:allow-set-theme", "core:window:allow-close"]
 }

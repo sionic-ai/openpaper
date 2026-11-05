@@ -324,5 +324,11 @@
   "Copied": "コピーしました",
   "A copy button under each summary and answer copies the whole reply.": "要約と回答の下のコピーボタンで、回答全体をコピーできます。",
   "Buttons, links and highlights use the same teal as the logo; errors and warnings stay red.": "ボタン、リンク、強調色がロゴと同じ青緑色になりました。エラーと警告は赤のままです。",
-  "Drag the top of the chat panel to move it; double-click there to put it back.": "質問パネルの上部をドラッグして好きな場所に動かせます。上部をダブルクリックすると元の位置に戻ります。"
+  "Drag the top of the chat panel to move it; double-click there to put it back.": "質問パネルの上部をドラッグして好きな場所に動かせます。上部をダブルクリックすると元の位置に戻ります。",
+  "Tabs": "タブ",
+  "New tab": "新しいタブ",
+  "New tab ({shortcut})": "新しいタブ（{shortcut}）",
+  "Close tab": "タブを閉じる",
+  "Close tab ({shortcut})": "タブを閉じる（{shortcut}）",
+  "⌘T (Ctrl+T on Windows) opens a new tab, so you can keep several papers or searches open. ⌘W closes a tab, ⌃Tab and ⌘1–9 switch tabs, and ⌘-click opens a paper in a new tab.": "⌘T（WindowsはCtrl+T）で新しいタブが開き、論文や検索をいくつも開いたままにできます。⌘Wでタブを閉じ、⌃Tabと⌘1–9でタブを切り替え、⌘クリックで論文を新しいタブで開けます。"
 }
