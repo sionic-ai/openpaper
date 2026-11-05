@@ -334,5 +334,7 @@
   "Columns": "Columnas",
   "Show only the original": "Mostrar solo el original",
   "Show only the translation": "Mostrar solo la traducción",
-  "Show the original and the translation side by side": "Mostrar el original y la traducción en paralelo"
+  "Show the original and the translation side by side": "Mostrar el original y la traducción en paralelo",
+  "Picking Easy starts the easy version right away; there is no second button to press.": "Al elegir Fácil, la versión fácil empieza enseguida; ya no hay que pulsar un segundo botón.",
+  "Show only the original or only the translation with the switch at the top of the paper. A running translation shows a spinner and its count.": "Muestra solo el original o solo la traducción con el selector de la parte superior del artículo. Una traducción en curso muestra un indicador giratorio y su recuento."
 }
