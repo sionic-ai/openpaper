@@ -332,7 +332,6 @@
   "Close tab ({shortcut})": "Fermer l’onglet ({shortcut})",
   "⌘T (Ctrl+T on Windows) opens a new tab, so you can keep several papers or searches open. ⌘W closes a tab, ⌃Tab and ⌘1–9 switch tabs, and ⌘-click opens a paper in a new tab.": "⌘T (Ctrl+T sous Windows) ouvre un nouvel onglet pour garder plusieurs articles ou recherches ouverts. ⌘W ferme un onglet, ⌃Tab et ⌘1–9 changent d’onglet, et ⌘-clic ouvre un article dans un nouvel onglet.",
   "Columns": "Colonnes",
-  "Side by side": "Côte à côte",
   "Show only the original": "Afficher uniquement l’original",
   "Show only the translation": "Afficher uniquement la traduction",
   "Show the original and the translation side by side": "Afficher l’original et la traduction côte à côte"

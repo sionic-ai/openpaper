@@ -111,6 +111,18 @@ const SIDE_W = 260
 const SIDE_MIN = 200
 const SIDE_MAX = 440
 
+/** Two columns side by side, between the Original and translation buttons of the column switch. */
+function SplitIcon() {
+  // Two separate panes with a gap, so it reads as a split view rather than an open book.
+  return (
+    <svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true">
+      <rect x="1" y="1.5" width="6.75" height="11" rx="1.6" />
+      <rect x="10.25" y="1.5" width="6.75" height="11" rx="1.6" />
+      <path d="M3 5h2.75M3 7.5h2.75M3 10h1.75M12.25 5H15M12.25 7.5H15M12.25 10H14" strokeLinecap="round" strokeWidth="1.1" />
+    </svg>
+  )
+}
+
 function SidebarIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden="true">
@@ -923,12 +935,13 @@ export function App() {
               {(['en', 'both', 'tr'] as const).map(c => (
                 <button
                   key={c}
-                  className={cols === c ? 'on' : ''}
                   aria-pressed={cols === c}
                   onClick={() => setCols(c)}
                   title={c === 'en' ? t('Show only the original') : c === 'tr' ? t('Show only the translation') : t('Show the original and the translation side by side')}
+                  aria-label={c === 'both' ? t('Show the original and the translation side by side') : undefined}
+                  className={`${cols === c ? 'on' : ''}${c === 'both' ? ' icon' : ''}`}
                 >
-                  {c === 'en' ? t('Original') : c === 'tr' ? langName : t('Side by side')}
+                  {c === 'en' ? t('Original') : c === 'tr' ? langName : <SplitIcon />}
                 </button>
               ))}
             </div>

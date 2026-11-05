@@ -332,7 +332,6 @@
   "Close tab ({shortcut})": "关闭标签页（{shortcut}）",
   "⌘T (Ctrl+T on Windows) opens a new tab, so you can keep several papers or searches open. ⌘W closes a tab, ⌃Tab and ⌘1–9 switch tabs, and ⌘-click opens a paper in a new tab.": "⌘T（Windows 上为 Ctrl+T）可打开新标签页，同时开着多篇论文或多个搜索。⌘W 关闭标签页，⌃Tab 和 ⌘1–9 切换标签页，⌘ 点击可在新标签页中打开论文。",
   "Columns": "显示",
-  "Side by side": "并排",
   "Show only the original": "只显示原文",
   "Show only the translation": "只显示译文",
   "Show the original and the translation side by side": "并排显示原文和译文"

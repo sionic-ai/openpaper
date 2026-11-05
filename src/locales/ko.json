@@ -332,7 +332,6 @@
   "Close tab ({shortcut})": "탭 닫기 ({shortcut})",
   "⌘T (Ctrl+T on Windows) opens a new tab, so you can keep several papers or searches open. ⌘W closes a tab, ⌃Tab and ⌘1–9 switch tabs, and ⌘-click opens a paper in a new tab.": "⌘T(Windows는 Ctrl+T)로 새 탭을 열어 논문과 검색 여러 개를 함께 띄워 둘 수 있어요. ⌘W로 탭을 닫고, ⌃Tab과 ⌘1–9로 탭을 옮기고, ⌘-클릭하면 논문이 새 탭에서 열려요.",
   "Columns": "보기",
-  "Side by side": "나란히",
   "Show only the original": "원문만 보기",
   "Show only the translation": "번역만 보기",
   "Show the original and the translation side by side": "원문과 번역을 나란히 보기"
