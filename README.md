@@ -71,7 +71,7 @@ Requires Windows 10 or 11 (x64) and a Claude account. The setup program installs
 - **Pick your language.** Translate into Korean, Japanese, Chinese (Simplified), Spanish, French, German, or Portuguese.
 - **arXiv search.** Search arXiv inside the app, or paste an arXiv ID or URL. Local PDFs work too.
 - **AI paper finder.** Describe what you are looking for in plain words. Claude plans the searches, and the app only shows papers that came back from arXiv, never invented ones.
-- **Easy mode.** An explanatory translation that unpacks jargon and adds the missing reasoning, while keeping facts and numbers as written.
+- **Easy mode.** Switch to Easy and it starts at once: an explanatory translation that unpacks jargon and adds the missing reasoning, while keeping facts and numbers as written.
 - **Summary post.** One click writes a short explainer post about the paper with its real numbers. It is saved and shows up instantly next time.
 - **Ask the paper.** Ask questions in a chat grounded in the open paper. Select any passage to ask about it directly. Answers stream in as they are written.
 - **Tabs.** Press `⌘T` (`Ctrl+T` on Windows) for a new tab and keep several papers and searches open at once. `⌘W` closes a tab, `⌃Tab` and `⌘1`–`⌘9` switch tabs, and `⌘`-click opens a paper in a new tab.

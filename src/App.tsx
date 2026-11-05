@@ -918,7 +918,8 @@ export function App() {
                       key={m}
                       className={mode === m ? 'on' : ''}
                       aria-pressed={mode === m}
-                      onClick={() => mode !== m && void open(doc.id, false, m)}
+                      // Switching starts that version at once when it is missing or unfinished; a running job just continues.
+                      onClick={() => mode !== m && void open(doc.id, true, m)}
                       title={m === 'plain' ? t('Faithful translation') : t('Easy explanation with hard terms in plain words')}
                     >
                       {m === 'plain' ? t('Translation') : t('Easy')}
