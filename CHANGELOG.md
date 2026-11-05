@@ -2,6 +2,10 @@
 
 The app shows the section for its version once, after an update. Keep each entry short and about what users notice.
 
+## 0.2.19
+
+- A new version now shows its Update button within 15 minutes, or as soon as you come back to the window, without restarting the app.
+
 ## 0.2.18
 
 - ⌘T (Ctrl+T on Windows) opens a new tab, so you can keep several papers or searches open. ⌘W closes a tab, ⌃Tab and ⌘1–9 switch tabs, and ⌘-click opens a paper in a new tab.

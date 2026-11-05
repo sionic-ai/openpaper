@@ -336,5 +336,6 @@
   "Show only the translation": "Nur die Übersetzung zeigen",
   "Show the original and the translation side by side": "Original und Übersetzung nebeneinander zeigen",
   "Picking Easy starts the easy version right away; there is no second button to press.": "Wenn du Einfach wählst, startet die einfache Version sofort; ein zweiter Knopf ist nicht mehr nötig.",
-  "Show only the original or only the translation with the switch at the top of the paper. A running translation shows a spinner and its count.": "Mit dem Umschalter oben im Paper zeigst du nur das Original oder nur die Übersetzung. Eine laufende Übersetzung zeigt ein drehendes Symbol und ihren Zähler."
+  "Show only the original or only the translation with the switch at the top of the paper. A running translation shows a spinner and its count.": "Mit dem Umschalter oben im Paper zeigst du nur das Original oder nur die Übersetzung. Eine laufende Übersetzung zeigt ein drehendes Symbol und ihren Zähler.",
+  "A new version now shows its Update button within 15 minutes, or as soon as you come back to the window, without restarting the app.": "Eine neue Version zeigt ihren Update-Knopf innerhalb von 15 Minuten oder sobald du zum Fenster zurückkehrst, ohne die App neu zu starten."
 }

@@ -336,5 +336,6 @@
   "Show only the translation": "只显示译文",
   "Show the original and the translation side by side": "并排显示原文和译文",
   "Picking Easy starts the easy version right away; there is no second button to press.": "选择简明翻译后会立即开始生成，不用再按一次按钮。",
-  "Show only the original or only the translation with the switch at the top of the paper. A running translation shows a spinner and its count.": "用论文上方的切换按钮可以只看原文或只看译文。翻译进行时会显示旋转图标和进度数字。"
+  "Show only the original or only the translation with the switch at the top of the paper. A running translation shows a spinner and its count.": "用论文上方的切换按钮可以只看原文或只看译文。翻译进行时会显示旋转图标和进度数字。",
+  "A new version now shows its Update button within 15 minutes, or as soon as you come back to the window, without restarting the app.": "有新版本时，无需重启应用，15 分钟内或回到窗口时就会显示更新按钮。"
 }
