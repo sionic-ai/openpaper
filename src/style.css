@@ -242,6 +242,9 @@ button:disabled { cursor: default; opacity: .5; }
 .progress button { border: 1px solid var(--line); background: var(--paper); border-radius: 6px; padding: 3px 10px; font-size: 12px; }
 .progress button.primary { background: transparent; border-color: var(--accent); color: var(--accent); }
 .progress button.primary:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.working { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.working-spin { flex: none; width: 12px; height: 12px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--accent) 22%, transparent); border-top-color: var(--accent); animation: spin .8s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .working-spin { animation-duration: 2.4s; } }
 .meter { width: 120px; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
 .meter span { display: block; height: 100%; background: var(--accent); transition: width .4s; }
 .progress .summary-btn .spark { color: var(--accent); font-size: 10px; }

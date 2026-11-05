@@ -211,6 +211,16 @@ function UpdateIcon() {
   )
 }
 
+/** A running job in the header: a turning ring and the count; the full wording is the tooltip and the accessible name. */
+function Working({ label, done, total }: { label: string; done: number; total: number }) {
+  return (
+    <span className="working" role="status" title={label} aria-label={label}>
+      <span className="working-spin" aria-hidden="true" />
+      <span aria-hidden="true">{done}/{total}</span>
+    </span>
+  )
+}
+
 /** Translated sentences by unit id. */
 type Tr = Record<string, string[]>
 
@@ -954,13 +964,13 @@ export function App() {
               {status?.running && status.redo ? (
                 <>
                   <span className="meter"><span style={{ width: `${status.total ? (status.done / status.total) * 100 : 0}%` }} /></span>
-                  <span>{t('Retranslating {done}/{total}', { done: status.done, total: status.total })}</span>
+                  <Working label={t('Retranslating {done}/{total}', { done: status.done, total: status.total })} done={status.done} total={status.total} />
                   <button onClick={() => void api.cancel(doc.id, mode, lang)}>{t('Stop')}</button>
                 </>
               ) : status?.running ? (
                 <>
                   <span className="meter"><span style={{ width: `${total ? (translated / total) * 100 : 0}%` }} /></span>
-                  <span>{mode === 'easy' ? t('Making easy version {done}/{total}', { done: translated, total }) : t('Translating {done}/{total}', { done: translated, total })}</span>
+                  <Working label={mode === 'easy' ? t('Making easy version {done}/{total}', { done: translated, total }) : t('Translating {done}/{total}', { done: translated, total })} done={translated} total={total} />
                   <button onClick={() => void api.cancel(doc.id, mode, lang)}>{t('Stop')}</button>
                 </>
               ) : translated === 0 && !otherHas ? (
