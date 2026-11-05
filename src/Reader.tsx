@@ -124,7 +124,10 @@ const GAP = 48
 const SPLIT_MIN = 0.25
 const SPLIT_MAX = 0.75
 
-export function Reader({ doc, tr, lang, swapped, trLabel }: { doc: Doc; tr: Tr; lang: Lang; swapped: boolean; trLabel: string }) {
+/** Which columns the reader shows: both, only the original (`en`), or only the translation (`tr`). */
+export type Cols = 'both' | 'en' | 'tr'
+
+export function Reader({ doc, tr, lang, swapped, cols, trLabel }: { doc: Doc; tr: Tr; lang: Lang; swapped: boolean; cols: Cols; trLabel: string }) {
   useT()
   const root = useRef<HTMLDivElement>(null)
   const style = useRef<HTMLStyleElement>(null)
@@ -231,12 +234,12 @@ export function Reader({ doc, tr, lang, swapped, trLabel }: { doc: Doc; tr: Tr; 
     const main = el?.closest<HTMLElement>('.main')
     const pos = pinned.current ?? anchor.current
     if (el && main && pos) applyPos(main, el, pos)
-    // Only a translation update or swap re-anchors; doc changes are handled above.
-  }, [tr, swapped])
+    // Only a translation update, swap or column change re-anchors; doc changes are handled above.
+  }, [tr, swapped, cols])
 
   const [finding, setFinding] = useState(false)
   const [findFocus, setFindFocus] = useState(0)
-  const findContent = useMemo(() => ({}), [doc, tr, swapped])
+  const findContent = useMemo(() => ({}), [doc, tr, swapped, cols])
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (modKey(e) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f') {
@@ -250,10 +253,10 @@ export function Reader({ doc, tr, lang, swapped, trLabel }: { doc: Doc; tr: Tr; 
   }, [])
 
   return (
-    <div className={swapped ? 'reader swapped' : 'reader'} ref={root} style={{ '--split': split } as React.CSSProperties}>
+    <div className={`reader${swapped ? ' swapped' : ''}${cols === 'both' ? '' : ` only-${cols}`}`} ref={root} style={{ '--split': split } as React.CSSProperties}>
       <style ref={style} />
       {finding && <FindBar root={root} content={findContent} paper={doc.id} focus={findFocus} onClose={() => setFinding(false)} />}
-      <div
+      {cols === 'both' && <div
         className="col-resize"
         role="separator"
         aria-orientation="vertical"
@@ -264,7 +267,7 @@ export function Reader({ doc, tr, lang, swapped, trLabel }: { doc: Doc; tr: Tr; 
           localStorage.setItem('openpaper.split', '0.5')
           setSplit(0.5)
         }}
-      />
+      />}
       <div className="cols-head">
         <span className="en">{t('Original')}</span>
         <span className="tr">{trLabel}</span>

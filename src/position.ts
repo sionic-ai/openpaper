@@ -8,6 +8,12 @@ type Pos = { s: string; dy: number }
 
 export const posKey = (id: string) => `openpaper.pos.${id}`
 
+/**
+ * The column whose sentences mark the position: the original, unless only the translation is shown.
+ * Both columns use the same sentence keys, so a position saved in one finds its place in the other.
+ */
+const side = (reader: HTMLElement) => (reader.classList.contains('only-tr') ? 'tr' : 'en')
+
 export function loadPos(id: string): Pos | null {
   try {
     const v = JSON.parse(localStorage.getItem(posKey(id)) ?? 'null') as Partial<Pos> | null
@@ -23,14 +29,15 @@ export function loadPos(id: string): Pos | null {
  */
 export function readPos(main: HTMLElement, reader: HTMLElement): Pos | null | undefined {
   if (main.scrollTop < 24) return null
-  const col = reader.querySelector('.row > .en')
+  const c = side(reader)
+  const col = reader.querySelector(`.row > .${c}`)
   if (!col) return undefined
   const top = main.getBoundingClientRect().top + BAR_H
   const x = col.getBoundingClientRect().left + 8
   // Step down past figures, equations and gaps until a sentence is under the point.
   // elementsFromPoint sees through the floating panels that may cover the reader.
   for (let y = top + 4; y < top + 600; y += 12) {
-    const s = document.elementsFromPoint(x, y).find((e): e is HTMLElement => e instanceof HTMLElement && e.matches('.en .s'))
+    const s = document.elementsFromPoint(x, y).find((e): e is HTMLElement => e instanceof HTMLElement && e.matches(`.${c} .s`))
     if (s?.dataset.s) return { s: s.dataset.s, dy: top - s.getBoundingClientRect().top }
   }
   return undefined
@@ -38,7 +45,7 @@ export function readPos(main: HTMLElement, reader: HTMLElement): Pos | null | un
 
 /** Scrolls so the view is where `pos` was. Returns false when that sentence is not in the paper. */
 export function applyPos(main: HTMLElement, reader: HTMLElement, pos: Pos): boolean {
-  const s = reader.querySelector(`.en [data-s="${CSS.escape(pos.s)}"]`)
+  const s = reader.querySelector(`.${side(reader)} [data-s="${CSS.escape(pos.s)}"]`)
   if (!s) return false
   const r = s.getBoundingClientRect()
   // The layout may have changed since (window width, translation filling in); stay inside the sentence.

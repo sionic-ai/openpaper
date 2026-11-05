@@ -24,9 +24,10 @@ function collect(root: HTMLElement, query: string): Range[] {
   const out: Range[] = []
   const q = query.toLowerCase()
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-    // Skip KaTeX internals, the column labels, this bar's own counter, and headings repeated in English until they are translated.
+    // Skip KaTeX internals, the column labels, this bar's own counter, headings repeated in English until they are
+    // translated, and a column that is hidden.
     acceptNode: n =>
-      n.parentElement?.closest('.katex, .cols-head, .untranslated, .find-dock, style') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
+      n.parentElement?.closest('.katex, .cols-head, .untranslated, .find-dock, style, .only-en .tr, .only-tr .en') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
   })
   for (let n = walker.nextNode(); n && out.length < MAX; n = walker.nextNode()) {
     const raw = n.nodeValue ?? ''
