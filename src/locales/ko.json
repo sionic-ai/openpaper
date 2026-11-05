@@ -336,5 +336,6 @@
   "Show only the translation": "번역만 보기",
   "Show the original and the translation side by side": "원문과 번역을 나란히 보기",
   "Picking Easy starts the easy version right away; there is no second button to press.": "쉬운 번역을 누르면 바로 만들기 시작해요. 버튼을 한 번 더 누를 필요가 없어요.",
-  "Show only the original or only the translation with the switch at the top of the paper. A running translation shows a spinner and its count.": "논문 위쪽 전환 버튼으로 원문만 또는 번역만 볼 수 있어요. 번역이 진행되는 동안에는 도는 아이콘과 진행 숫자가 보여요."
+  "Show only the original or only the translation with the switch at the top of the paper. A running translation shows a spinner and its count.": "논문 위쪽 전환 버튼으로 원문만 또는 번역만 볼 수 있어요. 번역이 진행되는 동안에는 도는 아이콘과 진행 숫자가 보여요.",
+  "A new version now shows its Update button within 15 minutes, or as soon as you come back to the window, without restarting the app.": "새 버전이 나오면 앱을 다시 켜지 않아도 15분 안에, 또는 창으로 돌아오는 즉시 업데이트 버튼이 떠요."
 }

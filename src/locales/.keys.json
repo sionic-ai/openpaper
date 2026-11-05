@@ -336,5 +336,6 @@
  "Show only the translation": "ui",
  "Show the original and the translation side by side": "ui",
  "Picking Easy starts the easy version right away; there is no second button to press.": "patch notes item shown after an update (from CHANGELOG.md)",
- "Show only the original or only the translation with the switch at the top of the paper. A running translation shows a spinner and its count.": "patch notes item shown after an update (from CHANGELOG.md)"
+ "Show only the original or only the translation with the switch at the top of the paper. A running translation shows a spinner and its count.": "patch notes item shown after an update (from CHANGELOG.md)",
+ "A new version now shows its Update button within 15 minutes, or as soon as you come back to the window, without restarting the app.": "patch notes item shown after an update (from CHANGELOG.md)"
 }
