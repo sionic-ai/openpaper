@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Folder, Meta } from './api'
 import { t, useT } from './i18n'
+import { modClick } from './platform'
 
 /**
  * The sidebar paper list with folders. Drag a paper (pointer events, so it does not depend on the
@@ -41,7 +42,8 @@ export function PaperList({
   folders: Folder[]
   onFolders: (next: Folder[]) => void
   activeId: string | null
-  onOpen: (id: string) => void
+  /** `inNewTab`: ⌘-click (Ctrl-click on Windows) or a middle click. */
+  onOpen: (id: string, inNewTab: boolean) => void
   onRemove: (id: string) => void
   onRead: (id: string, read: boolean) => void
 }) {
@@ -136,7 +138,7 @@ export function PaperList({
         .join(' ')}
       onPointerDown={e => startDrag(e, p.id)}
     >
-      <button className="paper" onClick={() => onOpen(p.id)} title={p.title}>
+      <button className="paper" onClick={e => onOpen(p.id, modClick(e))} onAuxClick={e => e.button === 1 && onOpen(p.id, true)} title={p.title}>
         <span className="t">{p.title}</span>
         <span className="src">
           {p.source.split('/').pop()}

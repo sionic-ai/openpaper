@@ -324,5 +324,11 @@
   "Copied": "Copiado",
   "A copy button under each summary and answer copies the whole reply.": "Un botón de copiar bajo cada resumen y respuesta copia la respuesta completa.",
   "Buttons, links and highlights use the same teal as the logo; errors and warnings stay red.": "Los botones, enlaces y resaltados usan el mismo verde azulado del logotipo; los errores y avisos siguen en rojo.",
-  "Drag the top of the chat panel to move it; double-click there to put it back.": "Arrastra la parte superior del panel de chat para moverlo; haz doble clic ahí para devolverlo a su sitio."
+  "Drag the top of the chat panel to move it; double-click there to put it back.": "Arrastra la parte superior del panel de chat para moverlo; haz doble clic ahí para devolverlo a su sitio.",
+  "Tabs": "Pestañas",
+  "New tab": "Nueva pestaña",
+  "New tab ({shortcut})": "Nueva pestaña ({shortcut})",
+  "Close tab": "Cerrar pestaña",
+  "Close tab ({shortcut})": "Cerrar pestaña ({shortcut})",
+  "⌘T (Ctrl+T on Windows) opens a new tab, so you can keep several papers or searches open. ⌘W closes a tab, ⌃Tab and ⌘1–9 switch tabs, and ⌘-click opens a paper in a new tab.": "⌘T (Ctrl+T en Windows) abre una pestaña nueva, para tener varios artículos o búsquedas abiertos. ⌘W cierra una pestaña, ⌃Tab y ⌘1–9 cambian de pestaña, y ⌘-clic abre un artículo en una pestaña nueva."
 }

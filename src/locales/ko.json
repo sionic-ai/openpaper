@@ -324,5 +324,11 @@
   "Copied": "복사됨",
   "A copy button under each summary and answer copies the whole reply.": "요약과 답변 아래의 복사 버튼으로 답변 전체를 복사할 수 있어요.",
   "Buttons, links and highlights use the same teal as the logo; errors and warnings stay red.": "버튼, 링크, 강조색이 로고와 같은 청록색으로 바뀌었어요. 오류와 경고는 계속 빨간색이에요.",
-  "Drag the top of the chat panel to move it; double-click there to put it back.": "질문 창 상단을 끌어 원하는 곳으로 옮길 수 있어요. 상단을 두 번 누르면 제자리로 돌아가요."
+  "Drag the top of the chat panel to move it; double-click there to put it back.": "질문 창 상단을 끌어 원하는 곳으로 옮길 수 있어요. 상단을 두 번 누르면 제자리로 돌아가요.",
+  "Tabs": "탭",
+  "New tab": "새 탭",
+  "New tab ({shortcut})": "새 탭 ({shortcut})",
+  "Close tab": "탭 닫기",
+  "Close tab ({shortcut})": "탭 닫기 ({shortcut})",
+  "⌘T (Ctrl+T on Windows) opens a new tab, so you can keep several papers or searches open. ⌘W closes a tab, ⌃Tab and ⌘1–9 switch tabs, and ⌘-click opens a paper in a new tab.": "⌘T(Windows는 Ctrl+T)로 새 탭을 열어 논문과 검색 여러 개를 함께 띄워 둘 수 있어요. ⌘W로 탭을 닫고, ⌃Tab과 ⌘1–9로 탭을 옮기고, ⌘-클릭하면 논문이 새 탭에서 열려요."
 }

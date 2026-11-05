@@ -192,7 +192,39 @@ button:disabled { cursor: default; opacity: .5; }
 .drag-ghost { position: fixed; z-index: 50; max-width: 220px; padding: 5px 9px; border-radius: 6px; background: var(--bg); border: 1px solid var(--line); box-shadow: 0 6px 18px color-mix(in srgb, var(--text) 14%, transparent); font-size: 12.5px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
 
 /* Main */
-.main { overflow-y: auto; min-width: 0; position: relative; }
+.main-col { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.main { flex: 1; min-height: 0; overflow-y: auto; min-width: 0; position: relative; }
+
+/* Tabs (⌘T): a strip over the main area once there are two or more. */
+.tabs {
+  flex: none; display: flex; align-items: flex-end; gap: 2px; height: 38px; padding: 0 10px; overflow: hidden;
+  background: var(--side); border-bottom: 1px solid var(--line); user-select: none;
+}
+:root.mac .app.folded .tabs { padding-left: 84px; }
+:root.mac .app.folded.has-tabs .bar { padding-left: 24px; }
+.tab {
+  position: relative; flex: 0 1 200px; min-width: 64px; height: 30px; display: flex; align-items: center;
+  border: 1px solid transparent; border-bottom: 0; border-radius: 8px 8px 0 0; color: var(--muted);
+  transition: background .12s, color .12s;
+}
+.tab:hover { background: color-mix(in srgb, var(--text) 4%, transparent); color: var(--text-2); }
+.tab.active { background: var(--bg); border-color: var(--line); color: var(--text); margin-bottom: -1px; height: 31px; }
+.tab.active::before { content: ''; position: absolute; left: 10px; right: 10px; top: -1px; height: 2px; border-radius: 0 0 2px 2px; background: var(--accent); }
+.tab-pick {
+  flex: 1; min-width: 0; height: 100%; padding: 0 4px 0 12px; border: 0; background: none; text-align: left;
+  font-size: 12.5px; color: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tab-x {
+  flex: none; display: grid; place-items: center; width: 20px; height: 20px; margin-right: 5px; padding: 0; border: 0; border-radius: 5px;
+  background: none; color: var(--muted); font-size: 14px; line-height: 1; opacity: 0;
+}
+.tab:hover .tab-x, .tab.active .tab-x, .tab-x:focus-visible { opacity: 1; }
+.tab-x:hover { background: color-mix(in srgb, var(--text) 10%, transparent); color: var(--text); }
+.tab-new {
+  flex: none; align-self: center; display: grid; place-items: center; width: 26px; height: 26px; margin-left: 2px; padding: 0;
+  border: 0; border-radius: 6px; background: none; color: var(--muted); font-size: 17px; line-height: 1;
+}
+.tab-new:hover { background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text); }
 .bar {
   position: sticky;
   top: 0;
