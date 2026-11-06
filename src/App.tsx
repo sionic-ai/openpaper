@@ -111,6 +111,11 @@ const SIDE_W = 260
 const SIDE_MIN = 200
 const SIDE_MAX = 440
 
+/** The paper's text size (⌘+ / ⌘−), as a factor of the default, stored per app. */
+const ZOOM_KEY = 'openpaper.textSize'
+const ZOOM_MIN = 0.7
+const ZOOM_MAX = 1.5
+
 /** Two columns side by side, between the Original and translation buttons of the column switch. */
 function SplitIcon() {
   // Two separate panes with a gap, so it reads as a split view rather than an open book.
@@ -436,6 +441,15 @@ export function App() {
     localStorage.setItem('openpaper.cols', c)
     setColsState(c)
   }
+  // Text size of the paper (⌘+ / ⌘− / ⌘0, Ctrl on Windows): 70–150 % in steps of 10.
+  const [zoom, setZoomState] = useState(() => stored(ZOOM_KEY, 1, ZOOM_MIN, ZOOM_MAX))
+  const [zoomShown, setZoomShown] = useState(0)
+  const setZoom = (f: (z: number) => number) =>
+    setZoomState(z => {
+      const next = Math.round(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, f(z))) * 10) / 10
+      localStorage.setItem(ZOOM_KEY, String(next))
+      return next
+    })
   const [swapped, setSwapped] = useState(() => localStorage.getItem('openpaper.swapped') === '1')
   const toggleSwap = () =>
     setSwapped(s => {
@@ -459,6 +473,21 @@ export function App() {
           return !f
         })
       }
+    }
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  }, [])
+  const zoomable = useRef(false)
+  zoomable.current = view === 'doc' && !!doc
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      if (!modKey(e) || e.altKey || !zoomable.current) return
+      // By physical key, so ⌘+ works with or without Shift and with any input source; the numpad too.
+      const step = e.code === 'Equal' || e.code === 'NumpadAdd' ? 0.1 : e.code === 'Minus' || e.code === 'NumpadSubtract' ? -0.1 : e.code === 'Digit0' || e.code === 'Numpad0' ? 0 : null
+      if (step === null) return
+      e.preventDefault()
+      setZoom(z => (step === 0 ? 1 : z + step))
+      setZoomShown(n => n + 1)
     }
     window.addEventListener('keydown', key)
     return () => window.removeEventListener('keydown', key)
@@ -1116,6 +1145,11 @@ export function App() {
               )}
             </div>
           )}
+          {zoomShown > 0 && view === 'doc' && doc && (
+            <div key={zoomShown} className="zoom-badge" role="status" aria-label={t('Text size')}>
+              {Math.round(zoom * 100)}%
+            </div>
+          )}
         </header>
         {llm?.problem && !llm.backups && <ProblemNotice status={llm} onOpen={() => setModelOpen(true)} />}
         {(error || status?.error) && <div className="error" role="alert">{error ?? status?.error}</div>}
@@ -1158,7 +1192,7 @@ export function App() {
             onMore={() => void runSearch(search.query, search.hits.length)}
           />
         ) : doc ? (
-          <Reader doc={doc} tr={tr} lang={lang} swapped={swapped} cols={cols} trLabel={mode === 'easy' ? t('{language} · easy', { language: langName }) : langName} />
+          <Reader doc={doc} tr={tr} lang={lang} swapped={swapped} cols={cols} zoom={zoom} trLabel={mode === 'easy' ? t('{language} · easy', { language: langName }) : langName} />
         ) : (
           // A tab whose paper is still loading stays blank instead of flashing the welcome page.
           !busy && !tab.docId && !busyTabs.has(tab.id) && (
