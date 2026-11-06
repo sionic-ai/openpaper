@@ -127,7 +127,7 @@ const SPLIT_MAX = 0.75
 /** Which columns the reader shows: both, only the original (`en`), or only the translation (`tr`). */
 export type Cols = 'both' | 'en' | 'tr'
 
-export function Reader({ doc, tr, lang, swapped, cols, trLabel }: { doc: Doc; tr: Tr; lang: Lang; swapped: boolean; cols: Cols; trLabel: string }) {
+export function Reader({ doc, tr, lang, swapped, cols, zoom, trLabel }: { doc: Doc; tr: Tr; lang: Lang; swapped: boolean; cols: Cols; zoom: number; trLabel: string }) {
   useT()
   const root = useRef<HTMLDivElement>(null)
   const style = useRef<HTMLStyleElement>(null)
@@ -234,8 +234,8 @@ export function Reader({ doc, tr, lang, swapped, cols, trLabel }: { doc: Doc; tr
     const main = el?.closest<HTMLElement>('.main')
     const pos = pinned.current ?? anchor.current
     if (el && main && pos) applyPos(main, el, pos)
-    // Only a translation update, swap or column change re-anchors; doc changes are handled above.
-  }, [tr, swapped, cols])
+    // Only a translation update, swap, column or text size change re-anchors; doc changes are handled above.
+  }, [tr, swapped, cols, zoom])
 
   const [finding, setFinding] = useState(false)
   const [findFocus, setFindFocus] = useState(0)
@@ -253,7 +253,7 @@ export function Reader({ doc, tr, lang, swapped, cols, trLabel }: { doc: Doc; tr
   }, [])
 
   return (
-    <div className={`reader${swapped ? ' swapped' : ''}${cols === 'both' ? '' : ` only-${cols}`}`} ref={root} style={{ '--split': split } as React.CSSProperties}>
+    <div className={`reader${swapped ? ' swapped' : ''}${cols === 'both' ? '' : ` only-${cols}`}`} ref={root} style={{ '--split': split, '--zoom': zoom } as React.CSSProperties}>
       <style ref={style} />
       {finding && <FindBar root={root} content={findContent} paper={doc.id} focus={findFocus} onClose={() => setFinding(false)} />}
       {cols === 'both' && <div

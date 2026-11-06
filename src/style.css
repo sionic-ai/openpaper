@@ -289,7 +289,8 @@ button:disabled { cursor: default; opacity: .5; }
 .welcome .sub { font-size: 12px; margin-top: 24px; }
 
 /* Reader: each row pairs the English original (left) with the translation (right). */
-.reader { --split: .5; --left: minmax(0, calc(var(--split) * (100% - 48px))); position: relative; max-width: 1320px; margin: 0 auto; padding: 8px 32px 120px; }
+/* --zoom is the reader's text size (⌘+ / ⌘−, 70–150 %). It scales the paper's text, not the app around it. */
+.reader { --split: .5; --left: minmax(0, calc(var(--split) * (100% - 48px))); position: relative; max-width: calc(1320px * var(--zoom, 1)); margin: 0 auto; padding: 8px 32px 120px; }
 /* The gap between the two columns: drag it to give one language more room. */
 .col-resize {
   position: absolute; top: 0; bottom: 0; z-index: 2; width: 14px; cursor: col-resize; touch-action: none;
@@ -310,19 +311,19 @@ button:disabled { cursor: default; opacity: .5; }
 .row { display: grid; grid-template-columns: var(--left) minmax(0, 1fr); gap: 48px; }
 .row > * { margin: 0 0 1em; min-width: 0; }
 /* Only one column: the other is hidden and the text gets a comfortable reading width. */
-.reader.only-en, .reader.only-tr { max-width: 760px; }
+.reader.only-en, .reader.only-tr { max-width: calc(760px * var(--zoom, 1)); }
 .reader.only-en .row, .reader.only-tr .row, .reader.only-en .cols-head, .reader.only-tr .cols-head { grid-template-columns: minmax(0, 1fr); }
 .reader.only-en .row > .tr, .reader.only-en .cols-head > .tr, .reader.only-tr .row > .en, .reader.only-tr .cols-head > .en { display: none; }
 /* Swap button: the translation moves to the left column, English to the right. */
 .reader.swapped .row > .en, .reader.swapped .cols-head > .en { order: 2; }
-.en { font-size: var(--en-size); line-height: 1.75; color: var(--en); }
-.tr { font-size: var(--tr-size); line-height: 1.75; color: var(--tr); }
+.en { font-size: calc(var(--en-size) * var(--zoom, 1)); line-height: 1.75; color: var(--en); }
+.tr { font-size: calc(var(--tr-size) * var(--zoom, 1)); line-height: 1.75; color: var(--tr); }
 .s { border-radius: 3px; transition: background .08s; }
 .heading > * { font-family: inherit; font-weight: 600; letter-spacing: -.01em; line-height: 1.3; color: var(--text); }
-.heading.h1 > * { font-size: 26px; margin: 24px 0 16px; }
-.heading.h2 > * { font-size: 19px; margin: 32px 0 12px; }
-.heading.h3 > * { font-size: 16px; margin: 24px 0 10px; }
-.heading.h4 > * { font-size: 15px; margin: 14px 0 6px; }
+.heading.h1 > * { font-size: calc(26px * var(--zoom, 1)); margin: 24px 0 16px; }
+.heading.h2 > * { font-size: calc(19px * var(--zoom, 1)); margin: 32px 0 12px; }
+.heading.h3 > * { font-size: calc(16px * var(--zoom, 1)); margin: 24px 0 10px; }
+.heading.h4 > * { font-size: calc(15px * var(--zoom, 1)); margin: 14px 0 6px; }
 
 .pending { display: block; }
 .pending i { display: block; height: .8em; margin: .55em 0; border-radius: 4px; background: var(--pending); animation: shimmer 1.6s ease-in-out infinite; }
@@ -333,8 +334,8 @@ button:disabled { cursor: default; opacity: .5; }
 @keyframes shimmer { 50% { opacity: .55; } }
 
 .wide { margin: 0 0 1em; }
-.static { font-size: 13px; color: var(--muted); line-height: 1.55; }
-.code { font: 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--side); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto; }
+.static { font-size: calc(13px * var(--zoom, 1)); color: var(--muted); line-height: 1.55; }
+.code { font: calc(12.5px * var(--zoom, 1))/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--side); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto; }
 .equation { overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
 .equation .katex-display { margin: .4em 0; }
 
@@ -345,10 +346,10 @@ button:disabled { cursor: default; opacity: .5; }
 /* Floating panels need a lighter surface and edge to lift off a dark page; shadows barely show. */
 :root[data-theme='dark'] .asst, :root[data-theme='dark'] .sel-ask { background: #262625; border-color: #3a3a37; }
 :root[data-theme='dark'] .msg.user .bubble { background: color-mix(in srgb, var(--accent) 16%, var(--paper)); }
-.caption > * { font-size: 13px; line-height: 1.6; }
-.caption .tr { font-size: 13.5px; }
+.caption > * { font-size: calc(13px * var(--zoom, 1)); line-height: 1.6; }
+.caption .tr { font-size: calc(13.5px * var(--zoom, 1)); }
 .table-wrap { overflow-x: auto; display: flex; justify-content: center; }
-table { border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+table { border-collapse: collapse; font-size: calc(12.5px * var(--zoom, 1)); font-variant-numeric: tabular-nums; }
 td { border-bottom: 1px solid var(--line); padding: 4px 10px; white-space: nowrap; }
 tr:first-child td { border-top: 1px solid var(--rule); font-weight: 600; }
 tr:last-child td { border-bottom: 1px solid var(--rule); }
@@ -870,3 +871,13 @@ tr:last-child td { border-bottom: 1px solid var(--rule); }
   .roadmap { padding: 20px 16px 48px; }
   .rm-top { flex-direction: column; }
 }
+
+/* Brief readout of the text size after ⌘+ / ⌘− / ⌘0. */
+.zoom-badge {
+  position: absolute; right: 24px; top: calc(100% + 10px); z-index: 30;
+  padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--paper);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--text) 12%, transparent);
+  font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--text-2); pointer-events: none;
+  animation: zoom-badge 1.2s ease forwards;
+}
+@keyframes zoom-badge { 0% { opacity: 0; } 10%, 75% { opacity: 1; } 100% { opacity: 0; } }

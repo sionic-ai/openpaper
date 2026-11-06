@@ -332,6 +332,7 @@
  "⌘T (Ctrl+T on Windows) opens a new tab, so you can keep several papers or searches open. ⌘W closes a tab, ⌃Tab and ⌘1–9 switch tabs, and ⌘-click opens a paper in a new tab.": "patch notes item shown after an update (from CHANGELOG.md)",
  "Columns": "ui",
  "Show only the original": "ui",
+ "Text size": "ui",
  "Show only the translation": "ui",
  "Show the original and the translation side by side": "ui",
  "Picking Easy starts the easy version right away; there is no second button to press.": "patch notes item shown after an update (from CHANGELOG.md)",

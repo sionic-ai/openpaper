@@ -339,5 +339,6 @@
   "A new version now shows its Update button within 15 minutes, or as soon as you come back to the window, without restarting the app.": "有新版本时，无需重启应用，15 分钟内或回到窗口时就会显示更新按钮。",
   "Translating in a new tab. Click to go to it": "正在新标签页中翻译。点击可前往该标签页",
   "Translate on a search, AI search or roadmap result now works in a new tab behind the list, with a spinner on the button, so you can start several papers in a row.": "在搜索、AI 搜索或路线图结果中点击翻译后，列表保持不动，翻译在后台的新标签页中进行。按钮上会显示旋转图标，可以连续开始多篇论文。",
-  "Dragging a paper up or down in a folder shows a teal line where it will land.": "在文件夹中上下拖动论文时，会在放置位置显示一条青绿色的线。"
+  "Dragging a paper up or down in a folder shows a teal line where it will land.": "在文件夹中上下拖动论文时，会在放置位置显示一条青绿色的线。",
+  "Text size": "文字大小"
 }
