@@ -340,5 +340,10 @@
   "Translating in a new tab. Click to go to it": "Traduzindo em uma nova aba. Clique para ir até ela",
   "Translate on a search, AI search or roadmap result now works in a new tab behind the list, with a spinner on the button, so you can start several papers in a row.": "Traduzir em um resultado de busca, busca com IA ou roteiro agora roda em uma nova aba atrás da lista, com um ícone girando no botão, para você iniciar vários artigos seguidos.",
   "Dragging a paper up or down in a folder shows a teal line where it will land.": "Ao arrastar um artigo para cima ou para baixo em uma pasta, uma linha verde-azulada mostra onde ele vai ficar.",
-  "Text size": "Tamanho do texto"
+  "Text size": "Tamanho do texto",
+  "Fetching the paper…": "Buscando o artigo…",
+  "Couldn't find the paper's PDF on that page. Download the PDF and open it with the PDF button": "Não foi possível encontrar o PDF do artigo nessa página. Baixe o PDF e abra-o com o botão PDF",
+  "Enter a paper link or DOI": "Digite um link do artigo ou um DOI",
+  "Couldn't connect to that site": "Não foi possível conectar a esse site",
+  "Couldn't open that page": "Não foi possível abrir essa página"
 }

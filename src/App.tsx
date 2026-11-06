@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { api, arxivDocId, arxivIdOf, errorText, looksLikeArxivId, type Doc, type Folder, type Hit, type AiMode, type Lang, type Language, type LlmStatus, type Meta, type Mode, type Status } from './api'
+import { api, arxivDocId, arxivIdOf, errorText, looksLikeArxivId, looksLikePaperLink, type Doc, type Folder, type Hit, type AiMode, type Lang, type Language, type LlmStatus, type Meta, type Mode, type Status } from './api'
 import { Reader, type Cols } from './Reader'
 import { PaperList } from './Papers'
 import { SearchResults, type SearchState } from './Search'
@@ -813,8 +813,10 @@ export function App() {
     e.preventDefault()
     const q = input.trim()
     if (!q || busy) return
-    if (!looksLikeArxivId(q)) return void runSearch(q, 0)
-    setBusy(t('Fetching the paper from arXiv…'))
+    const arxiv = looksLikeArxivId(q)
+    // Other sites' paper links and DOIs open the same way; anything else is an arXiv search.
+    if (!arxiv && !looksLikePaperLink(q)) return void runSearch(q, 0)
+    setBusy(arxiv ? t('Fetching the paper from arXiv…') : t('Fetching the paper…'))
     setError(null)
     try {
       await imported(await api.openArxiv(input))

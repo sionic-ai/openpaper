@@ -340,5 +340,10 @@
   "Translating in a new tab. Click to go to it": "新しいタブで翻訳中です。クリックするとそのタブに移動します",
   "Translate on a search, AI search or roadmap result now works in a new tab behind the list, with a spinner on the button, so you can start several papers in a row.": "検索・AI検索・ロードマップの結果で翻訳を押すと、一覧はそのままで後ろの新しいタブで翻訳します。ボタンに回転アイコンが出るので、何本も続けて始められます。",
   "Dragging a paper up or down in a folder shows a teal line where it will land.": "フォルダ内で論文を上下にドラッグすると、置く位置に青緑の線が表示されます。",
-  "Text size": "文字サイズ"
+  "Text size": "文字サイズ",
+  "Fetching the paper…": "論文を取得しています…",
+  "Couldn't find the paper's PDF on that page. Download the PDF and open it with the PDF button": "そのページで論文のPDFが見つかりませんでした。PDFをダウンロードしてPDFボタンで開いてください",
+  "Enter a paper link or DOI": "論文のリンクかDOIを入力してください",
+  "Couldn't connect to that site": "そのサイトに接続できませんでした",
+  "Couldn't open that page": "そのページを開けませんでした"
 }

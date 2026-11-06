@@ -1,6 +1,6 @@
 //! Command-line check of import and translation without the GUI.
 //!
-//! openpaper-probe parse <arxiv-id | file.pdf>            print block statistics
+//! openpaper-probe parse <arxiv-id | link | doi | file.pdf>  print block statistics
 //! openpaper-probe translate <arxiv-id | file.pdf> [n]    translate the first n units (default 6)
 //! openpaper-probe dump <arxiv-id | file.pdf>             print every block on one line
 //! openpaper-probe import <arxiv-id | file.pdf> <dir> [n] save into a library dir with n translated units
@@ -33,8 +33,8 @@ fn load(arg: &str) -> Doc {
         let b: Builder = openpaper::pdf::parse(&bytes).expect("parse pdf");
         b.finish(format!("pdf-{}", openpaper::model::content_id(&bytes)), arg)
     } else {
-        let id = openpaper::arxiv::parse_id(arg).expect("arxiv id");
-        openpaper::arxiv::fetch(&id).expect("fetch")
+        // An arXiv ID or link, or another site's paper link or DOI.
+        openpaper::link::fetch(arg).expect("fetch")
     }
 }
 
