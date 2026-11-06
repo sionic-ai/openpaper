@@ -6,7 +6,6 @@
 //! the response itself when it is a PDF, the page's `citation_pdf_url` (the Google Scholar tag that
 //! ACL Anthology, PMLR, NeurIPS, CVF, JMLR, Nature and most publishers put on paper pages), or an
 //! open-access PDF that OpenAlex knows for the DOI. The paper's source is the site's host name.
-//! Sites that answer bots with a challenge page (OpenReview) can't be read this way.
 
 use crate::model::{Doc, content_id};
 use crate::{arxiv, pdf, search};
