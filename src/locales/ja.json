@@ -101,7 +101,6 @@
   "Fastest and cheapest": "最速で最安",
   "Fastest and lightest on your plan": "最速で、プランの消費が最小",
   "Fetching the paper from arXiv…": "arXivから論文を取得しています…",
-  "Fetching…": "取得しています…",
   "Filter models": "モデルを絞り込み",
   "Filter {n} models": "{n}個のモデルを絞り込み",
   "Find in paper": "論文内を検索",
@@ -337,5 +336,7 @@
   "Show the original and the translation side by side": "原文と翻訳を並べて表示",
   "Picking Easy starts the easy version right away; there is no second button to press.": "「やさしい翻訳」を選ぶとすぐに作成が始まります。もう一度ボタンを押す必要はありません。",
   "Show only the original or only the translation with the switch at the top of the paper. A running translation shows a spinner and its count.": "論文上部の切り替えで、原文だけ・翻訳だけを表示できます。翻訳中は回転するアイコンと進み具合の数字が出ます。",
-  "A new version now shows its Update button within 15 minutes, or as soon as you come back to the window, without restarting the app.": "新しいバージョンが出ると、アプリを再起動しなくても15分以内、またはウインドウに戻ったときにすぐアップデートボタンが表示されます。"
+  "A new version now shows its Update button within 15 minutes, or as soon as you come back to the window, without restarting the app.": "新しいバージョンが出ると、アプリを再起動しなくても15分以内、またはウインドウに戻ったときにすぐアップデートボタンが表示されます。",
+  "Translating in a new tab. Click to go to it": "新しいタブで翻訳中です。クリックするとそのタブに移動します",
+  "Translate on a search, AI search or roadmap result now works in a new tab behind the list, with a spinner on the button, so you can start several papers in a row.": "検索・AI検索・ロードマップの結果で翻訳を押すと、一覧はそのままで後ろの新しいタブで翻訳します。ボタンに回転アイコンが出るので、何本も続けて始められます。"
 }

@@ -1,5 +1,6 @@
 import type { Hit } from './api'
 import { t, useT } from './i18n'
+import { WorkingLabel, type Working } from './Working'
 
 export type SearchState = {
   query: string
@@ -17,13 +18,13 @@ function authors(list: string[]): string {
 type Props = {
   state: SearchState
   saved: Set<string>
-  busyId: string | null
+  working: Working
   onOpen: (hit: Hit) => void
   onWeb: (hit: Hit) => void
   onMore: () => void
 }
 
-export function SearchResults({ state, saved, busyId, onOpen, onWeb, onMore }: Props) {
+export function SearchResults({ state, saved, working, onOpen, onWeb, onMore }: Props) {
   useT()
   const { query, hits, total, loading, error } = state
   return (
@@ -35,7 +36,7 @@ export function SearchResults({ state, saved, busyId, onOpen, onWeb, onMore }: P
       {hits.map(h => (
         <article key={h.id} className="hit">
           <h2 className="hit-title">
-            <button onClick={() => onOpen(h)} disabled={busyId !== null} title={t('Read side by side')}>{h.title}</button>
+            <button onClick={() => onOpen(h)} title={t('Read side by side')}>{h.title}</button>
           </h2>
           <div className="hit-meta">
             <span>{authors(h.authors)}</span>
@@ -52,8 +53,8 @@ export function SearchResults({ state, saved, busyId, onOpen, onWeb, onMore }: P
           </div>
           <p className="hit-summary">{h.summary}</p>
           <div className="hit-actions">
-            <button className="open" onClick={() => onOpen(h)} disabled={busyId !== null}>
-              {busyId === h.id ? t('Fetching…') : saved.has(h.id) ? t('Open from library') : t('Read side by side')}
+            <button className="open" onClick={() => onOpen(h)} title={working[h.id] ? t('Translating in a new tab. Click to go to it') : undefined}>
+              {working[h.id] ? <WorkingLabel job={working[h.id]!} /> : saved.has(h.id) ? t('Open from library') : t('Read side by side')}
             </button>
             <button className="web" onClick={() => onWeb(h)}>arxiv.org ↗</button>
           </div>

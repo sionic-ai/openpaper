@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AiMode, Hit, Lang } from './api'
 import { t, tx, useT } from './i18n'
+import { WorkingLabel, type Working } from './Working'
 
 export type Pick = { hit: Hit; why: string }
 
@@ -17,7 +18,7 @@ type Props = {
   mode: AiMode
   onMode: (mode: AiMode) => void
   saved: Set<string>
-  busyId: string | null
+  working: Working
   onAsk: (text: string) => void
   onTranslate: (hit: Hit) => void
   onWeb: (hit: Hit) => void
@@ -33,7 +34,7 @@ function authors(list: string[]): string {
   return t('{name} et al.', { name: list[0]! })
 }
 
-export function AiChat({ state, mode, onMode, saved, busyId, onAsk, onTranslate, onWeb }: Props) {
+export function AiChat({ state, mode, onMode, saved, working, onAsk, onTranslate, onWeb }: Props) {
   useT()
   const [text, setText] = useState('')
   const end = useRef<HTMLDivElement>(null)
@@ -111,8 +112,8 @@ export function AiChat({ state, mode, onMode, saved, busyId, onAsk, onTranslate,
                     </div>
                     {why && <p className="pick-why" lang={m.lang}>{why}</p>}
                     <div className="pick-actions">
-                      <button className="go" onClick={() => onTranslate(hit)} disabled={busyId !== null}>
-                        {busyId === hit.id ? t('Fetching…') : saved.has(hit.id) ? t('Open from library') : t('Translate')}
+                      <button className="go" onClick={() => onTranslate(hit)} title={working[hit.id] ? t('Translating in a new tab. Click to go to it') : undefined}>
+                        {working[hit.id] ? <WorkingLabel job={working[hit.id]!} /> : saved.has(hit.id) ? t('Open from library') : t('Translate')}
                       </button>
                       <button className="web" onClick={() => onWeb(hit)} title={`https://arxiv.org/abs/${hit.id}`}>arxiv.org ↗</button>
                     </div>
