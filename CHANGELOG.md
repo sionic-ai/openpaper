@@ -2,6 +2,10 @@
 
 The app shows the section for its version once, after an update. Keep each entry short and about what users notice.
 
+## 0.2.21
+
+- Dragging a paper up or down in a folder shows a teal line where it will land.
+
 ## 0.2.20
 
 - Translate on a search, AI search or roadmap result now works in a new tab behind the list, with a spinner on the button, so you can start several papers in a row.

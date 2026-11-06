@@ -338,5 +338,6 @@
   "Show only the original or only the translation with the switch at the top of the paper. A running translation shows a spinner and its count.": "논문 위쪽 전환 버튼으로 원문만 또는 번역만 볼 수 있어요. 번역이 진행되는 동안에는 도는 아이콘과 진행 숫자가 보여요.",
   "A new version now shows its Update button within 15 minutes, or as soon as you come back to the window, without restarting the app.": "새 버전이 나오면 앱을 다시 켜지 않아도 15분 안에, 또는 창으로 돌아오는 즉시 업데이트 버튼이 떠요.",
   "Translating in a new tab. Click to go to it": "새 탭에서 번역하는 중이에요. 누르면 그 탭으로 가요",
-  "Translate on a search, AI search or roadmap result now works in a new tab behind the list, with a spinner on the button, so you can start several papers in a row.": "검색, AI 검색, 로드맵 결과에서 번역을 누르면 목록은 그대로 두고 뒤쪽 새 탭에서 번역해요. 버튼에 도는 아이콘이 떠서 여러 논문을 연달아 걸어 둘 수 있어요."
+  "Translate on a search, AI search or roadmap result now works in a new tab behind the list, with a spinner on the button, so you can start several papers in a row.": "검색, AI 검색, 로드맵 결과에서 번역을 누르면 목록은 그대로 두고 뒤쪽 새 탭에서 번역해요. 버튼에 도는 아이콘이 떠서 여러 논문을 연달아 걸어 둘 수 있어요.",
+  "Dragging a paper up or down in a folder shows a teal line where it will land.": "폴더 안에서 논문을 위아래로 끌면 놓일 자리에 청록색 선이 보여요."
 }
