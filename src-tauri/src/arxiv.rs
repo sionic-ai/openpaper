@@ -83,7 +83,13 @@ pub fn fetch(id: &str) -> Result<Doc, String> {
         let base = Url::parse("https://arxiv.org/html/paper").unwrap();
         let bytes = read_capped(resp, MAX_HTML)?;
         let html = String::from_utf8_lossy(&bytes);
-        if let Some(builder) = parse_html(&html, &base) {
+        if let Some(mut builder) = parse_html(&html, &base) {
+            if builder.title.is_empty() {
+                // Some renderings have no title element; the API has it.
+                if let Ok(hit) = crate::search::lookup(&[id.to_string()]) {
+                    builder.title = hit.into_iter().next().map(|h| h.title).unwrap_or_default();
+                }
+            }
             let mut doc = builder.finish(doc_id, &format!("arXiv:{id}"));
             embed_images(&http, &mut doc);
             return Ok(doc);
