@@ -101,7 +101,6 @@
   "Fastest and cheapest": "最快，最便宜",
   "Fastest and lightest on your plan": "最快，最省你的套餐用量",
   "Fetching the paper from arXiv…": "正在从 arXiv 获取论文…",
-  "Fetching…": "获取中…",
   "Filter models": "筛选模型",
   "Filter {n} models": "在 {n} 个模型中筛选",
   "Find in paper": "在论文中查找",
@@ -337,5 +336,7 @@
   "Show the original and the translation side by side": "并排显示原文和译文",
   "Picking Easy starts the easy version right away; there is no second button to press.": "选择简明翻译后会立即开始生成，不用再按一次按钮。",
   "Show only the original or only the translation with the switch at the top of the paper. A running translation shows a spinner and its count.": "用论文上方的切换按钮可以只看原文或只看译文。翻译进行时会显示旋转图标和进度数字。",
-  "A new version now shows its Update button within 15 minutes, or as soon as you come back to the window, without restarting the app.": "有新版本时，无需重启应用，15 分钟内或回到窗口时就会显示更新按钮。"
+  "A new version now shows its Update button within 15 minutes, or as soon as you come back to the window, without restarting the app.": "有新版本时，无需重启应用，15 分钟内或回到窗口时就会显示更新按钮。",
+  "Translating in a new tab. Click to go to it": "正在新标签页中翻译。点击可前往该标签页",
+  "Translate on a search, AI search or roadmap result now works in a new tab behind the list, with a spinner on the button, so you can start several papers in a row.": "在搜索、AI 搜索或路线图结果中点击翻译后，列表保持不动，翻译在后台的新标签页中进行。按钮上会显示旋转图标，可以连续开始多篇论文。"
 }

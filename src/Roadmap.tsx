@@ -1,5 +1,6 @@
 import type { Roadmap, RoadmapItem, RoadmapRelation, RoadmapStep } from './api'
 import { t, useT } from './i18n'
+import { WorkingLabel, type Working } from './Working'
 
 export type RoadmapState = {
   /** Library id of the seed paper. */
@@ -14,7 +15,7 @@ type Props = {
   state: RoadmapState
   /** arXiv IDs already in the library. */
   saved: Set<string>
-  busyId: string | null
+  working: Working
   onOpen: (item: RoadmapItem) => void
   onWeb: (id: string) => void
   onRegenerate: () => void
@@ -52,7 +53,7 @@ function count(n: number): string {
 }
 
 /** Reading roadmap around one paper: stages before it, the paper itself, stages after it. */
-export function RoadmapView({ state, saved, busyId, onOpen, onWeb, onRegenerate, onBack }: Props) {
+export function RoadmapView({ state, saved, working, onOpen, onWeb, onRegenerate, onBack }: Props) {
   useT()
   const { data, step, error, seedTitle } = state
   const before = data?.stages.filter(s => !s.after) ?? []
@@ -78,8 +79,8 @@ export function RoadmapView({ state, saved, busyId, onOpen, onWeb, onRegenerate,
           </p>
         )}
         <div className="rm-actions">
-          <button className={have ? '' : 'primary'} disabled={busyId === item.id} onClick={() => onOpen(item)}>
-            {busyId === item.id ? t('Fetching…') : have ? t('Open from library') : t('Translate')}
+          <button className={have ? '' : 'primary'} onClick={() => onOpen(item)} title={working[item.id] ? t('Translating in a new tab. Click to go to it') : undefined}>
+            {working[item.id] ? <WorkingLabel job={working[item.id]!} /> : have ? t('Open from library') : t('Translate')}
           </button>
           <button className="bar-link" onClick={() => onWeb(item.id)} title={t('Open arxiv.org in your browser')}>
             arxiv.org ↗

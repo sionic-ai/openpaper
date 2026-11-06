@@ -211,9 +211,11 @@ button:disabled { cursor: default; opacity: .5; }
 .tab.active { background: var(--bg); border-color: var(--line); color: var(--text); margin-bottom: -1px; height: 31px; }
 .tab.active::before { content: ''; position: absolute; left: 10px; right: 10px; top: -1px; height: 2px; border-radius: 0 0 2px 2px; background: var(--accent); }
 .tab-pick {
-  flex: 1; min-width: 0; height: 100%; padding: 0 4px 0 12px; border: 0; background: none; text-align: left;
-  font-size: 12.5px; color: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  flex: 1; min-width: 0; height: 100%; display: flex; align-items: center; gap: 6px; padding: 0 4px 0 12px; border: 0; background: none; text-align: left;
+  font-size: 12.5px; color: inherit; white-space: nowrap;
 }
+.tab-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.tab-pick .working-spin { width: 10px; height: 10px; }
 .tab-x {
   flex: none; display: grid; place-items: center; width: 20px; height: 20px; margin-right: 5px; padding: 0; border: 0; border-radius: 5px;
   background: none; color: var(--muted); font-size: 14px; line-height: 1; opacity: 0;
@@ -243,6 +245,7 @@ button:disabled { cursor: default; opacity: .5; }
 .progress button.primary { background: transparent; border-color: var(--accent); color: var(--accent); }
 .progress button.primary:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .working { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.working-n { color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
 .working-spin { flex: none; width: 12px; height: 12px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--accent) 22%, transparent); border-top-color: var(--accent); animation: spin .8s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .working-spin { animation-duration: 2.4s; } }
 .meter { width: 120px; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }

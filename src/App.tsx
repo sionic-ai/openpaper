@@ -285,6 +285,12 @@ type View = 'doc' | 'search' | 'ai' | 'roadmap'
 type Tab = { id: number; view: View; docId: string | null; title: string; search: SearchState | null; roadmap: RoadmapState | null }
 
 let tabSeq = 0
+
+/** A paper fetched and translated in a background tab; `docId` is set once it is in the library. */
+type Job = { tab: number; docId: string | null; lang: Lang; done: number; total: number }
+
+/** Keep arXiv requests from the app at least this far apart (the Rust side uses the same gap). */
+const ARXIV_GAP = 1100
 const blankTab = (docId: string | null = null, title = ''): Tab => ({ id: ++tabSeq, view: 'doc', docId, title, search: null, roadmap: null })
 
 const inTauri = '__TAURI_INTERNALS__' in window
@@ -292,14 +298,15 @@ const inTauri = '__TAURI_INTERNALS__' in window
 const nativeMenu = isMac && inTauri
 
 /** The tab strip over the main area, shown once there are two or more tabs. Middle-click closes a tab. */
-function TabStrip({ tabs, active, label, onPick, onClose, onNew }: { tabs: Tab[]; active: number; label: (tab: Tab) => string; onPick: (id: number) => void; onClose: (id: number) => void; onNew: () => void }) {
+function TabStrip({ tabs, active, busy, label, onPick, onClose, onNew }: { tabs: Tab[]; active: number; busy: Set<number>; label: (tab: Tab) => string; onPick: (id: number) => void; onClose: (id: number) => void; onNew: () => void }) {
   useT()
   return (
     <div className="tabs" role="tablist" aria-label={t('Tabs')} data-tauri-drag-region>
       {tabs.map(tab => (
         <div key={tab.id} className={`tab${tab.id === active ? ' active' : ''}`} onAuxClick={e => e.button === 1 && onClose(tab.id)}>
           <button className="tab-pick" role="tab" aria-selected={tab.id === active} onClick={() => onPick(tab.id)} title={label(tab)}>
-            {label(tab)}
+            {busy.has(tab.id) && <span className="working-spin" aria-hidden="true" />}
+            <span className="tab-t">{label(tab)}</span>
           </button>
           <button className="tab-x" onClick={() => onClose(tab.id)} title={t('Close tab ({shortcut})', { shortcut: shortcut('W') })} aria-label={t('Close tab')}>
             ×
@@ -393,7 +400,13 @@ export function App() {
   const [error, setError] = useState<string | null>(null)
   const [chat, setChat] = useState<ChatState>({ messages: [], loading: false })
   const [aiMode, setAiMode] = useState<AiMode>('search')
-  const [fetchingId, setFetchingId] = useState<string | null>(null)
+  // Papers picked from search, AI search or a roadmap that are being fetched or translated in a background
+  // tab, by arXiv ID. The list stays where it is, so several can be started one after another.
+  const [jobs, setJobs] = useState<Record<string, Job>>({})
+  const jobsRef = useRef(jobs)
+  jobsRef.current = jobs
+  const arxivQueue = useRef<Promise<unknown>>(Promise.resolve())
+  const lastArxiv = useRef(0)
   const [langs, setLangs] = useState<Language[]>([])
   const [lang, setLang] = useState<Lang>(() => localStorage.getItem(LANG_KEY) ?? 'ko')
   useEffect(() => {
@@ -620,22 +633,87 @@ export function App() {
     }
   }
 
-  /** Opens a search or AI pick side by side; a paper not in the library is fetched and translation starts. */
+  /**
+   * A search, AI or roadmap pick. A paper in the library opens here. Otherwise it is fetched and translated
+   * in a new tab behind this one, so the list stays on screen and more papers can be started; clicking a
+   * paper that is still on its way switches to its tab.
+   */
   const openHit = async (hit: Hit, onError: (msg: string) => void) => {
     // A saved copy may carry a version (arxiv-2005.14165v4); match on the bare ID.
     const have = papers.find(p => arxivIdOf(p.id) === hit.id)
+    const job = jobsRef.current[hit.id]
+    if (job && tabsRef.current.some(x => x.id === job.tab)) return pickTab(job.tab)
     if (have) return void open(have.id, false)
-    if (fetchingId) return
-    setFetchingId(hit.id)
-    setError(null)
+    if (job) return
+    const asked = lang
+    const tabId = newTab(null, hit.title, true)
+    setJobs(j => ({ ...j, [hit.id]: { tab: tabId, docId: null, lang: asked, done: 0, total: 0 } }))
+    const drop = () =>
+      setJobs(j => {
+        const { [hit.id]: _, ...rest } = j
+        return rest
+      })
     try {
-      await imported(await api.openArxiv(hit.id))
+      // Fetches run one at a time, at least ARXIV_GAP apart, to stay polite to arXiv.
+      const fetched = arxivQueue.current.then(async () => {
+        const wait = lastArxiv.current + ARXIV_GAP - Date.now()
+        if (wait > 0) await new Promise(r => setTimeout(r, wait))
+        try {
+          return await api.openArxiv(hit.id)
+        } finally {
+          lastArxiv.current = Date.now()
+        }
+      })
+      arxivQueue.current = fetched.catch(() => {})
+      const meta = await fetched
+      localStorage.setItem(modeKey(meta.id), 'plain')
+      await api.translate(meta.id, 'plain', asked)
+      setJobs(j => (j[hit.id] ? { ...j, [hit.id]: { ...j[hit.id]!, docId: meta.id } } : j))
+      patchTab(tabId, () => ({ docId: meta.id, title: meta.title }))
+      void refreshList()
+      // Already switched to the tab while it was fetching: show the paper now.
+      if (activeTab.current === tabId) void open(meta.id, false, 'plain', true)
     } catch (err) {
+      drop()
+      if (tabsRef.current.some(x => x.id === tabId && !x.docId)) closeTab(tabId)
       onError(errorText(err))
-    } finally {
-      setFetchingId(null)
     }
   }
+
+  // Follow the background translations; a finished one leaves its tab and turns its button into Open.
+  const runningJobs = Object.entries(jobs)
+    .filter(([, j]) => j.docId)
+    .map(([id]) => id)
+    .join(',')
+  useEffect(() => {
+    if (!runningJobs) return
+    const timer = setInterval(() => {
+      for (const [hid, j] of Object.entries(jobsRef.current)) {
+        if (!j.docId) continue
+        api
+          .status(j.docId, 'plain', j.lang)
+          .then(s =>
+            setJobs(prev => {
+              const cur = prev[hid]
+              if (!cur) return prev
+              if (!s.running) {
+                const { [hid]: _, ...rest } = prev
+                return rest
+              }
+              return cur.done === s.done && cur.total === s.total ? prev : { ...prev, [hid]: { ...cur, done: s.done, total: s.total } }
+            })
+          )
+          .catch(() => {})
+      }
+    }, 1500)
+    return () => clearInterval(timer)
+  }, [runningJobs])
+  const working = useMemo(() => {
+    const out: Record<string, { done: number; total: number }> = {}
+    for (const [id, j] of Object.entries(jobs)) out[id] = { done: j.done, total: j.total }
+    return out
+  }, [jobs])
+  const busyTabs = new Set(Object.values(jobs).map(j => j.tab))
 
   /** Shows the reading roadmap of a saved paper: the saved one, or a new one built now. */
   const roadmapSeq = useRef(new Map<number, number>())
@@ -749,22 +827,30 @@ export function App() {
   // Tabs. ⌘T opens an empty one next to the current tab, ⌘W closes the current one (with the last
   // tab left, ⌘W closes the window on macOS as before), ⌃Tab and ⌘1-9 switch, ⌘-click opens a paper in a new tab.
   const [focusSide, setFocusSide] = useState(0)
-  const newTab = useCallback((docId: string | null = null, title = '') => {
+  // Tabs opened behind the current one since it was picked, so a row of them keeps the order they were started in.
+  const backgroundTabs = useRef(new Set<number>())
+  /** `background`: add it after the current tab and its other background tabs, and stay where you are. */
+  const newTab = useCallback((docId: string | null = null, title = '', background = false): number => {
     // A dialog (model settings, update) keeps the keyboard; ⌘T waits until it closes.
-    if (!docId && document.querySelector('.modal-back')) return
+    if (!docId && !background && document.querySelector('.modal-back')) return activeTab.current
     const next = blankTab(docId, title)
     setTabState(s => {
       const tabs = [...s.tabs]
-      tabs.splice(tabs.findIndex(x => x.id === s.active) + 1, 0, next)
-      return { tabs, active: next.id }
+      let at = tabs.findIndex(x => x.id === s.active) + 1
+      if (background) while (at < tabs.length && backgroundTabs.current.has(tabs[at]!.id)) at++
+      tabs.splice(at, 0, next)
+      return { tabs, active: background ? s.active : next.id }
     })
-    if (docId) return
+    if (background) backgroundTabs.current.add(next.id)
+    else backgroundTabs.current.clear()
+    if (docId || background) return next.id
     // Like a browser's address bar: the sidebar search takes the typing.
     setFolded(f => {
       if (f) localStorage.setItem('openpaper.sideFolded', '0')
       return false
     })
     setFocusSide(n => n + 1)
+    return next.id
   }, [])
   useEffect(() => {
     if (!focusSide) return
@@ -786,7 +872,10 @@ export function App() {
     if (tabsRef.current.length > 1) closeTab(activeTab.current)
     else if (nativeMenu) void getCurrentWindow().close().catch(() => {})
   }, [closeTab])
-  const pickTab = useCallback((id: number) => setTabState(s => (s.tabs.some(x => x.id === id) ? { ...s, active: id } : s)), [])
+  const pickTab = useCallback((id: number) => {
+    backgroundTabs.current.clear()
+    setTabState(s => (s.tabs.some(x => x.id === id) ? { ...s, active: id } : s))
+  }, [])
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (e.isComposing || e.altKey) return
@@ -936,7 +1025,7 @@ export function App() {
 
       <div className="main-col">
       {tabState.tabs.length > 1 && (
-        <TabStrip tabs={tabState.tabs} active={tab.id} label={tabLabel} onPick={pickTab} onClose={closeTab} onNew={() => newTab()} />
+        <TabStrip tabs={tabState.tabs} active={tab.id} busy={busyTabs} label={tabLabel} onPick={pickTab} onClose={closeTab} onNew={() => newTab()} />
       )}
       <main className="main">
         <header className="bar" data-tauri-drag-region>
@@ -1031,13 +1120,14 @@ export function App() {
         {llm?.problem && !llm.backups && <ProblemNotice status={llm} onOpen={() => setModelOpen(true)} />}
         {(error || status?.error) && <div className="error" role="alert">{error ?? status?.error}</div>}
         {busy && <div className="notice">{busy}</div>}
+        {!tab.docId && busyTabs.has(tab.id) && <div className="notice">{t('Fetching the paper from arXiv…')}</div>}
         {view === 'ai' ? (
           <AiChat
             state={chat}
             mode={aiMode}
             onMode={setAiMode}
             saved={new Set(papers.map(p => arxivIdOf(p.id)).filter((x): x is string => !!x))}
-            busyId={fetchingId}
+            working={working}
             onAsk={q => void ask(q)}
             onTranslate={hit => void openHit(hit, chatError)}
             onWeb={hit => openWeb(hit.id)}
@@ -1046,7 +1136,7 @@ export function App() {
           <RoadmapView
             state={roadmap}
             saved={new Set(papers.map(p => arxivIdOf(p.id)).filter((x): x is string => !!x))}
-            busyId={fetchingId}
+            working={working}
             onOpen={item => {
               const inTab = tab.id
               void openHit({ id: item.id, title: item.title, authors: [], summary: '', published: '', category: '' }, msg => setRoadmapIn(inTab, r => (r ? { ...r, error: msg } : r)))
@@ -1059,7 +1149,7 @@ export function App() {
           <SearchResults
             state={search}
             saved={new Set(papers.map(p => arxivIdOf(p.id)).filter((x): x is string => !!x))}
-            busyId={fetchingId}
+            working={working}
             onOpen={hit => {
               const inTab = tab.id
               void openHit(hit, msg => setSearchIn(inTab, prev => (prev ? { ...prev, error: msg } : prev)))
@@ -1071,7 +1161,7 @@ export function App() {
           <Reader doc={doc} tr={tr} lang={lang} swapped={swapped} cols={cols} trLabel={mode === 'easy' ? t('{language} · easy', { language: langName }) : langName} />
         ) : (
           // A tab whose paper is still loading stays blank instead of flashing the welcome page.
-          !busy && !tab.docId && (
+          !busy && !tab.docId && !busyTabs.has(tab.id) && (
             <div className="welcome">
               <h1>{t('Read papers side by side with a translation')}</h1>
               <p>

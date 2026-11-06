@@ -41,7 +41,6 @@
  "Faithful, sentence by sentence": "ui",
  "Faster attention for long contexts": "ui",
  "Fetching the paper from arXiv…": "ui",
- "Fetching…": "ui",
  "Filter models": "ui",
  "Filter {n} models": "ui",
  "Find in paper": "ui",
@@ -337,5 +336,7 @@
  "Show the original and the translation side by side": "ui",
  "Picking Easy starts the easy version right away; there is no second button to press.": "patch notes item shown after an update (from CHANGELOG.md)",
  "Show only the original or only the translation with the switch at the top of the paper. A running translation shows a spinner and its count.": "patch notes item shown after an update (from CHANGELOG.md)",
- "A new version now shows its Update button within 15 minutes, or as soon as you come back to the window, without restarting the app.": "patch notes item shown after an update (from CHANGELOG.md)"
+ "A new version now shows its Update button within 15 minutes, or as soon as you come back to the window, without restarting the app.": "patch notes item shown after an update (from CHANGELOG.md)",
+ "Translating in a new tab. Click to go to it": "ui",
+ "Translate on a search, AI search or roadmap result now works in a new tab behind the list, with a spinner on the button, so you can start several papers in a row.": "patch notes item shown after an update (from CHANGELOG.md)"
 }

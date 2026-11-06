@@ -70,7 +70,7 @@ Requires Windows 10 or 11 (x64) and a Claude account. The setup program installs
 - **Side by side reading.** The original on one side, the translation on the other, paired sentence by sentence. Hover or select a sentence and its pair lights up on both sides. Swap sides with `⇄` and drag the divider to resize, or show only the original or only the translation. Press `⌘F` to find text in both columns. Reopening a paper returns to where you stopped reading.
 - **Pick your language.** Translate into Korean, Japanese, Chinese (Simplified), Spanish, French, German, or Portuguese.
 - **arXiv search.** Search arXiv inside the app, or paste an arXiv ID or URL. Local PDFs work too.
-- **AI paper finder.** Describe what you are looking for in plain words. Claude plans the searches, and the app only shows papers that came back from arXiv, never invented ones.
+- **AI paper finder.** Describe what you are looking for in plain words. Claude plans the searches, and the app only shows papers that came back from arXiv, never invented ones. Press Translate on several results in a row: each one fetches and translates in its own tab behind the list.
 - **Easy mode.** Switch to Easy and it starts at once: an explanatory translation that unpacks jargon and adds the missing reasoning, while keeping facts and numbers as written.
 - **Summary post.** One click writes a short explainer post about the paper with its real numbers. It is saved and shows up instantly next time.
 - **Ask the paper.** Ask questions in a chat grounded in the open paper. Select any passage to ask about it directly. Answers stream in as they are written.

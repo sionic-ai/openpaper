@@ -101,7 +101,6 @@
   "Fastest and cheapest": "O mais rápido e mais barato",
   "Fastest and lightest on your plan": "O mais rápido e que menos pesa no seu plano",
   "Fetching the paper from arXiv…": "Buscando o artigo no arXiv…",
-  "Fetching…": "Buscando…",
   "Filter models": "Filtrar modelos",
   "Filter {n} models": "Filtrar {n} modelos",
   "Find in paper": "Buscar no artigo",
@@ -337,5 +336,7 @@
   "Show the original and the translation side by side": "Mostrar o original e a tradução lado a lado",
   "Picking Easy starts the easy version right away; there is no second button to press.": "Ao escolher Fácil, a versão fácil começa na hora; não é preciso apertar outro botão.",
   "Show only the original or only the translation with the switch at the top of the paper. A running translation shows a spinner and its count.": "Mostre só o original ou só a tradução com o seletor no topo do artigo. Uma tradução em andamento mostra um ícone girando e a contagem.",
-  "A new version now shows its Update button within 15 minutes, or as soon as you come back to the window, without restarting the app.": "Uma nova versão mostra o botão de atualizar em até 15 minutos, ou assim que você volta à janela, sem reiniciar o app."
+  "A new version now shows its Update button within 15 minutes, or as soon as you come back to the window, without restarting the app.": "Uma nova versão mostra o botão de atualizar em até 15 minutos, ou assim que você volta à janela, sem reiniciar o app.",
+  "Translating in a new tab. Click to go to it": "Traduzindo em uma nova aba. Clique para ir até ela",
+  "Translate on a search, AI search or roadmap result now works in a new tab behind the list, with a spinner on the button, so you can start several papers in a row.": "Traduzir em um resultado de busca, busca com IA ou roteiro agora roda em uma nova aba atrás da lista, com um ícone girando no botão, para você iniciar vários artigos seguidos."
 }
