@@ -174,6 +174,16 @@ button:disabled { cursor: default; opacity: .5; }
 .folder-head:hover { background: color-mix(in srgb, var(--text) 4%, transparent); }
 .folder-head.over, .papers li.over, .drop-new.over { background: color-mix(in srgb, var(--accent) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
 .papers li.over:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+/* Reordering inside a folder: a teal line with a dot above the paper the dragged one will go before. */
+.papers li.insert::before {
+  content: ''; position: absolute; z-index: 1; left: 2px; right: 4px; top: -2px; height: 2px; border-radius: 1px;
+  background: var(--accent); pointer-events: none; animation: insert-in .12s ease-out;
+}
+.papers li.insert::after {
+  content: ''; position: absolute; z-index: 1; left: -2px; top: -5px; width: 8px; height: 8px; border-radius: 50%;
+  border: 2px solid var(--accent); background: var(--side); box-sizing: border-box; pointer-events: none; animation: insert-in .12s ease-out;
+}
+@keyframes insert-in { from { opacity: 0; transform: scaleX(.6); } }
 .folder-head:hover .x { opacity: 1; }
 .folder-toggle { display: flex; align-items: center; gap: 6px; width: 100%; padding: 6px 28px 6px 4px; border: 0; background: none; text-align: left; font-size: 13px; color: var(--text-2); }
 .folder-toggle .caret { width: 10px; color: var(--muted); font-size: 13px; line-height: 1; transition: transform .15s; }

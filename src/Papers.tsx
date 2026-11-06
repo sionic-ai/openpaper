@@ -133,7 +133,14 @@ export function PaperList({
     <li
       key={p.id}
       data-drop={drop}
-      className={[activeId === p.id && 'active', p.read && 'read', drag?.id === p.id && 'dragged', over === drop && drag?.id !== p.id && 'over', extra]
+      className={[
+        activeId === p.id && 'active',
+        p.read && 'read',
+        drag?.id === p.id && 'dragged',
+        // Inside an open folder a drop puts the paper before this one: show a line above it instead of a box.
+        over === drop && drag?.id !== p.id && (drop.split(':').length === 3 ? 'insert' : 'over'),
+        extra,
+      ]
         .filter(Boolean)
         .join(' ')}
       onPointerDown={e => startDrag(e, p.id)}
