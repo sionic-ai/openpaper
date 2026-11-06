@@ -2,6 +2,11 @@
 
 The app shows the section for its version once, after an update. Keep each entry short and about what users notice.
 
+## 0.2.22
+
+- ⌘+ and ⌘− (Ctrl on Windows) make the paper's text bigger or smaller, from 70 to 150 %; ⌘0 puts it back.
+- Paste a paper link from another site (ACL Anthology, PMLR, NeurIPS, a journal page…) or a DOI into the arXiv box. The arXiv version opens when there is one, otherwise the site's PDF.
+
 ## 0.2.21
 
 - Dragging a paper up or down in a folder shows a teal line where it will land.

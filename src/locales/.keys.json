@@ -345,5 +345,7 @@
  "Couldn't find the paper's PDF on that page. Download the PDF and open it with the PDF button": "error message from the app backend",
  "Enter a paper link or DOI": "error message from the app backend",
  "Couldn't connect to that site": "error message from the app backend",
- "Couldn't open that page": "error message from the app backend"
+ "Couldn't open that page": "error message from the app backend",
+ "⌘+ and ⌘− (Ctrl on Windows) make the paper's text bigger or smaller, from 70 to 150 %; ⌘0 puts it back.": "patch notes item shown after an update (from CHANGELOG.md)",
+ "Paste a paper link from another site (ACL Anthology, PMLR, NeurIPS, a journal page…) or a DOI into the arXiv box. The arXiv version opens when there is one, otherwise the site's PDF.": "patch notes item shown after an update (from CHANGELOG.md)"
 }
