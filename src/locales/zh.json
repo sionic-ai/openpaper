@@ -340,5 +340,10 @@
   "Translating in a new tab. Click to go to it": "正在新标签页中翻译。点击可前往该标签页",
   "Translate on a search, AI search or roadmap result now works in a new tab behind the list, with a spinner on the button, so you can start several papers in a row.": "在搜索、AI 搜索或路线图结果中点击翻译后，列表保持不动，翻译在后台的新标签页中进行。按钮上会显示旋转图标，可以连续开始多篇论文。",
   "Dragging a paper up or down in a folder shows a teal line where it will land.": "在文件夹中上下拖动论文时，会在放置位置显示一条青绿色的线。",
-  "Text size": "文字大小"
+  "Text size": "文字大小",
+  "Fetching the paper…": "正在获取论文…",
+  "Couldn't find the paper's PDF on that page. Download the PDF and open it with the PDF button": "在该页面上找不到论文的 PDF。请下载 PDF 后用 PDF 按钮打开",
+  "Enter a paper link or DOI": "请输入论文链接或 DOI",
+  "Couldn't connect to that site": "无法连接到该网站",
+  "Couldn't open that page": "无法打开该页面"
 }

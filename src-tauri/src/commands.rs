@@ -133,13 +133,14 @@ pub fn library_remove(state: State<'_, Arc<AppState>>, id: String) -> Result<(),
 }
 
 #[tauri::command]
+/// Opens a paper from an arXiv ID or link, or from another site's paper link or DOI (see `link`).
 pub async fn open_arxiv(state: State<'_, Arc<AppState>>, input: String) -> Result<Meta, String> {
-    let id = arxiv::parse_id(&input).ok_or_else(|| {
-        "Enter an arXiv ID or arxiv.org link (for example 1706.03762)".to_string()
-    })?;
+    if arxiv::parse_id(&input).is_none() && !crate::link::looks_like(&input) {
+        return Err("Enter an arXiv ID or arxiv.org link (for example 1706.03762)".to_string());
+    }
     let state = state.inner().clone();
     blocking(move || {
-        let doc = arxiv::fetch(&id)?;
+        let doc = crate::link::fetch(&input)?;
         state.library.save(&doc)
     })
     .await

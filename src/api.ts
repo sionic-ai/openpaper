@@ -198,6 +198,18 @@ export const arxivDocId = (id: string) => `arxiv-${id.replace('/', '_')}`
 /** arXiv ID of a library paper, or null for PDFs. */
 export const arxivIdOf = (docId: string) => (docId.startsWith('arxiv-') ? docId.slice(6).replace('_', '/').replace(/v\d+$/, '') : null)
 
+/**
+ * True for a paper link or DOI from a site other than arXiv (mirrors `link::looks_like`): a DOI, or a
+ * web address with a dot and a path. The importer prefers the paper's arXiv version and otherwise reads its PDF.
+ */
+export function looksLikePaperLink(input: string): boolean {
+  const s = input.trim()
+  if (/^(doi:\s*)?10\.\d{4,9}\/\S+$/i.test(s)) return true
+  if (/\s/.test(s)) return false
+  // The host must end in a letters-only top-level domain, so a search like `GPT-4.5/o1` stays a search.
+  return /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z]{2,}(:\d+)?(\/\S*)?$/i.test(s) && (/^https?:\/\//i.test(s) || s.includes('/'))
+}
+
 /** True for inputs the importer accepts directly: an arXiv ID, `arXiv:` reference or arxiv.org URL. */
 export function looksLikeArxivId(input: string): boolean {
   const s = input.trim()
