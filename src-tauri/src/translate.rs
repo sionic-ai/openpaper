@@ -699,16 +699,32 @@ pub fn translate_batch(
         let text = backend.complete(&prompt, &input, cancel)?;
         let reply: Reply = extract_json(&text)
             .and_then(|j| serde_json::from_str(j).ok())
-            .ok_or_else(|| "The translation came back in the wrong format".to_string())?;
+            .ok_or_else(|| WRONG_FORMAT.to_string())?;
         Ok(reply.units.into_iter().map(|u| (u.id, u)).collect())
     };
-    let mut got = call(units)?;
+    // A reply that can't be read (broken JSON, cut off at the length limit) loses only this
+    // batch's alignment: every unit is retried on its own below. Errors that a retry can't fix
+    // (login, usage limit, canceled) still stop the job.
+    let mut got = match call(units) {
+        Ok(got) => got,
+        Err(e) if units.len() > 1 && retryable(&e) => HashMap::new(),
+        Err(e) => return Err(e),
+    };
     let mut out = Vec::with_capacity(units.len());
+    let mut last_err = None;
     for src in units {
         let ko = match got.remove(&src.id) {
             Some(ko) if valid(src, &ko) => ko,
             _ => {
-                let mut single = call(std::slice::from_ref(src)).unwrap_or_default();
+                let mut single = match call(std::slice::from_ref(src)) {
+                    Ok(single) => single,
+                    // A unit on its own that times out would time out again; stop there.
+                    Err(e) if retryable(&e) && !timed_out(&e) => {
+                        last_err = Some(e);
+                        HashMap::new()
+                    }
+                    Err(e) => return Err(e),
+                };
                 match single.remove(&src.id) {
                     Some(ko) if ko.sentences.len() == src.sentences.len() => ko,
                     // Keep the reading flow even if alignment failed twice: show the text unsplit.
@@ -730,8 +746,23 @@ pub fn translate_batch(
                 .collect(),
         });
     }
-    Ok(out)
+    match last_err {
+        // Nothing came back at all: report it instead of finishing with an empty batch.
+        Some(e) if out.is_empty() => Err(e),
+        _ => Ok(out),
+    }
 }
+
+/// Errors that come from one reply rather than from the backend itself.
+fn retryable(e: &str) -> bool {
+    e == WRONG_FORMAT || e.contains("cut off") || timed_out(e)
+}
+
+fn timed_out(e: &str) -> bool {
+    e.contains("didn't finish in time") || e.contains("timed out")
+}
+
+const WRONG_FORMAT: &str = "The translation came back in the wrong format";
 
 fn aligned_fallback(src: &Unit, ko: Vec<String>) -> Vec<String> {
     let mut out = vec![String::new(); src.sentences.len()];
@@ -810,6 +841,19 @@ mod tests {
             }
         }
         assert!(Mode::Plain.prompt(Lang::De).contains(r#""Abbildung 1:""#));
+    }
+
+    #[test]
+    fn only_reply_errors_are_retried() {
+        assert!(retryable(WRONG_FORMAT));
+        assert!(retryable(
+            "The API stopped with an error: the reply was cut off at the model's length limit"
+        ));
+        assert!(retryable("Claude Code timed out"));
+        assert!(!retryable("Canceled"));
+        assert!(!retryable(
+            "Claude Code failed. Check that you are logged in: run `claude` in a terminal"
+        ));
     }
 
     #[test]
