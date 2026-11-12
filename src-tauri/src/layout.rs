@@ -253,7 +253,9 @@ fn lines(mut glyphs: Vec<Glyph>) -> Vec<Line> {
         .into_iter()
         .flat_map(|(_, _, members)| untangle(members))
         .map(Line::new)
+        .flat_map(split_small_runs)
         .collect();
+    out.sort_by(|a, b| a.y.total_cmp(&b.y));
     merge_scripts(&mut out);
     for l in &mut out {
         l.glyphs.sort_by(|a, b| a.x.total_cmp(&b.x));
@@ -331,6 +333,36 @@ fn untangle(mut glyphs: Vec<Glyph>) -> Vec<Vec<Glyph>> {
     lines
 }
 
+/// Takes runs of only small glyphs out of a line: plot labels that share a baseline with a
+/// caption. Scripts stay, since they touch the letters they belong to.
+fn split_small_runs(mut line: Line) -> Vec<Line> {
+    line.glyphs.sort_by(|a, b| a.x.total_cmp(&b.x));
+    let runs = line.runs();
+    if runs.len() < 2 {
+        return vec![line];
+    }
+    let small = |r: &std::ops::Range<usize>| {
+        line.glyphs[r.clone()]
+            .iter()
+            .all(|g| g.size < 0.85 * line.size)
+    };
+    if !runs.iter().any(small) || runs.iter().all(small) {
+        return vec![line];
+    }
+    let (mut keep, mut rest) = (Vec::new(), Vec::new());
+    for r in &runs {
+        let part = line.glyphs[r.clone()].to_vec();
+        if small(r) {
+            rest.push(Line::new(part));
+        } else {
+            keep.extend(part);
+        }
+    }
+    let mut out = vec![Line::new(keep)];
+    out.extend(rest);
+    out
+}
+
 /// Folds a line of only small glyphs into the larger line right above or below it, when it
 /// sits within that line's span: scripts that fell out of their line (`X_B` drawn lower than
 /// usual, limits under a big operator).
@@ -354,8 +386,15 @@ fn merge_scripts(lines: &mut Vec<Line>) {
                     .iter()
                     .any(|b| a.end.min(b.end) - a.x.max(b.x) > 0.3 * a.size.min(b.size))
             });
+            // ...and right next to them.
+            let touches = lines[i].glyphs.iter().any(|a| {
+                n.glyphs
+                    .iter()
+                    .any(|b| (a.x - b.end).abs().min((b.x - a.end).abs()) < 0.6 * n.size)
+            });
             (small < 0.85 * n.size || symbols)
                 && !clash
+                && touches
                 && n.glyphs.len() > lines[i].glyphs.len()
                 && (n.y - lines[i].y).abs() < if symbols { 1.0 } else { 0.75 } * n.size.max(small)
                 && x0 >= n.x0() - n.size
@@ -1256,8 +1295,93 @@ struct Prev {
     alone: bool,
 }
 
+static CAPTION: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(?:Figure|Fig\.|Table|Algorithm)\s*\d+[.:]?").unwrap());
+
+enum Segment {
+    Para(Vec<String>),
+    Other(Item),
+}
+
+impl Segment {
+    /// Figures, tables and captions float: the paper's prose may run around them.
+    fn floats(&self) -> bool {
+        match self {
+            Segment::Para(lines) => CAPTION.is_match(&lines[0]),
+            Segment::Other(Item::Block(
+                Block::Table { .. } | Block::Static { code: false, .. },
+            )) => true,
+            _ => false,
+        }
+    }
+}
+
+/// Joins a paragraph that a figure or table cut in two (at a page or column break) and moves
+/// the figure after it, so the sentence reads on.
+fn reflow(items: Vec<Item>) -> Vec<Item> {
+    let mut segs: Vec<Segment> = Vec::new();
+    let mut para: Vec<String> = Vec::new();
+    for item in items {
+        match item {
+            Item::Line(l) => para.push(l),
+            other => {
+                if !para.is_empty() {
+                    segs.push(Segment::Para(std::mem::take(&mut para)));
+                }
+                if !matches!(other, Item::Break) {
+                    segs.push(Segment::Other(other));
+                }
+            }
+        }
+    }
+    if !para.is_empty() {
+        segs.push(Segment::Para(para));
+    }
+    let mut i = 0;
+    while i < segs.len() {
+        let open = match &segs[i] {
+            Segment::Para(lines) if !segs[i].floats() => lines
+                .last()
+                .is_some_and(|l| !l.trim_end().ends_with(['.', ':', '?', '!', ')'])),
+            _ => false,
+        };
+        if open {
+            let mut j = i + 1;
+            while j < segs.len() && segs[j].floats() {
+                j += 1;
+            }
+            let continues = j > i + 1
+                && matches!(&segs.get(j), Some(Segment::Para(lines))
+                    if lines[0].starts_with(|c: char| c.is_lowercase()));
+            if continues {
+                let Segment::Para(tail) = segs.remove(j) else {
+                    unreachable!()
+                };
+                if let Segment::Para(lines) = &mut segs[i] {
+                    lines.extend(tail);
+                }
+                continue;
+            }
+        }
+        i += 1;
+    }
+    let mut out = Vec::new();
+    for seg in segs {
+        out.push(Item::Break);
+        match seg {
+            Segment::Para(lines) => out.extend(lines.into_iter().map(Item::Line)),
+            Segment::Other(item) => out.push(item),
+        }
+    }
+    out
+}
+
 /// Reads every page into items.
 pub fn items(pages: Vec<Page>, b: &mut Builder) -> Vec<Item> {
+    reflow(read_pages(pages, b))
+}
+
+fn read_pages(pages: Vec<Page>, b: &mut Builder) -> Vec<Item> {
     let mut out = Vec::new();
     let mut prev: Option<Prev> = None;
     let mut first_page = true;
@@ -1300,6 +1424,9 @@ pub fn items(pages: Vec<Page>, b: &mut Builder) -> Vec<Item> {
             let left = margin(&ls);
             let right = ls.iter().map(Line::x1).fold(0., f64::max);
             let mut used = vec![false; ls.len()];
+            // Labels squeezed between two lines of a paragraph are shown after it.
+            let mut labels_between: Vec<usize> = Vec::new();
+            let mut deferred: Vec<Item> = Vec::new();
             // Figure labels drawn between two lines of one paragraph: another size, squeezed
             // between neighbours that are one line apart.
             let body = |l: &Line| (l.size - body_size).abs() <= 0.12 * body_size;
@@ -1311,12 +1438,19 @@ pub fn items(pages: Vec<Page>, b: &mut Builder) -> Vec<Item> {
                 };
                 if body(a) && !body(l) && c.y - a.y <= 1.35 * a.size.max(pitch) {
                     used[i] = true;
+                    labels_between.push(i);
                 }
             }
             let numbers: Vec<Option<(String, usize)>> = ls.iter().map(equation_number).collect();
             let mut i = 0;
             while i < ls.len() {
                 if used[i] {
+                    if labels_between.contains(&i) {
+                        deferred.push(Item::Block(Block::Static {
+                            text: render(&ls[i].glyphs, &ls[i], Style::Text, b),
+                            code: false,
+                        }));
+                    }
                     i += 1;
                     continue;
                 }
@@ -1434,6 +1568,10 @@ pub fn items(pages: Vec<Page>, b: &mut Builder) -> Vec<Item> {
                 };
                 if new_para {
                     out.push(Item::Break);
+                    for d in deferred.drain(..) {
+                        out.push(d);
+                        out.push(Item::Break);
+                    }
                 }
                 let text = render(&l.glyphs, l, Style::Text, b);
                 let ends_sentence = text.trim_end().ends_with(['.', ':', '?', '!']);
@@ -1455,6 +1593,11 @@ pub fn items(pages: Vec<Page>, b: &mut Builder) -> Vec<Item> {
                     region: (page_no, region),
                 });
                 i += 1;
+            }
+            // Labels whose paragraph ran on to the next region come after it there.
+            for d in deferred {
+                out.push(Item::Break);
+                out.push(d);
             }
         }
     }
@@ -1627,6 +1770,43 @@ mod tests {
             .filter(|s| !s.starts_with("Equation") && s != "¶")
             .collect();
         assert_eq!(lines, vec!["We report recall", "where E is the set."]);
+    }
+
+    #[test]
+    fn a_paragraph_cut_by_a_figure_is_joined() {
+        let label = || {
+            Item::Block(Block::Static {
+                text: "input tokens".into(),
+                code: false,
+            })
+        };
+        let items = vec![
+            Item::Line("The encoder output is passed".into()),
+            Item::Break,
+            label(),
+            Item::Break,
+            Item::Line("Figure 1: The method.".into()),
+            Item::Break,
+            Item::Line("to every decoder layer.".into()),
+        ];
+        assert_eq!(
+            texts(&reflow(items)),
+            vec![
+                "¶",
+                "The encoder output is passed",
+                "to every decoder layer.",
+                "¶",
+                &format!(
+                    "{:?}",
+                    Block::Static {
+                        text: "input tokens".into(),
+                        code: false
+                    }
+                ),
+                "¶",
+                "Figure 1: The method.",
+            ]
+        );
     }
 
     #[test]

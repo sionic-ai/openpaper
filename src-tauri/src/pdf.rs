@@ -71,7 +71,14 @@ fn vocabulary(text: &str) -> HashSet<String> {
             .skip(skip)
         {
             let word = token.trim_matches(|c: char| !c.is_alphabetic());
-            if word.len() >= 3 && word.chars().all(|c| c.is_alphabetic()) {
+            // Unbroken compounds count too: "task-specific" elsewhere in the paper says the
+            // hyphen in "task-|specific" is real.
+            let compound = word.contains('-') && word.split('-').all(|p| p.len() >= 2);
+            if word.len() >= 3
+                && word
+                    .chars()
+                    .all(|c| c.is_alphabetic() || (compound && c == '-'))
+            {
                 words.insert(word.to_lowercase());
             }
         }
@@ -107,12 +114,19 @@ fn join_lines(lines: &[&str], vocab: &HashSet<String>) -> String {
             let right = alpha_prefix(next_word);
             // A whole word on the left whose join with the right never occurs
             // elsewhere ("sequence-|aligned") is a compound, not a split syllable.
-            left.len() >= 4
-                && right.len() >= 4
-                && vocab.contains(&left)
-                && !vocab.contains(&format!("{left}{right}"))
+            vocab.contains(&format!("{left}-{right}"))
+                || left.len() >= 4
+                    && right.len() >= 4
+                    && vocab.contains(&left)
+                    && !vocab.contains(&format!("{left}{right}"))
         };
-        if hyphenated && lower_next && (next_word.contains('-') || compound) {
+        // A capital or a digit after the hyphen starts the second part of a name
+        // ("Llama-|Guard", "GPT-|4", "Qwen2.5-|7B"), never a split syllable.
+        let upper_next = line
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_uppercase() || c.is_ascii_digit());
+        if hyphenated && (upper_next || (lower_next && (next_word.contains('-') || compound))) {
             // "English-" + "to-German", "sequence-" + "aligned": the hyphen belongs to the word.
         } else if hyphenated && lower_next {
             out.pop();
@@ -387,7 +401,14 @@ mod tests {
         );
         assert_eq!(
             join_lines(&["WMT English-", "German"], &none),
-            "WMT English- German"
+            "WMT English-German"
+        );
+        assert_eq!(join_lines(&["Llama-", "Guard uses"], &none), "Llama-Guard uses");
+        assert_eq!(join_lines(&["Qwen2.5-", "7B"], &none), "Qwen2.5-7B");
+        let vocab = vocabulary("a task-specific head here\nand more text\n");
+        assert_eq!(
+            join_lines(&["a task-", "specific head"], &vocab),
+            "a task-specific head"
         );
     }
 }
