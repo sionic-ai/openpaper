@@ -765,10 +765,87 @@ fn timed_out(e: &str) -> bool {
 
 const WRONG_FORMAT: &str = "The translation came back in the wrong format";
 
+/// Pairs a translation whose sentence count differs from the source with the source sentences
+/// anyway, so the paragraph doesn't collapse into one block next to many sentences. The
+/// translation is cut into sentences, and each goes to the source sentence at the same relative
+/// position by length. Every source sentence keeps at least one translated sentence while there
+/// are enough of them.
 fn aligned_fallback(src: &Unit, ko: Vec<String>) -> Vec<String> {
-    let mut out = vec![String::new(); src.sentences.len()];
-    if let Some(first) = out.first_mut() {
-        *first = ko.join(" ");
+    let n = src.sentences.len();
+    let mut out = vec![String::new(); n];
+    if n == 0 {
+        return out;
+    }
+    let pieces: Vec<String> = ko
+        .iter()
+        .flat_map(|s| split_translated(s))
+        .filter(|s| !s.trim().is_empty())
+        .collect();
+    if pieces.is_empty() {
+        return out;
+    }
+    let weight = |s: &str| s.chars().filter(|c| !c.is_whitespace()).count().max(1) as f64;
+    let src_total: f64 = src.sentences.iter().map(|s| weight(s)).sum();
+    // Where each source sentence ends, as a share of the paragraph.
+    let mut ends = Vec::with_capacity(n);
+    let mut acc = 0.;
+    for s in &src.sentences {
+        acc += weight(s);
+        ends.push(acc / src_total);
+    }
+    let ko_total: f64 = pieces.iter().map(|s| weight(s)).sum();
+    let mut acc = 0.;
+    let mut target = Vec::with_capacity(pieces.len());
+    for p in &pieces {
+        let mid = (acc + weight(p) / 2.) / ko_total;
+        acc += weight(p);
+        target.push(ends.iter().position(|e| mid <= *e).unwrap_or(n - 1));
+    }
+    // Keep the order and leave no source sentence empty while pieces remain: piece k may go no
+    // further than source sentence k, and must leave one piece for each source sentence after it.
+    let m = pieces.len();
+    let mut last = 0;
+    for (k, t) in target.iter_mut().enumerate() {
+        let low = if m >= n { (n + k).saturating_sub(m) } else { 0 };
+        *t = (*t).max(last).max(low).min(k).min(n - 1);
+        last = *t;
+    }
+    for (p, t) in pieces.into_iter().zip(target) {
+        if !out[t].is_empty() {
+            out[t].push(' ');
+        }
+        out[t].push_str(p.trim());
+    }
+    out
+}
+
+/// Splits a translated paragraph into sentences: after `.`, `?`, `!` or `。` followed by a space,
+/// unless the period sits inside a number.
+fn split_translated(text: &str) -> Vec<String> {
+    let chars: Vec<char> = text.chars().collect();
+    let mut out = Vec::new();
+    let mut start = 0;
+    for i in 0..chars.len() {
+        let c = chars[i];
+        let ends = matches!(c, '.' | '?' | '!' | '。' | '？' | '！')
+            && chars
+                .get(i + 1)
+                .is_none_or(|n| n.is_whitespace() || c == '。')
+            && !(c == '.'
+                && i > 0
+                && chars[i - 1].is_ascii_digit()
+                && chars.get(i + 1).is_some_and(|n| n.is_ascii_digit()));
+        if ends {
+            let s: String = chars[start..=i].iter().collect();
+            if !s.trim().is_empty() {
+                out.push(s.trim().to_string());
+            }
+            start = i + 1;
+        }
+    }
+    let tail: String = chars[start..].iter().collect();
+    if !tail.trim().is_empty() {
+        out.push(tail.trim().to_string());
     }
     out
 }
@@ -842,6 +919,51 @@ mod tests {
             }
         }
         assert!(Mode::Plain.prompt(Lang::De).contains(r#""Abbildung 1:""#));
+    }
+
+    #[test]
+    fn a_misaligned_reply_is_spread_over_the_source_sentences() {
+        let src = unit(
+            1,
+            &[
+                "A short one.",
+                "A much longer second sentence with many more words in it.",
+                "Third.",
+            ],
+        );
+        // One block back for three sentences.
+        let got = aligned_fallback(
+            &src,
+            vec!["짧은 문장. 훨씬 긴 두 번째 문장으로 단어가 많아요. 셋째.".into()],
+        );
+        assert_eq!(
+            got,
+            vec![
+                "짧은 문장.",
+                "훨씬 긴 두 번째 문장으로 단어가 많아요.",
+                "셋째."
+            ]
+        );
+        // More pieces than sentences: none is empty and order holds.
+        let got = aligned_fallback(
+            &src,
+            vec![
+                "가.".into(),
+                "나.".into(),
+                "다.".into(),
+                "라.".into(),
+                "마.".into(),
+            ],
+        );
+        assert!(got.iter().all(|s| !s.is_empty()), "{got:?}");
+        assert_eq!(got.join(" "), "가. 나. 다. 라. 마.");
+        // Fewer pieces than sentences: everything is kept, in order.
+        let got = aligned_fallback(&src, vec!["전부 한 문장입니다".into()]);
+        assert_eq!(got.join(""), "전부 한 문장입니다");
+        assert_eq!(
+            split_translated("값은 66.7입니다. 끝."),
+            vec!["값은 66.7입니다.", "끝."]
+        );
     }
 
     #[test]
