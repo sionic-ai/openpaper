@@ -349,5 +349,6 @@
   "⌘+ and ⌘− (Ctrl on Windows) make the paper's text bigger or smaller, from 70 to 150 %; ⌘0 puts it back.": "⌘+と⌘−(WindowsはCtrl)で論文本文の文字を70〜150%に拡大・縮小できます。⌘0で元に戻ります。",
   "Paste a paper link from another site (ACL Anthology, PMLR, NeurIPS, a journal page…) or a DOI into the arXiv box. The arXiv version opens when there is one, otherwise the site's PDF.": "他サイトの論文リンク(ACL Anthology、PMLR、NeurIPS、ジャーナルのページなど)やDOIをarXivの入力欄に貼り付けてください。arXiv版があればそれを、なければそのサイトのPDFを開きます。",
   "Review preprints read cleanly: margin line numbers are gone, two columns read in order, and equations and tables in a PDF show as math and tables.": "査読用プレプリントもきれいに読めます。余白の行番号が消え、2段組を順に読み、PDF内の数式と表が数式と表として表示されます。",
-  "A translation no longer stops halfway when one reply comes back in the wrong format.": "1つの応答の形式が崩れても、翻訳が途中で止まらなくなりました。"
+  "A translation no longer stops halfway when one reply comes back in the wrong format.": "1つの応答の形式が崩れても、翻訳が途中で止まらなくなりました。",
+  "A paragraph whose translation has a different number of sentences no longer shows as one block; each sentence stays paired with its original.": "訳文の文の数が原文と違っても段落がひとかたまりにならず、文ごとに原文と対応します。"
 }
