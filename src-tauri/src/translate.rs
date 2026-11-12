@@ -707,7 +707,8 @@ pub fn translate_batch(
     // (login, usage limit, canceled) still stop the job.
     let mut got = match call(units) {
         Ok(got) => got,
-        Err(e) if units.len() > 1 && retryable(&e) => HashMap::new(),
+        // A batch that timed out would mostly time out again one paragraph at a time.
+        Err(e) if units.len() > 1 && retryable(&e) && !timed_out(&e) => HashMap::new(),
         Err(e) => return Err(e),
     };
     let mut out = Vec::with_capacity(units.len());
@@ -718,8 +719,8 @@ pub fn translate_batch(
             _ => {
                 let mut single = match call(std::slice::from_ref(src)) {
                     Ok(single) => single,
-                    // A unit on its own that times out would time out again; stop there.
-                    Err(e) if retryable(&e) && !timed_out(&e) => {
+                    // This paragraph stays untranslated; the rest of the batch goes on.
+                    Err(e) if retryable(&e) => {
                         last_err = Some(e);
                         HashMap::new()
                     }
