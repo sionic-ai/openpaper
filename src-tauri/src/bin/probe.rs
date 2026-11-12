@@ -325,13 +325,21 @@ fn main() {
                 ),
                 Block::Equation { tex } => format!("E  {}", tex.join(" \\\\ ")),
                 Block::Table { caption, rows } => format!(
-                    "T  {}x{}; {:?}",
+                    "T  {}x{}; {:?}{}",
                     rows.len(),
                     rows.first().map_or(0, |r| r.len()),
-                    caption.as_ref().map(|c| &c.sentences)
+                    caption.as_ref().map(|c| &c.sentences),
+                    rows.iter()
+                        .map(|r| format!("\n   | {}", r.join(" | ")))
+                        .collect::<String>()
                 ),
             };
-            println!("{}", line.chars().take(220).collect::<String>());
+            let width = if matches!(b, Block::Table { .. }) {
+                4000
+            } else {
+                220
+            };
+            println!("{}", line.chars().take(width).collect::<String>());
         }
     }
     if cmd == "job" {

@@ -1,6 +1,7 @@
 //! Best-effort structure recovery from PDF text.
 
-use crate::model::{Builder, normalize};
+use crate::layout;
+use crate::model::{Block, Builder, normalize};
 use regex::Regex;
 use std::collections::HashSet;
 use std::sync::LazyLock;
@@ -144,41 +145,113 @@ fn looks_like_title(s: &str) -> bool {
     (2..=25).contains(&words) && s.len() <= 200 && !s.contains('@') && !s.ends_with('.')
 }
 
-pub fn structure(text: &str) -> Builder {
-    let mut b = Builder::default();
-    let text = text.replace('\u{c}', "\n\n").replace("\r\n", "\n");
-    let vocab = vocabulary(&text);
-    let mut blocks: Vec<Vec<&str>> = Vec::new();
+/// A run of text lines between paragraph breaks, or a block the layout reader already built.
+enum Chunk<'a> {
+    Title(&'a str),
+    Lines(Vec<&'a str>),
+    Block(Block),
+}
+
+/// Splits plain text into chunks at blank lines, dropping page numbers and starting a new chunk
+/// at a heading that follows a finished sentence.
+fn text_chunks(text: &str) -> Vec<Chunk<'_>> {
+    let mut chunks = Vec::new();
     let mut current: Vec<&str> = Vec::new();
     for line in text.lines() {
         if line.trim().is_empty() {
             if !current.is_empty() {
-                blocks.push(std::mem::take(&mut current));
+                chunks.push(Chunk::Lines(std::mem::take(&mut current)));
             }
-        } else if !PAGE_NOISE.is_match(line.trim()) {
-            // A heading can follow the previous paragraph without a blank line.
-            let after_sentence = current.last().is_some_and(|l| {
-                l.trim_end().ends_with(['.', ':', ')', ']']) || l.contains("arXiv:")
-            });
-            if after_sentence && heading_level(line).is_some() {
-                blocks.push(std::mem::take(&mut current));
-            }
-            current.push(line);
+        } else {
+            push_line(&mut chunks, &mut current, line);
         }
     }
     if !current.is_empty() {
-        blocks.push(current);
+        chunks.push(Chunk::Lines(current));
     }
+    chunks
+}
 
-    let has_abstract = blocks.iter().any(|bl| {
-        bl[0]
+fn push_line<'a>(chunks: &mut Vec<Chunk<'a>>, current: &mut Vec<&'a str>, line: &'a str) {
+    if PAGE_NOISE.is_match(line.trim()) {
+        return;
+    }
+    // A heading can follow the previous paragraph without a blank line.
+    let after_sentence = current
+        .last()
+        .is_some_and(|l| l.trim_end().ends_with(['.', ':', ')', ']']) || l.contains("arXiv:"));
+    if after_sentence && heading_level(line).is_some() {
+        chunks.push(Chunk::Lines(std::mem::take(current)));
+    }
+    current.push(line);
+}
+
+fn layout_chunks(items: &[layout::Item]) -> Vec<Chunk<'_>> {
+    let mut chunks = Vec::new();
+    let mut current: Vec<&str> = Vec::new();
+    for item in items {
+        match item {
+            layout::Item::Line(line) => push_line(&mut chunks, &mut current, line),
+            layout::Item::Title(title) => {
+                if !current.is_empty() {
+                    chunks.push(Chunk::Lines(std::mem::take(&mut current)));
+                }
+                chunks.push(Chunk::Title(title));
+            }
+            layout::Item::Break => {
+                if !current.is_empty() {
+                    chunks.push(Chunk::Lines(std::mem::take(&mut current)));
+                }
+            }
+            layout::Item::Block(block) => {
+                if !current.is_empty() {
+                    chunks.push(Chunk::Lines(std::mem::take(&mut current)));
+                }
+                chunks.push(Chunk::Block(block.clone()));
+            }
+        }
+    }
+    if !current.is_empty() {
+        chunks.push(Chunk::Lines(current));
+    }
+    chunks
+}
+
+pub fn structure(text: &str) -> Builder {
+    let text = text.replace('\u{c}', "\n\n").replace("\r\n", "\n");
+    assemble(Builder::default(), &vocabulary(&text), text_chunks(&text))
+}
+
+fn assemble(mut b: Builder, vocab: &HashSet<String>, chunks: Vec<Chunk>) -> Builder {
+    let has_abstract = chunks.iter().any(|c| match c {
+        Chunk::Lines(lines) => lines[0]
             .trim()
             .trim_end_matches(':')
-            .eq_ignore_ascii_case("abstract")
+            .eq_ignore_ascii_case("abstract"),
+        Chunk::Block(_) | Chunk::Title(_) => false,
     });
     let mut in_front = has_abstract;
+    // The layout reader found the title by its size; don't guess another one.
+    let has_title = chunks.iter().any(|c| matches!(c, Chunk::Title(_)));
     let mut in_refs = false;
-    for lines in blocks {
+    for chunk in chunks {
+        let lines = match chunk {
+            Chunk::Lines(lines) => lines,
+            Chunk::Block(block) => {
+                in_front = false;
+                b.blocks.push(block);
+                continue;
+            }
+            Chunk::Title(title) => {
+                if b.title.is_empty() {
+                    b.title = normalize(title);
+                    b.heading(1, title);
+                } else {
+                    b.fixed(title, false);
+                }
+                continue;
+            }
+        };
         // A heading often sits on the first line of a block followed by body text.
         let first = lines[0].trim();
         let mut body = &lines[..];
@@ -198,9 +271,9 @@ pub fn structure(text: &str) -> Builder {
                 continue;
             }
         }
-        let joined = join_lines(body, &vocab);
+        let joined = join_lines(body, vocab);
         if in_front {
-            if b.title.is_empty() && looks_like_title(&joined) {
+            if !has_title && b.title.is_empty() && looks_like_title(&joined) {
                 b.title = joined.clone();
                 b.heading(1, &joined);
             } else {
@@ -215,7 +288,30 @@ pub fn structure(text: &str) -> Builder {
     b
 }
 
+/// Reads the PDF from glyph positions (see [`layout`]). `None` when that finds no text.
+fn from_layout(bytes: &[u8]) -> Option<Builder> {
+    let owned = bytes.to_vec();
+    let pages = std::panic::catch_unwind(move || layout::glyphs(&owned))
+        .ok()?
+        .ok()?;
+    let mut b = Builder::default();
+    let items = layout::items(pages, &mut b);
+    let text: String = items
+        .iter()
+        .filter_map(|i| match i {
+            layout::Item::Line(l) => Some(format!("{l}\n")),
+            _ => None,
+        })
+        .collect();
+    let vocab = vocabulary(&text);
+    let b = assemble(b, &vocab, layout_chunks(&items));
+    (b.translatable_count() > 0).then_some(b)
+}
+
 pub fn parse(bytes: &[u8]) -> Result<Builder, String> {
+    if let Some(b) = from_layout(bytes) {
+        return Ok(b);
+    }
     let owned = bytes.to_vec();
     let text = std::panic::catch_unwind(move || pdf_extract::extract_text_from_mem(&owned))
         .map_err(|_| "Can't read this PDF".to_string())?
@@ -230,7 +326,6 @@ pub fn parse(bytes: &[u8]) -> Result<Builder, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::Block;
 
     const SAMPLE: &str = "Provided permission text.\n\nA Great Paper Title\n\nJane Doe\njane@x.org\n\nAbstract\n\nWe propose a new and simple training\nmethod. It is both multi-\nplicative and remarkably fast.\n\n1 Introduction\n\nDeep learning is popular on large clusters with\n8 GPUs. It works well for most of the tasks that\nwe evaluated in this paper.\n3.1 Setup Details\nWe train on data.\n\nReferences\n\n[1] A. Author. Some book. 2020.\n";
 
