@@ -2,6 +2,10 @@
 
 The app shows the section for its version once, after an update. Keep each entry short and about what users notice.
 
+## 0.2.24
+
+- A paragraph whose translation has a different number of sentences no longer shows as one block; each sentence stays paired with its original.
+
 ## 0.2.23
 
 - Review preprints read cleanly: margin line numbers are gone, two columns read in order, and equations and tables in a PDF show as math and tables.
