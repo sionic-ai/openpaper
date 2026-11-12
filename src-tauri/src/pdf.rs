@@ -71,7 +71,14 @@ fn vocabulary(text: &str) -> HashSet<String> {
             .skip(skip)
         {
             let word = token.trim_matches(|c: char| !c.is_alphabetic());
-            if word.len() >= 3 && word.chars().all(|c| c.is_alphabetic()) {
+            // Unbroken compounds count too: "component-matched" elsewhere in the paper says the
+            // hyphen in "component-|matched" is real.
+            let compound = word.contains('-') && word.split('-').all(|p| p.len() >= 2);
+            if word.len() >= 3
+                && word
+                    .chars()
+                    .all(|c| c.is_alphabetic() || (compound && c == '-'))
+            {
                 words.insert(word.to_lowercase());
             }
         }
@@ -107,12 +114,19 @@ fn join_lines(lines: &[&str], vocab: &HashSet<String>) -> String {
             let right = alpha_prefix(next_word);
             // A whole word on the left whose join with the right never occurs
             // elsewhere ("sequence-|aligned") is a compound, not a split syllable.
-            left.len() >= 4
-                && right.len() >= 4
-                && vocab.contains(&left)
-                && !vocab.contains(&format!("{left}{right}"))
+            vocab.contains(&format!("{left}-{right}"))
+                || left.len() >= 4
+                    && right.len() >= 4
+                    && vocab.contains(&left)
+                    && !vocab.contains(&format!("{left}{right}"))
         };
-        if hyphenated && lower_next && (next_word.contains('-') || compound) {
+        // A capital or a digit after the hyphen starts the second part of a name
+        // ("EPB-|RAG", "Mem-|Gallery", "Qwen3.5-|27B"), never a split syllable.
+        let upper_next = line
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_uppercase() || c.is_ascii_digit());
+        if hyphenated && (upper_next || (lower_next && (next_word.contains('-') || compound))) {
             // "English-" + "to-German", "sequence-" + "aligned": the hyphen belongs to the word.
         } else if hyphenated && lower_next {
             out.pop();
@@ -387,7 +401,14 @@ mod tests {
         );
         assert_eq!(
             join_lines(&["WMT English-", "German"], &none),
-            "WMT English- German"
+            "WMT English-German"
+        );
+        assert_eq!(join_lines(&["EPB-", "RAG uses"], &none), "EPB-RAG uses");
+        assert_eq!(join_lines(&["Qwen3.5-", "27B"], &none), "Qwen3.5-27B");
+        let vocab = vocabulary("a component-matched run here\nand more text\n");
+        assert_eq!(
+            join_lines(&["a component-", "matched Flat-RAG"], &vocab),
+            "a component-matched Flat-RAG"
         );
     }
 }
