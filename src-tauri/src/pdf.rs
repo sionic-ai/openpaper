@@ -403,7 +403,10 @@ mod tests {
             join_lines(&["WMT English-", "German"], &none),
             "WMT English-German"
         );
-        assert_eq!(join_lines(&["Llama-", "Guard uses"], &none), "Llama-Guard uses");
+        assert_eq!(
+            join_lines(&["Llama-", "Guard uses"], &none),
+            "Llama-Guard uses"
+        );
         assert_eq!(join_lines(&["Qwen2.5-", "7B"], &none), "Qwen2.5-7B");
         let vocab = vocabulary("a task-specific head here\nand more text\n");
         assert_eq!(
