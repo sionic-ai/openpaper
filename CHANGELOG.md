@@ -2,6 +2,11 @@
 
 The app shows the section for its version once, after an update. Keep each entry short and about what users notice.
 
+## 0.2.23
+
+- Review preprints read cleanly: margin line numbers are gone, two columns read in order, and equations and tables in a PDF show as math and tables.
+- A translation no longer stops halfway when one reply comes back in the wrong format.
+
 ## 0.2.22
 
 - ⌘+ and ⌘− (Ctrl on Windows) make the paper's text bigger or smaller, from 70 to 150 %; ⌘0 puts it back.
