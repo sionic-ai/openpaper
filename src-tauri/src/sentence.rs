@@ -25,7 +25,7 @@ fn ends_with_abbreviation(before: &[char]) -> bool {
     if word.is_empty() {
         return false;
     }
-    // "e.g", "i.e", "U.S" keep an inner period. A number ("3.2", "(§5.3)") is not an
+    // "e.g", "i.e", "U.S" keep an inner period. A number ("3.2", "(§4.2)") is not an
     // abbreviation: "see §3.2. The" ends a sentence.
     (word.contains('.') && word.chars().all(|c| c.is_alphabetic() || c == '.'))
         || ABBREVIATIONS.contains(&word.as_str())
@@ -121,11 +121,11 @@ mod tests {
     #[test]
     fn a_section_number_ends_a_sentence() {
         assert_eq!(
-            split("Returns diminish (§5.3). For the pool, see §3.2. The mean is 66.7. Done."),
+            split("Gains shrink (§4.2). For details, see §3.1. The mean is 12.5. Done."),
             vec![
-                "Returns diminish (§5.3).",
-                "For the pool, see §3.2.",
-                "The mean is 66.7.",
+                "Gains shrink (§4.2).",
+                "For details, see §3.1.",
+                "The mean is 12.5.",
                 "Done."
             ]
         );

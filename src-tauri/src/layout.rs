@@ -2,11 +2,11 @@
 //!
 //! Plain text extraction loses the page geometry, which breaks review preprints: the line
 //! numbers in both margins end up inside sentences, the two columns run together, tables
-//! become strings of numbers and subscripts sit on the baseline (`R0`, `TopKK0,pd`). This
+//! become strings of numbers and subscripts sit on the baseline (`x0`, `Wqk`). This
 //! module keeps the positions, so it can:
 //! - drop margin line numbers (a column of short numbers outside the text body),
 //! - read a two-column page column by column,
-//! - write sub- and superscripts as TeX (`R_{0}`) for the reader's KaTeX,
+//! - write sub- and superscripts as TeX (`x_{0}`) for the reader's KaTeX,
 //! - turn aligned rows into a table, a line ending in `(n)` into a display equation and
 //!   numbered pseudocode into a code block.
 //!
@@ -835,7 +835,7 @@ fn tex_char(c: char, out: &mut String) {
     }
 }
 
-/// TeX for a run of events. Runs of two or more letters are set upright (`\mathrm{TopK}`).
+/// TeX for a run of events. Runs of two or more letters are set upright (`\mathrm{softmax}`).
 fn tex(evs: &[Ev]) -> String {
     let mut out = String::new();
     let mut letters = String::new();
@@ -1657,28 +1657,28 @@ mod tests {
 
     #[test]
     fn subscripts_become_tex() {
-        // R_0 = TopK_{K_0, p_d}
+        // x_0 = Top_{K_0, p_d}
         let mut g = vec![
-            Glyph::new(0., 100., 10., "R"),
+            Glyph::new(0., 100., 10., "x"),
             Glyph::new(5., 101.5, 7., "0"),
         ];
-        g.extend(word(20., 100., 10., "TopK"));
-        g.push(Glyph::new(40., 101.5, 7., "K"));
-        g.push(Glyph::new(43.5, 102.5, 5., "0"));
-        g.push(Glyph::new(46., 101.5, 7., ","));
-        g.push(Glyph::new(49.5, 101.5, 7., "p"));
-        g.push(Glyph::new(53., 102.5, 5., "d"));
+        g.extend(word(20., 100., 10., "Top"));
+        g.push(Glyph::new(35., 101.5, 7., "K"));
+        g.push(Glyph::new(38.5, 102.5, 5., "0"));
+        g.push(Glyph::new(41., 101.5, 7., ","));
+        g.push(Glyph::new(44.5, 101.5, 7., "p"));
+        g.push(Glyph::new(48., 102.5, 5., "d"));
         let l = Line::new(g.clone());
         let ws = words(&l.glyphs, l.size);
         assert_eq!(ws.len(), 2);
-        assert_eq!(tex(&script_events(&ws[0], l.y, l.size)), "R_{0}");
+        assert_eq!(tex(&script_events(&ws[0], l.y, l.size)), "x_{0}");
         assert_eq!(
             tex(&script_events(&ws[1], l.y, l.size)),
-            "\\mathrm{TopK}_{K_{0},p_{d}}"
+            "\\mathrm{Top}_{K_{0},p_{d}}"
         );
         let mut b = Builder::default();
         assert_eq!(render(&l.glyphs, &l, Style::Text, &mut b), "⟦M0⟧ ⟦M1⟧");
-        assert_eq!(b.math, vec!["R_{0}", "\\mathrm{TopK}_{K_{0},p_{d}}"]);
+        assert_eq!(b.math, vec!["x_{0}", "\\mathrm{Top}_{K_{0},p_{d}}"]);
     }
 
     #[test]
@@ -1705,10 +1705,10 @@ mod tests {
     fn aligned_rows_become_a_table() {
         let mut page = Vec::new();
         let rows = [
-            ["Method", "F1", "Recall"],
-            ["GraphRAG", "43.1", "63.8"],
-            ["Mem0", "58.1", "76.3"],
-            ["EPB-RAG", "66.6", "93.2"],
+            ["Model", "BLEU", "Cost"],
+            ["Baseline", "25.1", "12.0"],
+            ["Small", "26.4", "3.3"],
+            ["Large", "28.4", "23.0"],
         ];
         for (k, row) in rows.iter().enumerate() {
             let y = 100. + k as f64 * 11.;
@@ -1776,30 +1776,30 @@ mod tests {
     fn a_paragraph_cut_by_a_figure_is_joined() {
         let label = || {
             Item::Block(Block::Static {
-                text: "session turns".into(),
+                text: "input tokens".into(),
                 code: false,
             })
         };
         let items = vec![
-            Item::Line("Packets are retrieval-side".into()),
+            Item::Line("The encoder output is passed".into()),
             Item::Break,
             label(),
             Item::Break,
             Item::Line("Figure 1: The method.".into()),
             Item::Break,
-            Item::Line("artifacts and do not count.".into()),
+            Item::Line("to every decoder layer.".into()),
         ];
         assert_eq!(
             texts(&reflow(items)),
             vec![
                 "¶",
-                "Packets are retrieval-side",
-                "artifacts and do not count.",
+                "The encoder output is passed",
+                "to every decoder layer.",
                 "¶",
                 &format!(
                     "{:?}",
                     Block::Static {
-                        text: "session turns".into(),
+                        text: "input tokens".into(),
                         code: false
                     }
                 ),

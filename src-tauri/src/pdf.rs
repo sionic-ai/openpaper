@@ -71,8 +71,8 @@ fn vocabulary(text: &str) -> HashSet<String> {
             .skip(skip)
         {
             let word = token.trim_matches(|c: char| !c.is_alphabetic());
-            // Unbroken compounds count too: "component-matched" elsewhere in the paper says the
-            // hyphen in "component-|matched" is real.
+            // Unbroken compounds count too: "task-specific" elsewhere in the paper says the
+            // hyphen in "task-|specific" is real.
             let compound = word.contains('-') && word.split('-').all(|p| p.len() >= 2);
             if word.len() >= 3
                 && word
@@ -121,7 +121,7 @@ fn join_lines(lines: &[&str], vocab: &HashSet<String>) -> String {
                     && !vocab.contains(&format!("{left}{right}"))
         };
         // A capital or a digit after the hyphen starts the second part of a name
-        // ("EPB-|RAG", "Mem-|Gallery", "Qwen3.5-|27B"), never a split syllable.
+        // ("Llama-|Guard", "GPT-|4", "Qwen2.5-|7B"), never a split syllable.
         let upper_next = line
             .chars()
             .next()
@@ -403,12 +403,15 @@ mod tests {
             join_lines(&["WMT English-", "German"], &none),
             "WMT English-German"
         );
-        assert_eq!(join_lines(&["EPB-", "RAG uses"], &none), "EPB-RAG uses");
-        assert_eq!(join_lines(&["Qwen3.5-", "27B"], &none), "Qwen3.5-27B");
-        let vocab = vocabulary("a component-matched run here\nand more text\n");
         assert_eq!(
-            join_lines(&["a component-", "matched Flat-RAG"], &vocab),
-            "a component-matched Flat-RAG"
+            join_lines(&["Llama-", "Guard uses"], &none),
+            "Llama-Guard uses"
+        );
+        assert_eq!(join_lines(&["Qwen2.5-", "7B"], &none), "Qwen2.5-7B");
+        let vocab = vocabulary("a task-specific head here\nand more text\n");
+        assert_eq!(
+            join_lines(&["a task-", "specific head"], &vocab),
+            "a task-specific head"
         );
     }
 }

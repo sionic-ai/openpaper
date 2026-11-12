@@ -961,8 +961,8 @@ mod tests {
         let got = aligned_fallback(&src, vec!["전부 한 문장입니다".into()]);
         assert_eq!(got.join(""), "전부 한 문장입니다");
         assert_eq!(
-            split_translated("값은 66.7입니다. 끝."),
-            vec!["값은 66.7입니다.", "끝."]
+            split_translated("값은 12.5입니다. 끝."),
+            vec!["값은 12.5입니다.", "끝."]
         );
     }
 
