@@ -2,6 +2,7 @@ pub mod arxiv;
 pub mod ask;
 pub mod commands;
 pub mod lang;
+pub mod layout;
 pub mod library;
 pub mod link;
 pub mod llm;
